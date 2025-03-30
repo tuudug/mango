@@ -100,42 +100,42 @@ const defaultWidgetLayouts: Record<
   Placeholder: { w: 6, h: 4, minW: 4, minH: 3 },
 };
 
-// Widget Metadata: Icon and Color
+// Widget Metadata: Icon and Accent Color (Left Border)
 const widgetMetadata: Record<
   WidgetType,
-  { icon: LucideIcon; borderColorClass: string }
+  { icon: LucideIcon; colorAccentClass: string } // Renamed borderColorClass
 > = {
   "Trackable Graph": {
     icon: BarChart3,
-    borderColorClass: "border-blue-500 dark:border-blue-400",
+    colorAccentClass: "border-l-blue-500 dark:border-l-blue-400", // Changed to border-l-*
   },
   "Habit Graph": {
     icon: CalendarCheck,
-    borderColorClass: "border-green-500 dark:border-green-400",
+    colorAccentClass: "border-l-green-500 dark:border-l-green-400", // Changed to border-l-*
   },
   "To-do List": {
     icon: CheckSquare,
-    borderColorClass: "border-yellow-500 dark:border-yellow-400",
+    colorAccentClass: "border-l-yellow-500 dark:border-l-yellow-400", // Changed to border-l-*
   },
   Calendar: {
     icon: CalendarDays,
-    borderColorClass: "border-red-500 dark:border-red-400",
+    colorAccentClass: "border-l-red-500 dark:border-l-red-400", // Changed to border-l-*
   },
   "Sleep/Step": {
     icon: BedDouble,
-    borderColorClass: "border-indigo-500 dark:border-indigo-400",
+    colorAccentClass: "border-l-indigo-500 dark:border-l-indigo-400", // Changed to border-l-*
   },
   "Goal Tracker": {
     icon: Target,
-    borderColorClass: "border-purple-500 dark:border-purple-400",
+    colorAccentClass: "border-l-purple-500 dark:border-l-purple-400", // Changed to border-l-*
   },
   Journal: {
     icon: BookOpenText,
-    borderColorClass: "border-pink-500 dark:border-pink-400",
+    colorAccentClass: "border-l-pink-500 dark:border-l-pink-400", // Changed to border-l-*
   },
   Placeholder: {
     icon: HelpCircle, // Use a valid Lucide icon type
-    borderColorClass: "border-gray-300 dark:border-gray-700",
+    colorAccentClass: "border-l-gray-300 dark:border-l-gray-700", // Changed to border-l-*
   }, // Placeholder specific
 };
 
@@ -294,7 +294,7 @@ export function Dashboard() {
       <WidgetErrorBoundary widgetId={item.id}>
         {/* Main widget container */}
         <div
-          className={`bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden w-full h-full border border-gray-200 dark:border-gray-700 flex flex-col`}
+          className={`bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden w-full h-full border border-gray-200 dark:border-gray-700 border-l-4 ${metadata.colorAccentClass} flex flex-col`} // Use gray border + thick colored left border
         >
           {/* Title Bar */}
           {item.type !== "Placeholder" && ( // No title bar for placeholder
@@ -304,12 +304,13 @@ export function Dashboard() {
               {/* Left side: Icon + Title */}
               <div className="flex items-center gap-1.5">
                 <IconComponent
-                  className={`w-3.5 h-3.5 ${metadata.borderColorClass.replace(
-                    "border-",
+                  className={`w-3.5 h-3.5 ${metadata.colorAccentClass.replace(
+                    // Use colorAccentClass
+                    "border-l-", // Replace border-l-
                     "text-"
                   )}`}
                 />{" "}
-                {/* Use border color for icon */}
+                {/* Use accent color for icon */}
                 <span className="text-xs font-medium text-gray-700 dark:text-gray-200 select-none">
                   {item.type}
                 </span>
@@ -501,12 +502,19 @@ export function Dashboard() {
                       id={widgetType}
                       data={{ type: "toolbox-item", widgetType }}
                     >
-                      {/* Add icon to toolbox item */}
-                      <div className="flex items-center gap-2 p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-700 cursor-grab hover:bg-gray-100 dark:hover:bg-gray-600 hover:border-blue-300 dark:hover:border-blue-500 transition-all duration-200 shadow-sm">
+                      {/* Add icon and color to toolbox item */}
+                      <div
+                        className={`flex items-center gap-2 p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-700 cursor-grab hover:bg-gray-100 dark:hover:bg-gray-600 hover:border-blue-300 dark:hover:border-blue-500 transition-all duration-200 shadow-sm`} // Reverted to gray border, added hover effect
+                      >
                         {React.createElement(widgetMetadata[widgetType].icon, {
-                          className: "w-4 h-4 text-gray-500 dark:text-gray-400",
+                          className: `w-4 h-4 ${widgetMetadata[ // Use colorAccentClass
+                            widgetType
+                          ].colorAccentClass
+                            .replace("border-l-", "text-")}`, // Use accent color for icon
                         })}
-                        <span className="font-medium text-sm">
+                        <span className="font-medium text-sm text-gray-800 dark:text-gray-100">
+                          {" "}
+                          {/* Ensure text is visible */}
                           {widgetType}
                         </span>
                       </div>
