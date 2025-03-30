@@ -71,14 +71,7 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ id }) => {
   return (
     // Added dark mode classes
     <div className="p-2 h-full w-full flex flex-col text-sm text-gray-700 dark:text-gray-300">
-      <div className="flex justify-between items-center mb-2">
-        <h3 className="font-semibold text-gray-800 dark:text-gray-100 text-base">
-          Calendar
-        </h3>
-        <div className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">
-          {month} {year}
-        </div>
-      </div>
+      <div className="flex justify-between items-center mb-2"></div>
       {/* Month navigation */}
       <div className="flex justify-between items-center mb-2">
         {" "}
@@ -128,15 +121,14 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ id }) => {
         </button>
       </div>
       {/* Calendar grid */}
-      {/* Further reduce gap and add padding to the container */}
-      <div className="flex-1 grid grid-cols-7 gap-px p-1">
+      <div className="flex-1 grid grid-cols-7 gap-0.5 p-0.5">
         {" "}
-        {/* Use gap-px and add padding */}
+        {/* Reduced gap and padding */}
         {/* Day names */}
         {dayNames.map((day) => (
           <div
             key={day}
-            className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5" // Dark mode day name color
+            className="text-center text-[10px] font-medium text-gray-500 dark:text-gray-400 mb-0.5" // Reduced font size
           >
             {day}
           </div>
@@ -145,7 +137,8 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ id }) => {
         {allDays.map((day, index) => (
           <div
             key={`day-${index}`}
-            className={`relative aspect-square flex flex-col items-center justify-center text-xs rounded-full ${
+            className={`relative min-h-[20px] flex flex-col items-center justify-center text-[10px] ${
+              // Fixed minimum height and reduced font
               day === null ? "invisible" : ""
             }
               ${
@@ -156,26 +149,14 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ id }) => {
             `}
           >
             {day}
-            {/* Dark mode event dot */}
+            {/* Event dot - made smaller */}
             {day !== null && hasEvent(day) && (
-              <div className="absolute bottom-0.5 w-1 h-1 rounded-full bg-red-500 dark:bg-red-400"></div>
+              <div className="absolute bottom-0 w-0.5 h-0.5 rounded-full bg-red-500 dark:bg-red-400"></div>
             )}
           </div>
         ))}
       </div>
-      {/* Events summary */}
-      <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-        {" "}
-        {/* Dark mode summary text */}
-        <div className="flex items-center">
-          <div className="w-1.5 h-1.5 rounded-full bg-red-500 dark:bg-red-400 mr-1"></div>{" "}
-          {/* Dark mode event dot */}
-          <span>3 events this month</span>
-        </div>
-      </div>
-      <div className="mt-1 text-xs text-gray-400 dark:text-gray-500 text-right">
-        {" "}
-        {/* Dark mode widget ID text */}
+      <div className="mt-0.5 text-[10px] text-gray-400 dark:text-gray-500 text-right">
         Widget ID: {id.slice(0, 8)}
       </div>
     </div>

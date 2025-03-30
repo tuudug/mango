@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from "react"; // Removed useEffect
+import React, { useState, useCallback, useRef } from "react";
 import {
   DndContext,
   DragEndEvent,
@@ -11,217 +11,131 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
 import { restrictToWindowEdges } from "@dnd-kit/modifiers";
-import { Button } from "@/components/ui/button"; // Adjusted path
-import { Draggable } from "./Draggable"; // Adjusted path
-import { Droppable } from "./Droppable"; // Adjusted path
-import { WidgetErrorBoundary } from "./WidgetErrorBoundary"; // Import Error Boundary
-// import { SortableWidget } from "./SortableWidget"; // Temporarily removed
+import { Droppable } from "./Droppable";
 import { nanoid } from "nanoid";
 import { Responsive, WidthProvider, Layout } from "react-grid-layout";
 import {
-  X,
-  Sun,
-  Moon,
-  LucideIcon,
-  BarChart3,
-  CalendarCheck,
-  CheckSquare,
-  CalendarDays,
-  BedDouble,
-  Target,
-  BookOpenText,
-  HelpCircle, // Import a generic icon for placeholder
-  Pencil, // Import Pencil icon
-} from "lucide-react"; // Import widget icons
-import { useTheme } from "./ThemeProvider"; // Import useTheme hook
+  GridItem,
+  Mode,
+  WidgetType,
+  defaultWidgetLayouts,
+} from "@/lib/dashboardConfig"; // Import config
+import { DashboardHeader } from "./DashboardHeader"; // Import Header
+import { WidgetToolbox } from "./WidgetToolbox"; // Import Toolbox
+import { WidgetPreview } from "./WidgetPreview"; // Import Preview
+import { DashboardGridItem } from "./DashboardGridItem"; // Import Grid Item
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
-
-// Widget imports (adjust paths)
-import { TrackableGraphWidget } from "../widgets/TrackableGraphWidget";
-import { HabitGraphWidget } from "../widgets/HabitGraphWidget";
-import { TodoListWidget } from "../widgets/TodoListWidget";
-import { CalendarWidget } from "../widgets/CalendarWidget";
-import { SleepStepWidget } from "../widgets/SleepStepWidget";
-import { GoalTrackerWidget } from "../widgets/GoalTrackerWidget";
-import { JournalWidget } from "../widgets/JournalWidget";
-import { PlaceholderWidget } from "../widgets/PlaceholderWidget";
-
-// Widget types
-type WidgetType =
-  | "Trackable Graph"
-  | "Habit Graph"
-  | "To-do List"
-  | "Calendar"
-  | "Sleep/Step"
-  | "Goal Tracker"
-  | "Journal"
-  | "Placeholder";
-
-// Grid item interface
-interface GridItem {
-  id: string;
-  type: WidgetType;
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  minW?: number;
-  minH?: number;
-}
-
-// Mode type
-type Mode = "view" | "edit";
-
-// Available widgets
-const availableWidgets: WidgetType[] = [
-  "Trackable Graph",
-  "Habit Graph",
-  "To-do List",
-  "Calendar",
-  "Sleep/Step",
-  "Goal Tracker",
-  "Journal",
-  // Placeholder is not available in the toolbox
-];
-
-// Default widget layouts
-const defaultWidgetLayouts: Record<
-  WidgetType,
-  { w: number; h: number; minW?: number; minH?: number }
-> = {
-  "Trackable Graph": { w: 4, h: 3, minW: 3, minH: 2 },
-  "Habit Graph": { w: 4, h: 3, minW: 3, minH: 2 },
-  "To-do List": { w: 3, h: 4, minW: 2, minH: 3 },
-  Calendar: { w: 5, h: 4, minW: 4, minH: 4 },
-  "Sleep/Step": { w: 3, h: 3, minW: 2, minH: 2 },
-  "Goal Tracker": { w: 4, h: 4, minW: 3, minH: 3 },
-  Journal: { w: 5, h: 4, minW: 4, minH: 3 },
-  Placeholder: { w: 6, h: 4, minW: 4, minH: 3 },
-};
-
-// Widget Metadata: Icon and Accent Color (Left Border)
-const widgetMetadata: Record<
-  WidgetType,
-  { icon: LucideIcon; colorAccentClass: string } // Renamed borderColorClass
-> = {
-  "Trackable Graph": {
-    icon: BarChart3,
-    colorAccentClass: "border-l-blue-500 dark:border-l-blue-400", // Changed to border-l-*
-  },
-  "Habit Graph": {
-    icon: CalendarCheck,
-    colorAccentClass: "border-l-green-500 dark:border-l-green-400", // Changed to border-l-*
-  },
-  "To-do List": {
-    icon: CheckSquare,
-    colorAccentClass: "border-l-yellow-500 dark:border-l-yellow-400", // Changed to border-l-*
-  },
-  Calendar: {
-    icon: CalendarDays,
-    colorAccentClass: "border-l-red-500 dark:border-l-red-400", // Changed to border-l-*
-  },
-  "Sleep/Step": {
-    icon: BedDouble,
-    colorAccentClass: "border-l-indigo-500 dark:border-l-indigo-400", // Changed to border-l-*
-  },
-  "Goal Tracker": {
-    icon: Target,
-    colorAccentClass: "border-l-purple-500 dark:border-l-purple-400", // Changed to border-l-*
-  },
-  Journal: {
-    icon: BookOpenText,
-    colorAccentClass: "border-l-pink-500 dark:border-l-pink-400", // Changed to border-l-*
-  },
-  Placeholder: {
-    icon: HelpCircle, // Use a valid Lucide icon type
-    colorAccentClass: "border-l-gray-300 dark:border-l-gray-700", // Changed to border-l-*
-  }, // Placeholder specific
-};
 
 // Create responsive grid layout
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
-// Initial placeholder item
+// Initial placeholder item (can be moved to config if preferred)
 const initialPlaceholderId = "placeholder-initial";
 const initialItems: GridItem[] = [
   {
     id: initialPlaceholderId,
     type: "Placeholder",
-    x: 3, // Center it roughly
+    x: 3, // Center it roughly - Note: This x value might need adjustment based on new column count
     y: 0,
-    ...defaultWidgetLayouts["Placeholder"],
+    ...defaultWidgetLayouts["Placeholder"], // Uses updated layout from config
   },
 ];
 
 export function Dashboard() {
-  // Changed to export function
   // State
   const [mode, setMode] = useState<Mode>("view");
-  const [items, setItems] = useState<GridItem[]>(initialItems); // Initialize with placeholder
+  const [items, setItems] = useState<GridItem[]>(initialItems);
   const [activeWidget, setActiveWidget] = useState<WidgetType | null>(null);
-  const gridContainerRef = useRef<HTMLDivElement>(null); // Ref for the grid container
-  const { theme, setTheme } = useTheme(); // Get theme state and setter
+  const gridContainerRef = useRef<HTMLDivElement>(null);
 
   // Toggle between view and edit modes
   const toggleMode = () => {
     setMode((prevMode) => (prevMode === "view" ? "edit" : "view"));
   };
 
-  // Handle drag start
+  // Handle drag start from toolbox
   const handleDragStart = (event: DragStartEvent) => {
     if (event.active.data.current?.type === "toolbox-item") {
+      // Check if data exists
       setActiveWidget(event.active.id as WidgetType);
     }
   };
 
-  // Handle drag end
+  // Handle drag end (dropping item from toolbox onto grid)
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-    setActiveWidget(null);
+    setActiveWidget(null); // Clear active widget regardless
 
+    // Check if item is from toolbox and dropped onto the dashboard grid
     if (
       active.data.current?.type === "toolbox-item" &&
       over?.id === "dashboard-grid"
     ) {
-      const widgetType = active.id as WidgetType;
+      const widgetType = active.id as WidgetType; // Get type from draggable ID
       const defaultLayout = defaultWidgetLayouts[widgetType];
+
+      // Remove placeholder if it exists
       const filteredItems = items.filter((item) => item.type !== "Placeholder");
+
+      // Calculate drop position (simplified, needs refinement for accuracy)
+      // This calculation is basic and might not perfectly align with grid cells
+      // A more robust solution would involve react-grid-layout's internal logic if possible,
+      // or more precise calculations based on grid dimensions and mouse position.
       let gridX = 0;
-      let gridY = Infinity;
+      let gridY = Infinity; // Default to placing at the bottom
 
       if (
         gridContainerRef.current &&
-        event.activatorEvent instanceof PointerEvent
+        event.activatorEvent instanceof PointerEvent // Check if activatorEvent is a PointerEvent
       ) {
         const gridRect = gridContainerRef.current.getBoundingClientRect();
         const relativeX = event.activatorEvent.clientX - gridRect.left;
         const relativeY = event.activatorEvent.clientY - gridRect.top;
-        const cols = 12;
-        const rowHeight = 50;
-        const margin: [number, number] = [15, 15];
-        const containerPadding: [number, number] = [20, 20];
+
+        // These values MUST match react-grid-layout's configuration in the JSX below
+        const cols = 24; // Updated column count
+        const rowHeight = 30; // Updated row height
+        const margin: [number, number] = [10, 10]; // Updated margin
+        const containerPadding: [number, number] = [15, 15]; // Updated padding
+
+        // Adjust coordinates for padding
         const adjustedX = relativeX - containerPadding[0];
         const adjustedY = relativeY - containerPadding[1];
+
+        // Estimate grid cell dimensions (this is approximate)
         const gridWidth = gridRect.width - containerPadding[0] * 2;
-        const approxCellWidth = gridWidth / cols;
-        const approxCellHeight = rowHeight + margin[1];
-        gridX = Math.max(0, Math.floor(adjustedX / approxCellWidth));
+        const approxCellWidth = gridWidth / cols; // Includes margin
+        const approxCellHeight = rowHeight + margin[1]; // Includes margin
+
+        // Calculate grid coordinates (clamp to grid bounds)
+        // Ensure widget doesn't go off the right edge
+        gridX = Math.max(
+          0,
+          Math.min(
+            cols - defaultLayout.w, // Ensure widget fits within the column count
+            Math.floor(adjustedX / approxCellWidth)
+          )
+        );
         gridY = Math.max(0, Math.floor(adjustedY / approxCellHeight));
       }
 
+      // Create the new widget item
       const newItem: GridItem = {
-        id: nanoid(),
+        id: nanoid(), // Generate unique ID
         type: widgetType,
         x: gridX,
-        y: gridY,
-        ...defaultLayout,
+        y: gridY, // Place it based on calculated Y or at the bottom
+        ...defaultLayout, // Spread default width/height (already updated in config)
       };
+
+      // Add the new item to the state
       setItems([...filteredItems, newItem]);
     }
+    // Note: Dragging existing items within the grid is handled by react-grid-layout's onLayoutChange
   };
 
-  // Handle layout changes
+  // Handle layout changes from react-grid-layout (moving/resizing existing items)
   const onLayoutChange = useCallback((layout: Layout[]) => {
     setItems((prevItems) =>
       prevItems.map((item) => {
@@ -246,156 +160,41 @@ export function Dashboard() {
 
   // Generate layout for grid
   const generateLayout = (): Layout[] => {
-    return items.map((item) => ({
+    // Ensure initial placeholder position is updated if needed
+    const currentItems = items.map((item) => {
+      if (item.id === initialPlaceholderId) {
+        // Example: Recenter placeholder based on new grid width (e.g., 24 cols)
+        const placeholderLayout = defaultWidgetLayouts["Placeholder"];
+        return { ...item, x: Math.floor((24 - placeholderLayout.w) / 2) };
+      }
+      return item;
+    });
+
+    return currentItems.map((item) => ({
       i: item.id,
       x: item.x,
       y: item.y,
-      w: item.w,
-      h: item.h,
-      minW: item.minW,
-      minH: item.minH,
+      w: item.w, // Use width from state (updated via config)
+      h: item.h, // Use height from state (updated via config)
+      minW: item.minW, // Use minW from state (updated via config)
+      minH: item.minH, // Use minH from state (updated via config)
       isDraggable: mode === "edit",
       isResizable: mode === "edit",
     }));
   };
 
-  // Render widget based on type
-  const renderWidget = (item: GridItem) => {
-    const widgetContent = (() => {
-      switch (item.type) {
-        case "Trackable Graph":
-          return <TrackableGraphWidget id={item.id} />;
-        case "Habit Graph":
-          return <HabitGraphWidget id={item.id} />;
-        case "To-do List":
-          return <TodoListWidget id={item.id} />;
-        case "Calendar":
-          return <CalendarWidget id={item.id} />;
-        case "Sleep/Step":
-          return <SleepStepWidget id={item.id} />;
-        case "Goal Tracker":
-          return <GoalTrackerWidget id={item.id} />;
-        case "Journal":
-          return <JournalWidget id={item.id} />;
-        case "Placeholder":
-          return <PlaceholderWidget />;
-        default:
-          return <div>Unknown Widget: {item.type}</div>;
-      }
-    })();
-
-    const metadata = widgetMetadata[item.type];
-    // Remove duplicate/unused variables:
-    // const metadata = widgetMetadata[item.type]; // Removed this duplicate
-    const IconComponent = metadata.icon; // Keep this one
-
-    // Wrap the actual widget rendering part with the Error Boundary
-    return (
-      <WidgetErrorBoundary widgetId={item.id}>
-        {/* Main widget container */}
-        <div
-          className={`bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden w-full h-full border border-gray-200 dark:border-gray-700 border-l-4 ${metadata.colorAccentClass} flex flex-col`} // Use gray border + thick colored left border
-        >
-          {/* Title Bar */}
-          {item.type !== "Placeholder" && ( // No title bar for placeholder
-            <div className="flex items-center justify-between p-1.5 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 cursor-grab">
-              {" "}
-              {/* Make title bar draggable handle */}
-              {/* Left side: Icon + Title */}
-              <div className="flex items-center gap-1.5">
-                <IconComponent
-                  className={`w-3.5 h-3.5 ${metadata.colorAccentClass.replace(
-                    // Use colorAccentClass
-                    "border-l-", // Replace border-l-
-                    "text-"
-                  )}`}
-                />{" "}
-                {/* Use accent color for icon */}
-                <span className="text-xs font-medium text-gray-700 dark:text-gray-200 select-none">
-                  {item.type}
-                </span>
-              </div>
-              {/* Right side: Controls (Edit Mode Only) */}
-              {mode === "edit" && (
-                <div className="flex items-center gap-1 widget-controls-cancel-drag">
-                  {" "}
-                  {/* Add cancel class */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      /* TODO: Add edit logic */ alert(`Edit ${item.type}`);
-                    }}
-                    className="p-0.5 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-400"
-                    title="Edit Widget"
-                  >
-                    <Pencil size={12} />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteWidget(item.id);
-                    }}
-                    className="p-0.5 text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 rounded focus:outline-none focus:ring-1 focus:ring-red-400"
-                    title="Delete Widget"
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Widget Content Area */}
-          <div className="flex-1 overflow-hidden p-0">
-            {" "}
-            {/* Let content take remaining space, remove internal padding if widgets handle it */}
-            {widgetContent}
-          </div>
-        </div>
-      </WidgetErrorBoundary>
-    );
-  };
-
-  // Render widget preview for drag overlay
-  const renderWidgetPreview = (type: WidgetType) => {
-    const defaultLayout = defaultWidgetLayouts[type];
-    const metadata = widgetMetadata[type]; // Get metadata for the icon
-    const style = {
-      width: `${defaultLayout.w * 100}px`,
-      height: `${defaultLayout.h * 50}px`,
-      opacity: 0.7,
-    };
-    return (
-      // Add dark mode styles to the preview
-      <div
-        className="bg-white dark:bg-gray-700 rounded-lg shadow-lg border-2 border-blue-400 dark:border-blue-500 overflow-hidden"
-        style={style}
-      >
-        {/* Add icon to drag overlay */}
-        <div className="p-4 flex flex-col items-center justify-center h-full">
-          {React.createElement(metadata.icon, {
-            className: "w-6 h-6 mb-2 text-gray-600 dark:text-gray-300",
-          })}
-          <h3 className="font-semibold text-gray-800 dark:text-gray-100 text-center text-sm">
-            {type}
-          </h3>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            Drag to place
-          </p>
-        </div>
-      </div>
-    );
-  };
-
-  // Configure sensors for drag and drop
+  // Configure sensors for dnd-kit
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+    useSensor(PointerSensor, {
+      // Require the mouse to move beyond 5 pixels to start dragging
+      activationConstraint: { distance: 5 },
+    })
   );
 
   // Handle drag over event
   const handleDragOver = (event: DragOverEvent) => {
     if (event.over && event.over.id === "dashboard-grid") {
-      console.log("Dragging over dashboard grid");
+      console.log("Dragging over dashboard grid"); // Keep for debugging if needed
     }
   };
 
@@ -404,83 +203,60 @@ export function Dashboard() {
       sensors={sensors}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
-      onDragOver={handleDragOver}
-      modifiers={[restrictToWindowEdges]}
+      onDragOver={handleDragOver} // Handle dragging over the grid
+      modifiers={[restrictToWindowEdges]} // Keep dragged items within window
     >
-      {/* ThemeProvider now handles the dark class on <html> */}
       <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100">
-        {" "}
-        {/* Use slightly different dark bg */}
-        {/* Header */}
-        <header className="p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm flex justify-between items-center z-10">
-          <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">
-            Mango Dashboard
-          </h1>
-          <div className="flex gap-2 items-center">
-            {" "}
-            {/* Use items-center */}
-            {/* Dark Mode Toggle Button */}
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-              className="h-9 w-9" // Adjust size if needed
-            >
-              <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-              <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-              <span className="sr-only">Toggle theme</span>
-            </Button>
-            {/* Edit/View Button */}
-            <Button
-              onClick={toggleMode}
-              variant="outline" // Keep outline variant for contrast
-              className="transition-all duration-300"
-            >
-              {mode === "view" ? "Edit Dashboard" : "View Dashboard"}
-            </Button>
-          </div>
-        </header>
-        {/* Main Content */}
+        {/* Use DashboardHeader component */}
+        <DashboardHeader mode={mode} toggleMode={toggleMode} />
         <div className="flex-1 relative overflow-hidden w-full">
-          {/* Dashboard Grid */}
+          {/* Dashboard Grid Area */}
           <Droppable id="dashboard-grid">
+            {" "}
+            {/* Make the grid droppable */}
             <main
-              ref={gridContainerRef}
+              ref={gridContainerRef} // Ref for position calculations
               className={`bg-gray-100 dark:bg-gray-950 h-full w-full overflow-auto transition-all duration-300 ${
-                // Darker bg for main grid area
-                // Re-added h-full
-                mode === "edit" ? "pr-64" : ""
+                mode === "edit" ? "pr-64" : "" // Adjust padding when toolbox is open
               }`}
-              // Removed style={{ width: "100vw" }} - relying on w-full class
             >
+              {/* SortableContext for dnd-kit integration (optional if only using RGL drag) */}
               <SortableContext
-                items={items.map((item) => item.id)}
-                strategy={rectSortingStrategy}
+                items={items.map((item) => item.id)} // Provide IDs for sortable items
+                strategy={rectSortingStrategy} // Use grid sorting strategy
               >
                 <ResponsiveGridLayout
-                  className="layout" // Removed w-full, rely on WidthProvider
-                  layouts={{ lg: generateLayout() }}
+                  className="layout"
+                  layouts={{ lg: generateLayout() }} // Generate layout based on items state
+                  // Define breakpoints for responsive behavior
                   breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-                  cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
-                  rowHeight={50}
-                  margin={[15, 15]}
-                  containerPadding={[20, 20]}
-                  isDroppable={false}
-                  onLayoutChange={onLayoutChange}
-                  style={{ minHeight: "100%" }} // Re-added minHeight to fill vertical space
-                  isDraggable={mode === "edit"}
-                  isResizable={mode === "edit"}
-                  compactType={null}
-                  preventCollision={true}
-                  draggableCancel=".widget-controls-cancel-drag" // Add cancel selector prop
-                  // Removed explicit width prop - let WidthProvider handle it
+                  // Double the columns for finer granularity
+                  cols={{ lg: 24, md: 20, sm: 12, xs: 8, xxs: 4 }}
+                  // Adjust row height for vertical granularity
+                  rowHeight={30}
+                  // Keep margin and padding, adjust if needed visually
+                  margin={[10, 10]} // Slightly reduce margin
+                  containerPadding={[15, 15]} // Slightly reduce padding
+                  isDroppable={false} // Let dnd-kit handle dropping from toolbox
+                  onLayoutChange={onLayoutChange} // Update state when RGL changes layout
+                  style={{ minHeight: "100%" }} // Ensure grid fills space
+                  isDraggable={mode === "edit"} // Enable/disable dragging based on mode
+                  isResizable={mode === "edit"} // Enable/disable resizing based on mode
+                  compactType={null} // Allow free placement
+                  preventCollision={true} // Prevent widgets from overlapping
+                  draggableCancel=".widget-controls-cancel-drag" // Prevent dragging via controls
                 >
+                  {/* Map through items and render DashboardGridItem for each */}
                   {items.map((item) => (
                     <div
                       key={item.id}
-                      data-grid={generateLayout().find((l) => l.i === item.id)}
+                      data-grid={generateLayout().find((l) => l.i === item.id)} // Pass grid data to RGL
                     >
-                      {renderWidget(item)}
+                      <DashboardGridItem
+                        item={item}
+                        mode={mode}
+                        handleDeleteWidget={handleDeleteWidget}
+                      />
                     </div>
                   ))}
                 </ResponsiveGridLayout>
@@ -488,46 +264,14 @@ export function Dashboard() {
             </main>
           </Droppable>
 
-          {/* Widget Toolbox */}
-          {mode === "edit" && (
-            <aside className="absolute top-0 right-0 bottom-0 w-64 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 shadow-inner overflow-y-auto transition-all duration-300 transform translate-x-0">
-              <div className="p-4">
-                <h2 className="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-100">
-                  Widget Toolbox
-                </h2>
-                <div className="space-y-3">
-                  {availableWidgets.map((widgetType) => (
-                    <Draggable
-                      key={widgetType}
-                      id={widgetType}
-                      data={{ type: "toolbox-item", widgetType }}
-                    >
-                      {/* Add icon and color to toolbox item */}
-                      <div
-                        className={`flex items-center gap-2 p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-700 cursor-grab hover:bg-gray-100 dark:hover:bg-gray-600 hover:border-blue-300 dark:hover:border-blue-500 transition-all duration-200 shadow-sm`} // Reverted to gray border, added hover effect
-                      >
-                        {React.createElement(widgetMetadata[widgetType].icon, {
-                          className: `w-4 h-4 ${widgetMetadata[ // Use colorAccentClass
-                            widgetType
-                          ].colorAccentClass
-                            .replace("border-l-", "text-")}`, // Use accent color for icon
-                        })}
-                        <span className="font-medium text-sm text-gray-800 dark:text-gray-100">
-                          {" "}
-                          {/* Ensure text is visible */}
-                          {widgetType}
-                        </span>
-                      </div>
-                    </Draggable>
-                  ))}
-                </div>
-              </div>
-            </aside>
-          )}
+          {/* Render WidgetToolbox only in edit mode */}
+          {mode === "edit" && <WidgetToolbox />}
         </div>
-        {/* Drag Overlay */}
+
+        {/* Drag Overlay for visual feedback during drag */}
         <DragOverlay>
-          {activeWidget ? renderWidgetPreview(activeWidget) : null}
+          {/* Render WidgetPreview if a widget is being dragged from the toolbox */}
+          {activeWidget ? <WidgetPreview type={activeWidget} /> : null}
         </DragOverlay>
       </div>
     </DndContext>
