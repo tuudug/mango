@@ -1,0 +1,183 @@
+import React, { useState } from "react";
+
+interface CalendarWidgetProps {
+  id: string;
+}
+
+export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ id }) => {
+  // Get current date
+  const [currentDate, setCurrentDate] = useState(new Date());
+
+  // Get month and year
+  const month = currentDate.toLocaleString("default", { month: "long" });
+  const year = currentDate.getFullYear();
+
+  // Get days in month
+  const daysInMonth = new Date(
+    currentDate.getFullYear(),
+    currentDate.getMonth() + 1,
+    0
+  ).getDate();
+
+  // Get first day of month (0 = Sunday, 1 = Monday, etc.)
+  const firstDayOfMonth = new Date(
+    currentDate.getFullYear(),
+    currentDate.getMonth(),
+    1
+  ).getDay();
+
+  // Create array of day names
+  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+  // Create array of days
+  const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+
+  // Create array of blank days to fill in before first day of month
+  const blankDays = Array.from({ length: firstDayOfMonth }, () => null);
+
+  // Combine blank days and days
+  const allDays = [...blankDays, ...days];
+
+  // Navigate to previous month
+  const prevMonth = () => {
+    setCurrentDate(
+      new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1)
+    );
+  };
+
+  // Navigate to next month
+  const nextMonth = () => {
+    setCurrentDate(
+      new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1)
+    );
+  };
+
+  // Check if a day is today
+  const isToday = (day: number) => {
+    const today = new Date();
+    return (
+      day === today.getDate() &&
+      currentDate.getMonth() === today.getMonth() &&
+      currentDate.getFullYear() === today.getFullYear()
+    );
+  };
+
+  // Check if a day has an event (for demo purposes)
+  const hasEvent = (day: number) => {
+    // For demo, let's say days 10, 15, and 20 have events
+    return [10, 15, 20].includes(day);
+  };
+
+  return (
+    // Added dark mode classes
+    <div className="p-2 h-full w-full flex flex-col text-sm text-gray-700 dark:text-gray-300">
+      <div className="flex justify-between items-center mb-2">
+        <h3 className="font-semibold text-gray-800 dark:text-gray-100 text-base">
+          Calendar
+        </h3>
+        <div className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">
+          {month} {year}
+        </div>
+      </div>
+      {/* Month navigation */}
+      <div className="flex justify-between items-center mb-2">
+        {" "}
+        {/* Reduced margin */}
+        <button
+          onClick={prevMonth}
+          className="p-0.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" // Dark mode hover
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-4 w-4 text-gray-600 dark:text-gray-400" // Dark mode icon color
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
+          </svg>
+        </button>
+        <span className="font-medium text-sm text-gray-800 dark:text-gray-100">
+          {" "}
+          {/* Dark mode text */}
+          {month} {year}
+        </span>
+        <button
+          onClick={nextMonth}
+          className="p-0.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" // Dark mode hover
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-4 w-4 text-gray-600 dark:text-gray-400" // Dark mode icon color
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 5l7 7-7 7"
+            />
+          </svg>
+        </button>
+      </div>
+      {/* Calendar grid */}
+      {/* Further reduce gap and add padding to the container */}
+      <div className="flex-1 grid grid-cols-7 gap-px p-1">
+        {" "}
+        {/* Use gap-px and add padding */}
+        {/* Day names */}
+        {dayNames.map((day) => (
+          <div
+            key={day}
+            className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5" // Dark mode day name color
+          >
+            {day}
+          </div>
+        ))}
+        {/* Days */}
+        {allDays.map((day, index) => (
+          <div
+            key={`day-${index}`}
+            className={`relative aspect-square flex flex-col items-center justify-center text-xs rounded-full ${
+              day === null ? "invisible" : ""
+            }
+              ${
+                isToday(day as number)
+                  ? "bg-blue-500 dark:bg-blue-600 text-white font-bold"
+                  : "hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+              }
+            `}
+          >
+            {day}
+            {/* Dark mode event dot */}
+            {day !== null && hasEvent(day) && (
+              <div className="absolute bottom-0.5 w-1 h-1 rounded-full bg-red-500 dark:bg-red-400"></div>
+            )}
+          </div>
+        ))}
+      </div>
+      {/* Events summary */}
+      <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+        {" "}
+        {/* Dark mode summary text */}
+        <div className="flex items-center">
+          <div className="w-1.5 h-1.5 rounded-full bg-red-500 dark:bg-red-400 mr-1"></div>{" "}
+          {/* Dark mode event dot */}
+          <span>3 events this month</span>
+        </div>
+      </div>
+      <div className="mt-1 text-xs text-gray-400 dark:text-gray-500 text-right">
+        {" "}
+        {/* Dark mode widget ID text */}
+        Widget ID: {id.slice(0, 8)}
+      </div>
+    </div>
+  );
+};
