@@ -2,6 +2,21 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Add iOS-style wiggle animation for widgets in edit mode */
+@keyframes wiggle {
+  0% { transform: rotate(0deg); }
+  25% { transform: rotate(-0.3deg); } /* Even smaller rotation */
+  50% { transform: rotate(0.3deg); }  /* Even smaller rotation */
+  75% { transform: rotate(-0.3deg); } /* Even smaller rotation */
+  100% { transform: rotate(0deg); }
+}
+
+.widget-shake {
+  animation: wiggle 0.8s ease-in-out infinite; /* Kept duration, smoother timing */
+  /* Optional: Add a slight visual cue beyond shaking */
+  /* box-shadow: 0 0 5px rgba(81, 203, 238, 0.5); */
+}
+
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;

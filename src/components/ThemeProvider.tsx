@@ -1,59 +1,40 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect } from "react"; // Removed useState import
 
-type Theme = "dark" | "light" | "system";
-
+// Removed Theme type and related props/state as theme is now fixed to dark
 type ThemeProviderProps = {
   children: React.ReactNode;
-  defaultTheme?: Theme;
-  storageKey?: string;
+  // defaultTheme and storageKey are no longer needed
 };
 
+// Simplified state as theme is fixed
 type ThemeProviderState = {
-  theme: Theme;
-  setTheme: (theme: Theme) => void;
+  theme: "dark";
+  // setTheme is no longer needed for switching
 };
 
 const initialState: ThemeProviderState = {
-  theme: "system",
-  setTheme: () => null,
+  theme: "dark",
 };
 
 const ThemeProviderContext = createContext<ThemeProviderState>(initialState);
 
-export function ThemeProvider({
-  children,
-  defaultTheme = "system",
-  storageKey = "vite-ui-theme",
-  ...props
-}: ThemeProviderProps) {
-  const [theme, setTheme] = useState<Theme>(
-    () => (localStorage.getItem(storageKey) as Theme) || defaultTheme
-  );
+// Simplified ThemeProvider props and removed state management for theme switching
+export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
+  // Theme is now fixed to 'dark', using const assertion as suggested by ESLint
+  const theme = "dark" as const;
 
   useEffect(() => {
     const root = window.document.documentElement;
+    // Always apply 'dark' theme
+    root.classList.remove("light"); // Remove light if present
+    root.classList.add("dark");
+    // No need to check system preferences or theme state
+  }, []); // Empty dependency array ensures this runs only once on mount
 
-    root.classList.remove("light", "dark");
-
-    if (theme === "system") {
-      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
-        .matches
-        ? "dark"
-        : "light";
-
-      root.classList.add(systemTheme);
-      return;
-    }
-
-    root.classList.add(theme);
-  }, [theme]);
-
-  const value = {
+  // Simplified context value, ensuring theme type matches ThemeProviderState
+  const value: ThemeProviderState = {
     theme,
-    setTheme: (theme: Theme) => {
-      localStorage.setItem(storageKey, theme);
-      setTheme(theme);
-    },
+    // setTheme is removed as theme is fixed
   };
 
   return (

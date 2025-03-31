@@ -6,6 +6,12 @@ import {
   widgetMetadata,
   WidgetType,
 } from "@/lib/dashboardConfig"; // Import config
+import { X } from "lucide-react";
+
+// Define props interface
+interface WidgetToolboxProps {
+  onClose: () => void; // Function to close the toolbox
+}
 
 // Helper function to group widgets
 const groupWidgets = (
@@ -38,7 +44,8 @@ const groupWidgets = (
   return grouped;
 };
 
-export function WidgetToolbox() {
+export function WidgetToolbox({ onClose }: WidgetToolboxProps) {
+  // Accept onClose prop
   const groupedWidgets = groupWidgets(availableWidgets);
   const groupOrder: WidgetGroup[] = [
     "Tracking",
@@ -52,9 +59,19 @@ export function WidgetToolbox() {
     // Added h-full to ensure it fills the wrapper's height
     <aside className="h-full w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shadow-lg overflow-y-auto">
       <div className="p-4">
-        <h2 className="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-100">
-          Widget Toolbox
-        </h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
+            Widget Toolbox
+          </h2>
+          {/* Add onClick handler to the close button */}
+          <button
+            onClick={onClose} // Call onClose when clicked
+            className="p-1 text-gray-700 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 rounded focus:outline-none focus:ring-1 focus:ring-red-400"
+            title="Close"
+          >
+            <X size={14} />
+          </button>
+        </div>
         <div className="space-y-4">
           {" "}
           {/* Increased spacing between groups */}

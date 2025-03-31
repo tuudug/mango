@@ -2,7 +2,7 @@ import React from "react";
 import { WidgetErrorBoundary } from "./WidgetErrorBoundary";
 import {
   GridItem,
-  Mode,
+  // Mode, // Removed unused import
   WidgetType,
   widgetMetadata,
 } from "@/lib/dashboardConfig";
@@ -21,7 +21,7 @@ import { PlaceholderWidget } from "../widgets/PlaceholderWidget";
 
 interface DashboardGridItemProps {
   item: GridItem;
-  mode: Mode;
+  isEditing: boolean; // Re-added prop to control edit buttons visibility
   handleDeleteWidget: (id: string) => void;
   // Add handleEditWidget later if needed
 }
@@ -51,7 +51,7 @@ const widgetComponentMap: Record<
 
 export function DashboardGridItem({
   item,
-  mode,
+  isEditing, // Use the new prop
   handleDeleteWidget,
 }: DashboardGridItemProps) {
   const metadata = widgetMetadata[item.type];
@@ -64,9 +64,11 @@ export function DashboardGridItem({
 
   return (
     <WidgetErrorBoundary widgetId={item.id}>
-      {/* Main widget container */}
+      {/* Main widget container - Apply shake class conditionally */}
       <div
-        className={`bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden w-full h-full border border-gray-200 dark:border-gray-700 border-l-4 ${metadata.colorAccentClass} flex flex-col`} // Use gray border + thick colored left border
+        className={`bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden w-full h-full border border-gray-200 dark:border-gray-700 border-l-4 ${
+          metadata.colorAccentClass
+        } flex flex-col ${isEditing ? "widget-shake" : ""}`} // Use gray border + thick colored left border, add shake class
       >
         {/* Title Bar */}
         {item.type !== "Placeholder" && ( // No title bar for placeholder
@@ -86,8 +88,8 @@ export function DashboardGridItem({
                 {item.type}
               </span>
             </div>
-            {/* Right side: Controls (Edit Mode Only) */}
-            {mode === "edit" && (
+            {/* Right side: Controls - Conditionally render based on isEditing */}
+            {isEditing && (
               <div className="flex items-center gap-1 widget-controls-cancel-drag">
                 {" "}
                 {/* Add cancel class */}
