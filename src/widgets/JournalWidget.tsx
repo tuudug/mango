@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react"; // Removed useEffect import
 
 interface JournalWidgetProps {
   id: string;
@@ -13,31 +13,25 @@ interface JournalEntry {
 
 type Mood = "happy" | "neutral" | "sad" | "excited" | "tired";
 
-export const JournalWidget: React.FC<JournalWidgetProps> = ({ id }) => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export const JournalWidget: React.FC<JournalWidgetProps> = ({ id: _id }) => {
+  // Prefix unused id
   // Get current date in YYYY-MM-DD format
   const getCurrentDate = (): string => {
     const now = new Date();
     return now.toISOString().split("T")[0];
   };
 
-  // State for journal entries
-  const [entries, setEntries] = useState<JournalEntry[]>(() => {
-    // Try to load from localStorage
-    const savedEntries = localStorage.getItem(`journal-widget-${id}`);
-    if (savedEntries) {
-      return JSON.parse(savedEntries);
-    }
-
-    // Default entries
-    return [
-      {
-        id: "1",
-        date: getCurrentDate(),
-        content: "Today I started using this amazing dashboard app!",
-        mood: "excited",
-      },
-    ];
-  });
+  // State for journal entries - Initialize with default only
+  const [entries, setEntries] = useState<JournalEntry[]>([
+    // Removed localStorage loading
+    {
+      id: "1",
+      date: getCurrentDate(),
+      content: "Today I started using this amazing dashboard app!",
+      mood: "excited",
+    },
+  ]);
 
   // Current entry being edited
   const [currentEntry, setCurrentEntry] = useState<JournalEntry>({
@@ -47,10 +41,7 @@ export const JournalWidget: React.FC<JournalWidgetProps> = ({ id }) => {
     mood: "neutral",
   });
 
-  // Save entries to localStorage when they change
-  useEffect(() => {
-    localStorage.setItem(`journal-widget-${id}`, JSON.stringify(entries));
-  }, [entries, id]);
+  // Removed useEffect hook for saving to localStorage
 
   // Handle text change
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -245,9 +236,9 @@ export const JournalWidget: React.FC<JournalWidgetProps> = ({ id }) => {
         )}
       </div>
 
-      <div className="mt-1 text-xs text-gray-400 dark:text-gray-500 text-right">
-        Widget ID: {id.slice(0, 8)}
-      </div>
+      {/* <div className="mt-1 text-xs text-gray-400 dark:text-gray-500 text-right">
+        Widget ID: {id.slice(0, 8)} // Commented out as id is unused
+      </div> */}
     </div>
   );
 };

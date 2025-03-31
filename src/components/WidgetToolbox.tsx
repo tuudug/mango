@@ -1,43 +1,101 @@
 import React from "react";
 import { Draggable } from "./Draggable"; // Adjusted path
+import { WidgetGroup } from "@/lib/dashboardConfig"; // Import WidgetGroup
 import {
   availableWidgets,
   widgetMetadata,
   WidgetType,
 } from "@/lib/dashboardConfig"; // Import config
 
+// Helper function to group widgets
+const groupWidgets = (
+  widgets: WidgetType[]
+): Record<WidgetGroup, WidgetType[]> => {
+  const grouped: Record<WidgetGroup, WidgetType[]> = {
+    Tracking: [],
+    Productivity: [],
+    Calendar: [],
+    Other: [],
+  };
+
+  widgets.forEach((widgetType) => {
+    const group = widgetMetadata[widgetType]?.group || "Other";
+    if (grouped[group]) {
+      grouped[group].push(widgetType);
+    } else {
+      // Fallback for safety, though all available should have a group
+      grouped["Other"].push(widgetType);
+    }
+  });
+
+  // Filter out empty groups
+  Object.keys(grouped).forEach((key) => {
+    if (grouped[key as WidgetGroup].length === 0) {
+      delete grouped[key as WidgetGroup];
+    }
+  });
+
+  return grouped;
+};
+
 export function WidgetToolbox() {
+  const groupedWidgets = groupWidgets(availableWidgets);
+  const groupOrder: WidgetGroup[] = [
+    "Tracking",
+    "Productivity",
+    "Calendar",
+    "Other",
+  ]; // Define display order
+
   return (
-    <aside className="absolute top-0 right-0 bottom-0 w-64 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 shadow-inner overflow-y-auto transition-all duration-300 transform translate-x-0">
+    // Removed absolute positioning and transition - these are handled by the wrapper in Dashboard.tsx
+    // Added h-full to ensure it fills the wrapper's height
+    <aside className="h-full w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shadow-lg overflow-y-auto">
       <div className="p-4">
         <h2 className="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-100">
           Widget Toolbox
         </h2>
-        <div className="space-y-3">
-          {availableWidgets.map((widgetType: WidgetType) => (
-            <Draggable
-              key={widgetType}
-              id={widgetType}
-              data={{ type: "toolbox-item", widgetType }}
-            >
-              {/* Add icon and color to toolbox item */}
-              <div
-                className={`flex items-center gap-2 p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-700 cursor-grab hover:bg-gray-100 dark:hover:bg-gray-600 hover:border-blue-300 dark:hover:border-blue-500 transition-all duration-200 shadow-sm`} // Reverted to gray border, added hover effect
-              >
-                {React.createElement(widgetMetadata[widgetType].icon, {
-                  className: `w-4 h-4 ${widgetMetadata[ // Use colorAccentClass
-                    widgetType
-                  ].colorAccentClass
-                    .replace("border-l-", "text-")}`, // Use accent color for icon
-                })}
-                <span className="font-medium text-sm text-gray-800 dark:text-gray-100">
+        <div className="space-y-4">
+          {" "}
+          {/* Increased spacing between groups */}
+          {groupOrder.map((groupName) => {
+            const widgetsInGroup = groupedWidgets[groupName];
+            if (!widgetsInGroup || widgetsInGroup.length === 0) {
+              return null; // Don't render empty groups
+            }
+            return (
+              <div key={groupName}>
+                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">
+                  {groupName}
+                </h3>
+                <div className="space-y-2">
                   {" "}
-                  {/* Ensure text is visible */}
-                  {widgetType}
-                </span>
+                  {/* Spacing within group */}
+                  {widgetsInGroup.map((widgetType: WidgetType) => (
+                    <Draggable
+                      key={widgetType}
+                      id={widgetType}
+                      data={{ type: "toolbox-item", widgetType }}
+                    >
+                      {/* Add icon and color to toolbox item */}
+                      <div
+                        className={`flex items-center gap-2 p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-700 cursor-grab hover:bg-gray-100 dark:hover:bg-gray-600 hover:border-blue-300 dark:hover:border-blue-500 transition-all duration-200 shadow-sm`}
+                      >
+                        {React.createElement(widgetMetadata[widgetType].icon, {
+                          className: `w-4 h-4 ${widgetMetadata[
+                            widgetType
+                          ].colorAccentClass.replace("border-l-", "text-")}`, // Use accent color for icon
+                        })}
+                        <span className="font-medium text-sm text-gray-800 dark:text-gray-100">
+                          {widgetType}
+                        </span>
+                      </div>
+                    </Draggable>
+                  ))}
+                </div>
               </div>
-            </Draggable>
-          ))}
+            );
+          })}
         </div>
       </div>
     </aside>

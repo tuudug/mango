@@ -9,10 +9,11 @@ import {
 import { X, Pencil } from "lucide-react";
 
 // Widget component imports
-import { TrackableGraphWidget } from "../widgets/TrackableGraphWidget";
+import { StepsTrackerWidget } from "../widgets/StepsTrackerWidget"; // Renamed import
 import { HabitGraphWidget } from "../widgets/HabitGraphWidget";
 import { TodoListWidget } from "../widgets/TodoListWidget";
-import { CalendarWidget } from "../widgets/CalendarWidget";
+import { MonthCalendarWidget } from "../widgets/MonthCalendarWidget"; // Renamed import and path
+import { DailyCalendarWidget } from "../widgets/DailyCalendarWidget"; // New import
 import { SleepStepWidget } from "../widgets/SleepStepWidget";
 import { GoalTrackerWidget } from "../widgets/GoalTrackerWidget";
 import { JournalWidget } from "../widgets/JournalWidget";
@@ -28,7 +29,8 @@ interface DashboardGridItemProps {
 // Define common props for widget components
 interface WidgetProps {
   id: string;
-  // Add other common props if needed in the future
+  w: number; // Add width
+  h: number; // Add height
 }
 
 // Map widget types to their components using the defined props interface
@@ -36,13 +38,14 @@ const widgetComponentMap: Record<
   WidgetType,
   React.ComponentType<WidgetProps>
 > = {
-  "Trackable Graph": TrackableGraphWidget,
+  "Steps Tracker": StepsTrackerWidget, // Renamed mapping
   "Habit Graph": HabitGraphWidget,
-  "To-do List": TodoListWidget,
-  Calendar: CalendarWidget,
   "Sleep/Step": SleepStepWidget,
   "Goal Tracker": GoalTrackerWidget,
+  "To-do List": TodoListWidget,
   Journal: JournalWidget,
+  "Month Calendar": MonthCalendarWidget, // Renamed mapping
+  "Daily Calendar": DailyCalendarWidget, // New mapping
   Placeholder: PlaceholderWidget,
 };
 
@@ -117,8 +120,8 @@ export function DashboardGridItem({
         <div className="flex-1 overflow-hidden p-0">
           {" "}
           {/* Let content take remaining space, remove internal padding if widgets handle it */}
-          <WidgetContentComponent id={item.id} />{" "}
-          {/* Pass id prop, adjust if other props needed */}
+          {/* Pass id, w, and h props */}
+          <WidgetContentComponent id={item.id} w={item.w} h={item.h} />
         </div>
       </div>
     </WidgetErrorBoundary>

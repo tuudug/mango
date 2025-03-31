@@ -6,8 +6,8 @@ This guide outlines the steps required to add a new custom widget to the Mango D
 
 - Create a new `.tsx` file for your widget component within the `src/widgets/` directory (e.g., `src/widgets/MyNewWidget.tsx`).
 - The component should be a standard React functional component.
-- It will receive an `id` prop (and potentially others in the future) defined in the `WidgetProps` interface in `src/components/DashboardGridItem.tsx`.
-- Implement the desired functionality and UI for your widget within this component.
+- It will receive `id`, `w` (current width in grid units), and `h` (current height in grid units) props, defined in the `WidgetProps` interface in `src/components/DashboardGridItem.tsx`.
+- Implement the desired functionality and UI for your widget. You can use the `w` and `h` props to conditionally render different views based on the widget's size.
 
 **Example (`src/widgets/MyNewWidget.tsx`):**
 
@@ -16,14 +16,30 @@ import React from "react";
 
 interface MyNewWidgetProps {
   id: string; // All widgets receive an ID
+  w: number; // Current width in grid units
+  h: number; // Current height in grid units
 }
 
-export function MyNewWidget({ id }: MyNewWidgetProps) {
-  // Replace with your widget's content and logic
+export function MyNewWidget({ id, w, h }: MyNewWidgetProps) {
+  const isMini = w < 4; // Example threshold for a "mini" view
+
+  if (isMini) {
+    return (
+      <div className="p-2 h-full flex items-center justify-center">
+        <h3 className="text-sm font-medium">Mini View (w: {w})</h3>
+        {/* Render a compact version of the widget */}
+      </div>
+    );
+  }
+
+  // Render the full version
   return (
-    <div className="p-4 h-full flex items-center justify-center">
+    <div className="p-4 h-full flex flex-col items-center justify-center">
       <h2 className="text-lg font-semibold">My New Widget (ID: {id})</h2>
-      {/* Add your widget UI and functionality here */}
+      <p className="text-xs text-gray-500">
+        Size: {w}x{h}
+      </p>
+      {/* Add your full widget UI and functionality here */}
     </div>
   );
 }
@@ -83,6 +99,7 @@ export function MyNewWidget({ id }: MyNewWidgetProps) {
   ```
 - **Add to Map:** Add an entry to the `widgetComponentMap` object, mapping the `WidgetType` string (defined in step 2) to the imported component.
   ```typescript
+  // Note: The WidgetProps interface now includes w and h
   const widgetComponentMap: Record<
     WidgetType,
     React.ComponentType<WidgetProps>
@@ -91,6 +108,7 @@ export function MyNewWidget({ id }: MyNewWidgetProps) {
     "My New Widget": MyNewWidget, // <-- Add your mapping here
   };
   ```
+- The `DashboardGridItem` component automatically passes the current `w` and `h` from the grid layout to your widget component.
 
 ## 4. (Optional) Add to Toolbox
 
@@ -104,6 +122,32 @@ export function MyNewWidget({ id }: MyNewWidgetProps) {
   ];
   ```
 
+## 5. (Optional) Implementing Dynamic Rendering
+
+As shown in the Step 1 example, you can use the `w` and `h` props passed to your widget component to render different content or layouts based on the available space.
+
+- Define thresholds based on grid units (e.g., `const isTooSmall = w < 3 || h < 2;`).
+- Use conditional rendering (`if/else` or ternary operators) to switch between different JSX structures or apply different styles.
+- This allows widgets to provide a compact summary view when small and a more detailed view when larger.
+
+**Example Snippet (inside your widget component):**
+
+```tsx
+export function MySizableWidget({ id, w, h }: WidgetProps) {
+  if (w < 4) {
+    // Render compact view
+    return <div className="p-1">Compact (w:{w})</div>;
+  }
+
+  // Render full view
+  return (
+    <div className="p-4">
+      Full View (w:{w}, h:{h}){/* ... full widget content ... */}
+    </div>
+  );
+}
+```
+
 ## Conclusion
 
 After completing these steps, your new widget should be integrated into the dashboard system. You should be able to:
@@ -112,3 +156,4 @@ After completing these steps, your new widget should be integrated into the dash
 - Add it from the toolbox (if step 4 was completed) when the dashboard is in edit mode.
 - See its specific icon and accent color applied.
 - Interact with its unique UI and functionality.
+- Optionally, see the widget adapt its display based on its size if you implemented dynamic rendering (Step 5).

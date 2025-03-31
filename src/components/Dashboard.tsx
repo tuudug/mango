@@ -30,28 +30,88 @@ import "react-resizable/css/styles.css";
 // Create responsive grid layout
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
-// Initial placeholder item (can be moved to config if preferred)
-const initialPlaceholderId = "placeholder-initial";
-const initialItems: GridItem[] = [
-  {
-    id: initialPlaceholderId,
-    type: "Placeholder",
-    x: 3, // Center it roughly - Note: This x value might need adjustment based on new column count
-    y: 0,
-    ...defaultWidgetLayouts["Placeholder"], // Uses updated layout from config
-  },
-];
+// --- LocalStorage Persistence ---
+const LOCAL_STORAGE_KEY = "dashboardLayout";
+
+// Function to load layout from localStorage
+const loadLayoutFromLocalStorage = (): GridItem[] => {
+  try {
+    const savedLayout = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (savedLayout) {
+      const parsedLayout: Omit<GridItem, "minW" | "minH">[] =
+        JSON.parse(savedLayout);
+      // Basic validation and merge with defaults
+      if (Array.isArray(parsedLayout)) {
+        // Map saved layout and merge minW/minH from defaults
+        return parsedLayout.map((item) => {
+          const defaults = defaultWidgetLayouts[item.type] || {
+            minW: 1,
+            minH: 1,
+          }; // Fallback defaults
+          return {
+            ...item,
+            minW: defaults.minW,
+            minH: defaults.minH,
+          };
+        });
+      }
+    }
+  } catch (error) {
+    console.error("Error loading dashboard layout from localStorage:", error);
+  }
+  // Return default if nothing saved or error occurred
+  return [
+    // Default includes only the placeholder
+    {
+      id: nanoid(), // Give placeholder a unique ID on default load
+      type: "Placeholder",
+      x: 3,
+      y: 0,
+      ...defaultWidgetLayouts["Placeholder"],
+    },
+  ];
+};
+
+// Function to save layout to localStorage (excluding minW/minH)
+const saveLayoutToLocalStorage = (items: GridItem[]) => {
+  try {
+    // Map items to explicitly pick properties to save, excluding minW/minH
+    const itemsToSave = items.map((item) => ({
+      id: item.id,
+      type: item.type,
+      x: item.x,
+      y: item.y,
+      w: item.w,
+      h: item.h,
+      // minW and minH are omitted
+    }));
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(itemsToSave));
+  } catch (error) {
+    console.error("Error saving dashboard layout to localStorage:", error);
+  }
+};
+// --- End LocalStorage ---
+
+// Old initialItems definition is removed as loading handles the default state now.
 
 export function Dashboard() {
   // State
   const [mode, setMode] = useState<Mode>("view");
-  const [items, setItems] = useState<GridItem[]>(initialItems);
+  // Load initial items from localStorage or use default
+  const [items, setItems] = useState<GridItem[]>(loadLayoutFromLocalStorage);
   const [activeWidget, setActiveWidget] = useState<WidgetType | null>(null);
   const gridContainerRef = useRef<HTMLDivElement>(null);
 
-  // Toggle between view and edit modes
+  // Toggle between view and edit modes & SAVE on switching from edit to view
   const toggleMode = () => {
-    setMode((prevMode) => (prevMode === "view" ? "edit" : "view"));
+    setMode((prevMode) => {
+      const nextMode = prevMode === "view" ? "edit" : "view";
+      // If switching FROM edit TO view, save the layout
+      if (prevMode === "edit" && nextMode === "view") {
+        saveLayoutToLocalStorage(items);
+      }
+      return nextMode;
+    });
   };
 
   // Handle drag start from toolbox
@@ -75,8 +135,13 @@ export function Dashboard() {
       const widgetType = active.id as WidgetType; // Get type from draggable ID
       const defaultLayout = defaultWidgetLayouts[widgetType];
 
-      // Remove placeholder if it exists
-      const filteredItems = items.filter((item) => item.type !== "Placeholder");
+      // Remove placeholder if it exists and we are adding a new widget
+      const isPlaceholderPresent = items.some(
+        (item) => item.type === "Placeholder"
+      );
+      const filteredItems = isPlaceholderPresent
+        ? items.filter((item) => item.type !== "Placeholder")
+        : items;
 
       // Calculate drop position (simplified, needs refinement for accuracy)
       // This calculation is basic and might not perfectly align with grid cells
@@ -153,24 +218,50 @@ export function Dashboard() {
     );
   }, []);
 
+  // Handle resize events from react-grid-layout (fires continuously during resize)
+  const handleResize = useCallback(
+    (layout: Layout[], oldItem: Layout, newItem: Layout) => {
+      setItems((prevItems) =>
+        prevItems.map((item) => {
+          if (item.id === newItem.i) {
+            // Update width and height for the item being resized
+            return {
+              ...item,
+              w: newItem.w,
+              h: newItem.h,
+            };
+          }
+          return item;
+        })
+      );
+    },
+    []
+  );
+
   // Function to delete a widget
   const handleDeleteWidget = (idToDelete: string) => {
-    setItems((prevItems) => prevItems.filter((item) => item.id !== idToDelete));
+    setItems((prevItems) => {
+      const newItems = prevItems.filter((item) => item.id !== idToDelete);
+      // If deleting the last item, add back the placeholder
+      if (newItems.length === 0) {
+        return [
+          {
+            id: nanoid(), // Give placeholder a unique ID
+            type: "Placeholder",
+            x: 3,
+            y: 0,
+            ...defaultWidgetLayouts["Placeholder"],
+          },
+        ];
+      }
+      return newItems;
+    });
   };
 
   // Generate layout for grid
   const generateLayout = (): Layout[] => {
-    // Ensure initial placeholder position is updated if needed
-    const currentItems = items.map((item) => {
-      if (item.id === initialPlaceholderId) {
-        // Example: Recenter placeholder based on new grid width (e.g., 24 cols)
-        const placeholderLayout = defaultWidgetLayouts["Placeholder"];
-        return { ...item, x: Math.floor((24 - placeholderLayout.w) / 2) };
-      }
-      return item;
-    });
-
-    return currentItems.map((item) => ({
+    // No need to map/recenter placeholder here anymore, initial load handles it
+    return items.map((item) => ({
       i: item.id,
       x: item.x,
       y: item.y,
@@ -216,8 +307,8 @@ export function Dashboard() {
             {/* Make the grid droppable */}
             <main
               ref={gridContainerRef} // Ref for position calculations
-              className={`bg-gray-100 dark:bg-gray-950 h-full w-full overflow-auto transition-all duration-300 ${
-                mode === "edit" ? "pr-64" : "" // Adjust padding when toolbox is open
+              className={`bg-gray-100 dark:bg-gray-950 h-full w-full overflow-auto transition-all duration-300 ease-in-out ${
+                mode === "edit" ? "pl-64" : "pl-0" // Adjust LEFT padding when toolbox is open
               }`}
             >
               {/* SortableContext for dnd-kit integration (optional if only using RGL drag) */}
@@ -238,7 +329,8 @@ export function Dashboard() {
                   margin={[10, 10]} // Slightly reduce margin
                   containerPadding={[15, 15]} // Slightly reduce padding
                   isDroppable={false} // Let dnd-kit handle dropping from toolbox
-                  onLayoutChange={onLayoutChange} // Update state when RGL changes layout
+                  onLayoutChange={onLayoutChange} // Update state when RGL changes layout (end of drag/resize)
+                  onResize={handleResize} // Update state continuously during resize
                   style={{ minHeight: "100%" }} // Ensure grid fills space
                   isDraggable={mode === "edit"} // Enable/disable dragging based on mode
                   isResizable={mode === "edit"} // Enable/disable resizing based on mode
@@ -264,8 +356,14 @@ export function Dashboard() {
             </main>
           </Droppable>
 
-          {/* Render WidgetToolbox only in edit mode */}
-          {mode === "edit" && <WidgetToolbox />}
+          {/* Render WidgetToolbox with conditional transform for sliding */}
+          <div
+            className={`absolute top-0 left-0 bottom-0 transition-transform duration-300 ease-in-out ${
+              mode === "edit" ? "translate-x-0" : "-translate-x-full"
+            }`}
+          >
+            <WidgetToolbox />
+          </div>
         </div>
 
         {/* Drag Overlay for visual feedback during drag */}

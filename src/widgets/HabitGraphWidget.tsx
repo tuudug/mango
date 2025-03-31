@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react"; // Removed useEffect import
 
 interface HabitGraphWidgetProps {
   id: string;
@@ -15,14 +15,17 @@ const formatDate = (date: Date): string => {
   return date.toISOString().split("T")[0];
 };
 
-export const HabitGraphWidget: React.FC<HabitGraphWidgetProps> = ({ id }) => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export const HabitGraphWidget: React.FC<HabitGraphWidgetProps> = ({
+  id: _id, // Keep the prefix, ESLint disable handles the warning
+}) => {
+  // Prefix unused id
   // Use widget ID as part of localStorage key for persistence
-  const storageKey = `habit-widget-${id}`;
+  // const storageKey = `habit-widget-${id}`; // Removed storage key
 
-  // Initialize habits from localStorage if available, otherwise use defaults
+  // Initialize habits with default values only
   const [habits, setHabits] = useState<Habit[]>(() => {
-    const savedHabits = localStorage.getItem(storageKey);
-    if (savedHabits) return JSON.parse(savedHabits);
+    // Removed localStorage loading
 
     // Generate some default habits with random completion data
     const defaultHabits: Habit[] = [
@@ -53,10 +56,7 @@ export const HabitGraphWidget: React.FC<HabitGraphWidgetProps> = ({ id }) => {
     habits.length > 0 ? habits[0].id : null
   );
 
-  // Save habits to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem(storageKey, JSON.stringify(habits));
-  }, [habits, storageKey]);
+  // Removed useEffect hook for saving to localStorage
 
   // Get dates for the last 7 days
   const getLast7Days = (): string[] => {
@@ -254,7 +254,8 @@ export const HabitGraphWidget: React.FC<HabitGraphWidgetProps> = ({ id }) => {
         )}
       </div>
       <div className="mt-2 text-xs text-gray-400 dark:text-gray-500 text-right">
-        Widget ID: {id.slice(0, 8)}
+        {/* Widget ID: {id.slice(0, 8)} */}{" "}
+        {/* Commented out as id is unused */}
       </div>
     </div>
   );

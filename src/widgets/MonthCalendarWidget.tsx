@@ -1,10 +1,14 @@
 import React, { useState } from "react";
 
-interface CalendarWidgetProps {
+interface MonthCalendarWidgetProps {
+  // Renamed interface
   id: string;
 }
 
-export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ id }) => {
+export const MonthCalendarWidget: React.FC<MonthCalendarWidgetProps> = ({
+  id,
+}) => {
+  // Renamed component
   // Get current date
   const [currentDate, setCurrentDate] = useState(new Date());
 
