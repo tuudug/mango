@@ -1,27 +1,47 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { Pencil, Bot, User, Milestone } from "lucide-react"; // Import Milestone icon
+import {
+  Pencil,
+  Bot,
+  User,
+  Milestone,
+  CalendarDays, // Icon for Calendar
+  HeartPulse, // Icon for Health
+  ListTodo, // Icon for Todos
+} from "lucide-react";
 
 interface LeftSidebarProps {
   isToolboxOpen: boolean;
   isGameMasterPanelOpen: boolean;
   isUserProfilePanelOpen: boolean;
-  isPathsPageOpen: boolean; // Renamed prop
+  isPathsPageOpen: boolean;
+  isCalendarDataSourceOpen: boolean; // New prop
+  isHealthDataSourceOpen: boolean; // New prop
+  isTodosDataSourceOpen: boolean; // New prop
   toggleToolbox: () => void;
   toggleGameMasterPanel: () => void;
   onProfileClick: () => void;
-  togglePathsPage: () => void; // Renamed prop
+  togglePathsPage: () => void;
+  toggleCalendarDataSource: () => void; // New prop
+  toggleHealthDataSource: () => void; // New prop
+  toggleTodosDataSource: () => void; // New prop
 }
 
 export function LeftSidebar({
   isToolboxOpen,
   isGameMasterPanelOpen,
   isUserProfilePanelOpen,
-  isPathsPageOpen, // Use renamed prop
+  isPathsPageOpen,
+  isCalendarDataSourceOpen, // Destructure new prop
+  isHealthDataSourceOpen, // Destructure new prop
+  isTodosDataSourceOpen, // Destructure new prop
   toggleToolbox,
   toggleGameMasterPanel,
   onProfileClick,
-  togglePathsPage, // Use renamed prop
+  togglePathsPage,
+  toggleCalendarDataSource, // Destructure new prop
+  toggleHealthDataSource, // Destructure new prop
+  toggleTodosDataSource, // Destructure new prop
 }: LeftSidebarProps) {
   return (
     <aside className="fixed left-0 top-0 bottom-0 z-30 flex h-screen w-16 flex-col items-center border-r border-gray-200 bg-white py-4 dark:border-gray-700 dark:bg-gray-800">
@@ -81,6 +101,54 @@ export function LeftSidebar({
         </Button>
 
         {/* Add more sidebar icons later if needed */}
+      </nav>
+      {/* Data Sources Section */}
+      <nav className="mt-6 flex flex-col items-center gap-3 border-t border-gray-200 pt-4 dark:border-gray-700">
+        <span className="mb-1 text-[10px] font-medium text-gray-400 dark:text-gray-500">
+          DATA
+        </span>
+        <Button
+          variant={isCalendarDataSourceOpen ? "secondary" : "ghost"}
+          size="icon"
+          className={`h-10 w-10 rounded-lg ${
+            isCalendarDataSourceOpen
+              ? "text-indigo-600 dark:text-indigo-400"
+              : "text-gray-500 dark:text-gray-400"
+          }`}
+          onClick={toggleCalendarDataSource}
+          title="Calendar Data Source"
+        >
+          <CalendarDays size={20} />
+          <span className="sr-only">Calendar Data</span>
+        </Button>
+        <Button
+          variant={isHealthDataSourceOpen ? "secondary" : "ghost"}
+          size="icon"
+          className={`h-10 w-10 rounded-lg ${
+            isHealthDataSourceOpen
+              ? "text-indigo-600 dark:text-indigo-400"
+              : "text-gray-500 dark:text-gray-400"
+          }`}
+          onClick={toggleHealthDataSource}
+          title="Health Data Source"
+        >
+          <HeartPulse size={20} />
+          <span className="sr-only">Health Data</span>
+        </Button>
+        <Button
+          variant={isTodosDataSourceOpen ? "secondary" : "ghost"}
+          size="icon"
+          className={`h-10 w-10 rounded-lg ${
+            isTodosDataSourceOpen
+              ? "text-indigo-600 dark:text-indigo-400"
+              : "text-gray-500 dark:text-gray-400"
+          }`}
+          onClick={toggleTodosDataSource}
+          title="Todos Data Source"
+        >
+          <ListTodo size={20} />
+          <span className="sr-only">Todos Data</span>
+        </Button>
       </nav>
       {/* User Profile Section */}
       <div className="mt-auto flex w-full flex-col items-center gap-1 border-t border-gray-200 pt-3 pb-2 dark:border-gray-700">

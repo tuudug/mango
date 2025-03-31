@@ -1,66 +1,35 @@
-import React, { useState } from "react"; // Removed useEffect import
-import { Trash } from "lucide-react"; // Import the X icon
+import React, { useState } from "react";
+import { Trash } from "lucide-react";
+import { useTodos } from "@/contexts/TodosContext"; // Import useTodos hook
 
 interface TodoListWidgetProps {
-  id: string;
+  id: string; // Keep id prop if needed for other purposes, but prefix if unused
 }
 
-interface Todo {
-  id: string;
-  text: string;
-  completed: boolean;
-}
+// Removed internal Todo interface, will use the one from context if needed implicitly
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export const TodoListWidget: React.FC<TodoListWidgetProps> = ({ id: _id }) => {
   // Prefix unused id
-  // Use widget ID as part of localStorage key for persistence
-  // const storageKey = `todo-widget-${id}`; // Removed storage key
+  // Get todos and management functions from context
+  const { todos, addTodo: addTodoContext, deleteTodo, toggleTodo } = useTodos();
 
-  // Initialize todos with default values only
-  const [todos, setTodos] = useState<Todo[]>([
-    { id: "1", text: "Complete project proposal", completed: true },
-    { id: "2", text: "Review code changes", completed: false },
-    { id: "3", text: "Prepare for meeting", completed: false },
-    { id: "4", text: "Update documentation", completed: false },
-  ]);
-
+  // Keep local state for the input field only
   const [newTodoText, setNewTodoText] = useState("");
 
-  // Removed useEffect hook for saving to localStorage
-
-  // Toggle todo completion status
-  const toggleTodo = (todoId: string) => {
-    setTodos(
-      todos.map((todo) =>
-        todo.id === todoId ? { ...todo, completed: !todo.completed } : todo
-      )
-    );
-  };
-
-  // Add a new todo
-  const addTodo = () => {
+  // Add a new todo using the context function
+  const handleAddTodo = () => {
     if (newTodoText.trim() === "") return;
-
-    const newTodo: Todo = {
-      id: Date.now().toString(),
-      text: newTodoText,
-      completed: false,
-    };
-
-    setTodos([...todos, newTodo]);
-    setNewTodoText("");
+    addTodoContext(newTodoText.trim()); // Call context function
+    setNewTodoText(""); // Clear input field
   };
 
-  // Delete a todo
-  const deleteTodo = (todoId: string) => {
-    setTodos(todos.filter((todo) => todo.id !== todoId));
-  };
+  // Delete and toggle functions are directly used from context
 
   // Handle key press in input field
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
-      addTodo();
+      handleAddTodo(); // Call the adapted add handler
     }
   };
 

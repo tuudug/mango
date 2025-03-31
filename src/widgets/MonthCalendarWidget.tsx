@@ -1,4 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react"; // Added useMemo
+import { useCalendar } from "@/contexts/CalendarContext"; // Import context hook
+import { format } from "date-fns"; // Import date utility
 
 interface MonthCalendarWidgetProps {
   // Renamed interface
@@ -6,9 +8,10 @@ interface MonthCalendarWidgetProps {
 }
 
 export const MonthCalendarWidget: React.FC<MonthCalendarWidgetProps> = ({
-  id,
+  id: _id, // Prefix unused id
 }) => {
   // Renamed component
+  const { events } = useCalendar(); // Get events from context
   // Get current date
   const [currentDate, setCurrentDate] = useState(new Date());
 
@@ -66,10 +69,26 @@ export const MonthCalendarWidget: React.FC<MonthCalendarWidgetProps> = ({
     );
   };
 
-  // Check if a day has an event (for demo purposes)
-  const hasEvent = (day: number) => {
-    // For demo, let's say days 10, 15, and 20 have events
-    return [10, 15, 20].includes(day);
+  // Memoize the set of event dates for the current month for quick lookup
+  const eventDatesInMonth = useMemo(() => {
+    const dates = new Set<string>();
+    const currentMonthStr = format(currentDate, "yyyy-MM"); // e.g., "2024-03"
+    events.forEach((event) => {
+      if (event.date.startsWith(currentMonthStr)) {
+        dates.add(event.date); // Add the full "YYYY-MM-DD" string
+      }
+    });
+    return dates;
+  }, [events, currentDate]);
+
+  // Check if a specific day in the current month has an event
+  const hasEvent = (day: number | null): boolean => {
+    if (day === null) return false;
+    const dateString = format(
+      new Date(currentDate.getFullYear(), currentDate.getMonth(), day),
+      "yyyy-MM-dd"
+    );
+    return eventDatesInMonth.has(dateString);
   };
 
   return (
@@ -160,9 +179,7 @@ export const MonthCalendarWidget: React.FC<MonthCalendarWidgetProps> = ({
           </div>
         ))}
       </div>
-      <div className="mt-0.5 text-[10px] text-gray-400 dark:text-gray-500 text-right">
-        Widget ID: {id.slice(0, 8)}
-      </div>
+      {/* Removed Widget ID display */}
     </div>
   );
 };

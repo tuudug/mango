@@ -28,6 +28,10 @@ import { PathsPage } from "./PathsPage"; // Import Paths Page
 import { UserProfilePanel } from "./UserProfilePanel"; // Import User Profile Panel
 import { WidgetPreview } from "./WidgetPreview"; // Import Preview
 import { WidgetToolbox } from "./WidgetToolbox"; // Import Toolbox
+// Import Data Source components
+import { CalendarDataSource } from "./datasources/CalendarDataSource";
+import { HealthDataSource } from "./datasources/HealthDataSource";
+import { TodosDataSource } from "./datasources/TodosDataSource";
 
 // Create responsive grid layout
 const ResponsiveGridLayout = WidthProvider(Responsive);
@@ -174,6 +178,11 @@ export function Dashboard() {
   const [isGameMasterPanelOpen, setIsGameMasterPanelOpen] = useState(false);
   const [isUserProfilePanelOpen, setIsUserProfilePanelOpen] = useState(false);
   const [isPathsPageOpen, setIsPathsPageOpen] = useState(false);
+  // Add state for data source panels
+  const [isCalendarDataSourceOpen, setIsCalendarDataSourceOpen] =
+    useState(false);
+  const [isHealthDataSourceOpen, setIsHealthDataSourceOpen] = useState(false);
+  const [isTodosDataSourceOpen, setIsTodosDataSourceOpen] = useState(false);
   const [items, setItems] = useState<GridItem[]>(loadLayoutFromLocalStorage);
   const [activeWidget, setActiveWidget] = useState<WidgetType | null>(null);
   const gridContainerRef = useRef<HTMLDivElement>(null);
@@ -212,6 +221,10 @@ export function Dashboard() {
         setIsGameMasterPanelOpen(false);
         setIsUserProfilePanelOpen(false);
         setIsPathsPageOpen(false);
+        // Close data source panels when toolbox opens
+        setIsCalendarDataSourceOpen(false);
+        setIsHealthDataSourceOpen(false);
+        setIsTodosDataSourceOpen(false);
       }
       return nextIsOpen;
     });
@@ -225,6 +238,10 @@ export function Dashboard() {
         setIsToolboxOpen(false);
         setIsUserProfilePanelOpen(false);
         setIsPathsPageOpen(false);
+        // Close data source panels when GM panel opens
+        setIsCalendarDataSourceOpen(false);
+        setIsHealthDataSourceOpen(false);
+        setIsTodosDataSourceOpen(false);
       }
       return nextIsOpen;
     });
@@ -238,6 +255,10 @@ export function Dashboard() {
         setIsToolboxOpen(false);
         setIsGameMasterPanelOpen(false);
         setIsPathsPageOpen(false);
+        // Close data source panels when profile opens
+        setIsCalendarDataSourceOpen(false);
+        setIsHealthDataSourceOpen(false);
+        setIsTodosDataSourceOpen(false);
       }
       return nextIsOpen;
     });
@@ -251,6 +272,58 @@ export function Dashboard() {
         setIsToolboxOpen(false);
         setIsGameMasterPanelOpen(false);
         setIsUserProfilePanelOpen(false);
+        // Close data source panels when paths page opens
+        setIsCalendarDataSourceOpen(false);
+        setIsHealthDataSourceOpen(false);
+        setIsTodosDataSourceOpen(false);
+      }
+      return nextIsOpen;
+    });
+  };
+
+  // Toggle Calendar Data Source Panel
+  const toggleCalendarDataSource = () => {
+    setIsCalendarDataSourceOpen((prev) => {
+      const nextIsOpen = !prev;
+      if (nextIsOpen) {
+        setIsToolboxOpen(false);
+        setIsGameMasterPanelOpen(false);
+        setIsUserProfilePanelOpen(false);
+        setIsPathsPageOpen(false);
+        setIsHealthDataSourceOpen(false); // Close other data sources
+        setIsTodosDataSourceOpen(false);
+      }
+      return nextIsOpen;
+    });
+  };
+
+  // Toggle Health Data Source Panel
+  const toggleHealthDataSource = () => {
+    setIsHealthDataSourceOpen((prev) => {
+      const nextIsOpen = !prev;
+      if (nextIsOpen) {
+        setIsToolboxOpen(false);
+        setIsGameMasterPanelOpen(false);
+        setIsUserProfilePanelOpen(false);
+        setIsPathsPageOpen(false);
+        setIsCalendarDataSourceOpen(false); // Close other data sources
+        setIsTodosDataSourceOpen(false);
+      }
+      return nextIsOpen;
+    });
+  };
+
+  // Toggle Todos Data Source Panel
+  const toggleTodosDataSource = () => {
+    setIsTodosDataSourceOpen((prev) => {
+      const nextIsOpen = !prev;
+      if (nextIsOpen) {
+        setIsToolboxOpen(false);
+        setIsGameMasterPanelOpen(false);
+        setIsUserProfilePanelOpen(false);
+        setIsPathsPageOpen(false);
+        setIsCalendarDataSourceOpen(false); // Close other data sources
+        setIsHealthDataSourceOpen(false);
       }
       return nextIsOpen;
     });
@@ -311,10 +384,16 @@ export function Dashboard() {
         const containerPadding: [number, number] = [15, 15];
 
         // Adjust for panel width if open (assuming all panels slide from left)
+        // Adjust panelWidth calculation to include data source panels
         const panelWidth = isToolboxOpen
-          ? 256
-          : isGameMasterPanelOpen || isUserProfilePanelOpen || isPathsPageOpen
-          ? 288
+          ? 256 // w-64
+          : isGameMasterPanelOpen || isUserProfilePanelOpen
+          ? 288 // w-72
+          : isPathsPageOpen ||
+            isCalendarDataSourceOpen ||
+            isHealthDataSourceOpen ||
+            isTodosDataSourceOpen
+          ? 320 // w-80 (assuming same width for paths and data sources)
           : 0;
         const adjustedX = relativeX - containerPadding[0] - panelWidth;
         const adjustedY = relativeY - containerPadding[1];
@@ -431,8 +510,11 @@ export function Dashboard() {
     ? "pl-72" // GM Panel width w-72
     : isUserProfilePanelOpen
     ? "pl-72" // Profile Panel width w-72
-    : isPathsPageOpen
-    ? "pl-96" // Paths Panel width w-80
+    : isPathsPageOpen ||
+      isCalendarDataSourceOpen ||
+      isHealthDataSourceOpen ||
+      isTodosDataSourceOpen
+    ? "pl-80" // Data Source Panel width w-80 (320px)
     : "pl-0";
 
   return (
@@ -450,11 +532,18 @@ export function Dashboard() {
           isToolboxOpen={isToolboxOpen}
           isGameMasterPanelOpen={isGameMasterPanelOpen}
           isUserProfilePanelOpen={isUserProfilePanelOpen}
-          isPathsPageOpen={isPathsPageOpen} // Pass paths page state
+          isPathsPageOpen={isPathsPageOpen}
+          // Pass data source states and toggles
+          isCalendarDataSourceOpen={isCalendarDataSourceOpen}
+          isHealthDataSourceOpen={isHealthDataSourceOpen}
+          isTodosDataSourceOpen={isTodosDataSourceOpen}
           toggleToolbox={toggleToolbox}
           toggleGameMasterPanel={toggleGameMasterPanel}
-          onProfileClick={toggleUserProfilePanel} // Use toggle function
-          togglePathsPage={togglePathsPage} // Pass paths page toggle
+          onProfileClick={toggleUserProfilePanel}
+          togglePathsPage={togglePathsPage}
+          toggleCalendarDataSource={toggleCalendarDataSource}
+          toggleHealthDataSource={toggleHealthDataSource}
+          toggleTodosDataSource={toggleTodosDataSource}
         />
         <div className="flex flex-col flex-1 overflow-hidden">
           {" "}
@@ -559,6 +648,53 @@ export function Dashboard() {
                 currentPathProgressXP={currentPathProgressXP}
                 nextUnlockXP={nextUnlockXP}
               />
+            </div>
+            {/* Render CalendarDataSource with conditional transform */}
+            <div
+              className={`absolute top-0 left-0 bottom-0 transition-transform duration-300 ease-in-out z-20 w-80 ${
+                // Added w-80
+                isCalendarDataSourceOpen ? "translate-x-0" : "-translate-x-full"
+              }`}
+            >
+              <CalendarDataSource />{" "}
+              {/* No onClose needed for data sources? Or add toggle? Let's add toggle */}
+              {/* Add a close button if desired, or rely on sidebar toggle */}
+              <button
+                onClick={toggleCalendarDataSource}
+                className="absolute top-2 right-2 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
+              >
+                X
+              </button>
+            </div>
+            {/* Render HealthDataSource with conditional transform */}
+            <div
+              className={`absolute top-0 left-0 bottom-0 transition-transform duration-300 ease-in-out z-20 w-80 ${
+                // Added w-80
+                isHealthDataSourceOpen ? "translate-x-0" : "-translate-x-full"
+              }`}
+            >
+              <HealthDataSource />
+              <button
+                onClick={toggleHealthDataSource}
+                className="absolute top-2 right-2 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
+              >
+                X
+              </button>
+            </div>
+            {/* Render TodosDataSource with conditional transform */}
+            <div
+              className={`absolute top-0 left-0 bottom-0 transition-transform duration-300 ease-in-out z-20 w-80 ${
+                // Added w-80
+                isTodosDataSourceOpen ? "translate-x-0" : "-translate-x-full"
+              }`}
+            >
+              <TodosDataSource />
+              <button
+                onClick={toggleTodosDataSource}
+                className="absolute top-2 right-2 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
+              >
+                X
+              </button>
             </div>
           </div>
         </div>
