@@ -510,8 +510,9 @@ export function Dashboard() {
     ? "pl-72" // GM Panel width w-72
     : isUserProfilePanelOpen
     ? "pl-72" // Profile Panel width w-72
-    : isPathsPageOpen ||
-      isCalendarDataSourceOpen ||
+    : isPathsPageOpen
+    ? "pl-96" // Paths page width w-96
+    : isCalendarDataSourceOpen ||
       isHealthDataSourceOpen ||
       isTodosDataSourceOpen
     ? "pl-80" // Data Source Panel width w-80 (320px)
@@ -656,15 +657,7 @@ export function Dashboard() {
                 isCalendarDataSourceOpen ? "translate-x-0" : "-translate-x-full"
               }`}
             >
-              <CalendarDataSource />{" "}
-              {/* No onClose needed for data sources? Or add toggle? Let's add toggle */}
-              {/* Add a close button if desired, or rely on sidebar toggle */}
-              <button
-                onClick={toggleCalendarDataSource}
-                className="absolute top-2 right-2 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
-              >
-                X
-              </button>
+              <CalendarDataSource />
             </div>
             {/* Render HealthDataSource with conditional transform */}
             <div
@@ -674,12 +667,6 @@ export function Dashboard() {
               }`}
             >
               <HealthDataSource />
-              <button
-                onClick={toggleHealthDataSource}
-                className="absolute top-2 right-2 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
-              >
-                X
-              </button>
             </div>
             {/* Render TodosDataSource with conditional transform */}
             <div
@@ -689,12 +676,6 @@ export function Dashboard() {
               }`}
             >
               <TodosDataSource />
-              <button
-                onClick={toggleTodosDataSource}
-                className="absolute top-2 right-2 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
-              >
-                X
-              </button>
             </div>
           </div>
         </div>

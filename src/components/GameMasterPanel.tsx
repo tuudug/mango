@@ -37,6 +37,14 @@ export function GameMasterPanel({ onClose }: GameMasterPanelProps) {
             Game Master
           </h2>
         </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          onClick={onClose}
+        >
+          <X size={16} />
+        </Button>
       </div>
 
       {/* Content Area */}

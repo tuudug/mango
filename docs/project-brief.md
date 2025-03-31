@@ -8,6 +8,14 @@ Here's a checklist based on the project brief ideas:
   - [ ] LLM-Powered: Utilizing LLMs for interaction.
   - [x] UI Mockup: Basic panel exists (`GameMasterPanel.tsx`), includes message input.
 
+## Data Sources & Management
+
+These components handle the interaction and persistence of core application data via React Contexts.
+
+- [x] **Calendar Data Source (`CalendarDataSource.tsx`):** Manages calendar events (add, delete, view) using `CalendarContext`.
+- [x] **Health Data Source (`HealthDataSource.tsx`):** Manages daily step counts (add, update, view) using `HealthContext`.
+- [x] **Todos Data Source (`TodosDataSource.tsx`):** Manages todo items (add, delete, toggle completion) using `TodosContext`.
+
 ## Key Features
 
 ### Quests

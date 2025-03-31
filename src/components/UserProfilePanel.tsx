@@ -1,14 +1,18 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { User, X, Settings, LogOut } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext"; // Import useAuth
 
 interface UserProfilePanelProps {
   onClose: () => void; // Function to close the panel
 }
 
 export function UserProfilePanel({ onClose }: UserProfilePanelProps) {
-  // Placeholder data
-  const username = "MangoUser";
+  const { user, signOut } = useAuth(); // Get user and signOut function
+
+  // Use user email or a fallback
+  const username = user?.email || "User";
+  // Placeholder data for level/points
   const level = 1;
   const points = 150;
 
@@ -57,6 +61,7 @@ export function UserProfilePanel({ onClose }: UserProfilePanelProps) {
           <Button
             variant="ghost"
             className="w-full justify-start gap-2 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30"
+            onClick={signOut} // Add onClick handler
           >
             <LogOut size={16} /> Log Out
           </Button>

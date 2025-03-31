@@ -7,6 +7,7 @@ import {
   WidgetType,
 } from "@/lib/dashboardConfig"; // Import config
 import { X } from "lucide-react";
+import { Button } from "./ui/button";
 
 // Define props interface
 interface WidgetToolboxProps {
@@ -64,13 +65,14 @@ export function WidgetToolbox({ onClose }: WidgetToolboxProps) {
             Widget Toolbox
           </h2>
           {/* Add onClick handler to the close button */}
-          <button
-            onClick={onClose} // Call onClose when clicked
-            className="p-1 text-gray-700 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 rounded focus:outline-none focus:ring-1 focus:ring-red-400"
-            title="Close"
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={onClose}
           >
-            <X size={14} />
-          </button>
+            <X size={16} />
+          </Button>
         </div>
         <div className="space-y-4">
           {" "}

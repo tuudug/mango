@@ -46,4 +46,16 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  // Add server proxy configuration
+  server: {
+    proxy: {
+      // Proxy requests starting with /api to the backend server on port 3001
+      "/api": {
+        target: "http://localhost:3001",
+        changeOrigin: true, // Needed for virtual hosted sites
+        // secure: false, // Uncomment if backend is not using HTTPS
+        // rewrite: (path) => path.replace(/^\/api/, '') // Uncomment if you want to remove /api prefix when proxying
+      },
+    },
+  },
 });

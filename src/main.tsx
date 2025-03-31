@@ -1,24 +1,37 @@
-import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
-import "./index.css";
+import React from "react"; // Import React
+import ReactDOM from "react-dom/client"; // Import ReactDOM
 import App from "./App.tsx";
-import { ThemeProvider } from "./components/ThemeProvider"; // Import ThemeProvider
-// Import the new context providers
-import { CalendarProvider } from "./contexts/CalendarContext";
-import { HealthProvider } from "./contexts/HealthContext";
-import { TodosProvider } from "./contexts/TodosContext";
+import "./index.css";
+import { ThemeProvider } from "./components/ThemeProvider.tsx";
+import { AuthProvider } from "./contexts/AuthContext.tsx"; // Import AuthProvider
+import { CalendarProvider } from "./contexts/CalendarContext.tsx";
+import { HealthProvider } from "./contexts/HealthContext.tsx";
+import { TodosProvider } from "./contexts/TodosContext.tsx";
 
-createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <ThemeProvider>
-      {/* Wrap App with the data source providers */}
-      <CalendarProvider>
-        <HealthProvider>
+// Get the root element
+const rootElement = document.getElementById("root");
+
+if (rootElement) {
+  // Create root using ReactDOM
+  const root = ReactDOM.createRoot(rootElement);
+  root.render(
+    <React.StrictMode>
+      {/* Wrap entire app with AuthProvider */}
+      <AuthProvider>
+        {/* Remove defaultTheme and storageKey props as they are not accepted */}
+        <ThemeProvider>
+          {/* Other providers */}
           <TodosProvider>
-            <App />
+            <HealthProvider>
+              <CalendarProvider>
+                <App />
+              </CalendarProvider>
+            </HealthProvider>
           </TodosProvider>
-        </HealthProvider>
-      </CalendarProvider>
-    </ThemeProvider>
-  </StrictMode>
-);
+        </ThemeProvider>
+      </AuthProvider>
+    </React.StrictMode>
+  );
+} else {
+  console.error("Failed to find the root element");
+}

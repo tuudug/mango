@@ -272,7 +272,6 @@ export function PathsPage({
               onClick={onClose}
             >
               <X size={16} />
-              <span className="sr-only">Close Paths Panel</span>
             </Button>
           </div>
         </div>
