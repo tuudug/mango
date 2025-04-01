@@ -2,9 +2,6 @@ import { Request, Response, NextFunction } from "express";
 import { createClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "../supabaseClient"; // Use admin client for verification
 
-// Import type definitions from our custom types file
-import "../types/express.d";
-
 // Define and export an interface that extends Express.Request
 export type AuthenticatedRequest = Request;
 
