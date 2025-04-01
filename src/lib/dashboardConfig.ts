@@ -8,8 +8,9 @@ import {
   Target,
   BookOpenText,
   HelpCircle,
-  CalendarClock, // Add icon for Daily Calendar
-  Footprints, // Add icon for Steps Tracker
+  CalendarClock,
+  Footprints,
+  LayoutDashboard, // Add icon for Daily Summary
 } from "lucide-react";
 
 // Widget Groups
@@ -23,8 +24,9 @@ export type WidgetType =
   | "Goal Tracker"
   | "To-do List"
   | "Journal"
-  | "Month Calendar" // Renamed from Calendar
-  | "Daily Calendar" // New
+  | "Month Calendar"
+  | "Daily Calendar"
+  | "Daily Summary" // New Widget
   | "Placeholder";
 
 // Grid item interface used in Dashboard state
@@ -49,6 +51,7 @@ export const availableWidgets: WidgetType[] = [
   "Journal",
   "Month Calendar",
   "Daily Calendar",
+  "Daily Summary", // Add to available widgets
   // Placeholder is not available in the toolbox
 ];
 
@@ -63,8 +66,9 @@ export const defaultWidgetLayouts: Record<
   "Goal Tracker": { w: 8, h: 7, minW: 6, minH: 5 },
   "To-do List": { w: 6, h: 7, minW: 4, minH: 5 },
   Journal: { w: 10, h: 7, minW: 8, minH: 5 },
-  "Month Calendar": { w: 4, h: 7, minW: 4, minH: 7 }, // Renamed, adjusted size
-  "Daily Calendar": { w: 6, h: 7, minW: 4, minH: 5 }, // New
+  "Month Calendar": { w: 4, h: 7, minW: 4, minH: 7 },
+  "Daily Calendar": { w: 6, h: 7, minW: 4, minH: 5 },
+  "Daily Summary": { w: 6, h: 7, minW: 5, minH: 6 }, // New Widget Layout
   Placeholder: { w: 12, h: 7, minW: 8, minH: 5 },
 };
 
@@ -115,6 +119,12 @@ export const widgetMetadata: Record<
     icon: CalendarClock,
     colorAccentClass: "border-l-orange-500 dark:border-l-orange-400",
     group: "Calendar",
+  },
+  "Daily Summary": {
+    // New Widget Metadata
+    icon: LayoutDashboard,
+    colorAccentClass: "border-l-teal-500 dark:border-l-teal-400",
+    group: "Productivity", // Or maybe 'Other'? Let's try Productivity
   },
   Placeholder: {
     icon: HelpCircle,

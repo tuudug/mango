@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useCalendar } from "@/contexts/CalendarContext";
-import { CalendarDays, X, Link, Unlink } from "lucide-react";
+import { CalendarDays, X, Link, Unlink, AlertTriangle } from "lucide-react";
 import React, { useState, useEffect } from "react";
 import { addMinutes, differenceInSeconds } from "date-fns"; // Removed formatDistanceToNow
 
@@ -243,6 +243,17 @@ export function CalendarDataSource({ onClose }: CalendarDataSourceProps) {
           )}
           {/* Optional Refresh Button */}
           {/* <Button variant="link" size="sm" onClick={fetchEventsIfNeeded} disabled={isLoading}>Refresh</Button> */}
+        </div>
+        <div className="mt-6 p-3 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="w-5 h-5 text-yellow-500 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-yellow-700 dark:text-yellow-300">
+              The Google OAuth app is currently in test mode. To connect with
+              Google Calendar, your email address needs to be manually added to
+              the allowed test users. Please contact me to have your email added
+              to the application.
+            </p>
+          </div>
         </div>
       </CardContent>
     </Card>

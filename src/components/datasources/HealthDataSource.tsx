@@ -2,7 +2,14 @@ import { Button } from "@/components/ui/button"; // Keep one Button import
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useHealth } from "@/contexts/HealthContext";
-import { HeartPulse, X, Link, Unlink, Trash2 } from "lucide-react";
+import {
+  HeartPulse,
+  X,
+  Link,
+  Unlink,
+  Trash2,
+  AlertTriangle,
+} from "lucide-react";
 import React, { useState, useEffect } from "react"; // Import useEffect
 import { formatDistanceToNow } from "date-fns"; // For relative time
 
@@ -243,6 +250,19 @@ export function HealthDataSource({ onClose }: HealthDataSourceProps) {
           )}
           {/* Optionally add a manual refresh button */}
           {/* <Button variant="link" size="sm" onClick={fetchHealthDataIfNeeded} disabled={isLoading}>Refresh</Button> */}
+        </div>
+
+        {/* Warning card about client-side storage */}
+        <div className="mt-6 p-3 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="w-5 h-5 text-yellow-500 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-yellow-700 dark:text-yellow-300">
+              The Google OAuth app is currently in test mode. To connect with
+              Google Health, your email address needs to be manually added to
+              the allowed test users. Please contact me to have your email added
+              to the application.
+            </p>
+          </div>
         </div>
       </CardContent>
     </Card>

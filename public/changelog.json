@@ -1,0 +1,17 @@
+[
+  {
+    "version": "0.1",
+    "date": "2025-04-01",
+    "data": [
+      "Welcome to Mango! Initial dashboard with customizable widget layout (drag, drop, resize).",
+      "Added Calendar Widgets: View your schedule with Month and Daily calendar views.",
+      "Added Todos Widget: Manage your tasks directly on the dashboard.",
+      "Added Health Widgets: Track your daily steps with the Steps Tracker.",
+      "Connect Your Data: Link your Google Calendar and Google Health (for steps) accounts.",
+      "Manual Data Entry: Add Calendar events, Health steps, and Todo items manually.",
+      "Daily Summary Widget: Get a quick overview of your upcoming events, pending tasks, and step progress.",
+      "Data Source Management: View and manage connected accounts and manual entries via sidebar panels.",
+      "UI Enhancements: Added loading indicators and improved widget displays."
+    ]
+  }
+]

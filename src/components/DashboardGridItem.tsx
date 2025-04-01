@@ -18,6 +18,7 @@ import { SleepStepWidget } from "../widgets/SleepStepWidget";
 import { GoalTrackerWidget } from "../widgets/GoalTrackerWidget";
 import { JournalWidget } from "../widgets/JournalWidget";
 import { PlaceholderWidget } from "../widgets/PlaceholderWidget";
+import { DailySummaryWidget } from "../widgets/DailySummaryWidget"; // Import the new widget
 
 interface DashboardGridItemProps {
   item: GridItem;
@@ -44,8 +45,9 @@ const widgetComponentMap: Record<
   "Goal Tracker": GoalTrackerWidget,
   "To-do List": TodoListWidget,
   Journal: JournalWidget,
-  "Month Calendar": MonthCalendarWidget, // Renamed mapping
-  "Daily Calendar": DailyCalendarWidget, // New mapping
+  "Month Calendar": MonthCalendarWidget,
+  "Daily Calendar": DailyCalendarWidget,
+  "Daily Summary": DailySummaryWidget, // Add mapping for the new widget
   Placeholder: PlaceholderWidget,
 };
 

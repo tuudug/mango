@@ -1,17 +1,29 @@
 import React from "react";
-import { Draggable } from "./Draggable"; // Adjusted path
-import { WidgetGroup } from "@/lib/dashboardConfig"; // Import WidgetGroup
+import { Draggable } from "./Draggable";
+import { WidgetGroup } from "@/lib/dashboardConfig";
 import {
   availableWidgets,
   widgetMetadata,
   WidgetType,
-} from "@/lib/dashboardConfig"; // Import config
-import { X } from "lucide-react";
+} from "@/lib/dashboardConfig";
+import {
+  X,
+  HeartPulse,
+  ListChecks,
+  CalendarDays,
+  AlertTriangle,
+} from "lucide-react"; // Removed Layers, Added AlertTriangle
 import { Button } from "./ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // Define props interface
 interface WidgetToolboxProps {
-  onClose: () => void; // Function to close the toolbox
+  onClose: () => void;
 }
 
 // Helper function to group widgets
@@ -24,99 +36,201 @@ const groupWidgets = (
     Calendar: [],
     Other: [],
   };
-
   widgets.forEach((widgetType) => {
     const group = widgetMetadata[widgetType]?.group || "Other";
-    if (grouped[group]) {
-      grouped[group].push(widgetType);
-    } else {
-      // Fallback for safety, though all available should have a group
-      grouped["Other"].push(widgetType);
-    }
+    grouped[group]?.push(widgetType);
   });
-
-  // Filter out empty groups
   Object.keys(grouped).forEach((key) => {
     if (grouped[key as WidgetGroup].length === 0) {
       delete grouped[key as WidgetGroup];
     }
   });
-
   return grouped;
 };
 
+// Define structure for single or multiple data source indicators
+type DataSourceIndicator = {
+  icon: React.ElementType;
+  tooltip: string;
+  color: string;
+};
+
+// Mapping for data source icons and tooltips
+const dataSourceInfoMap: Partial<
+  Record<
+    WidgetType,
+    DataSourceIndicator | DataSourceIndicator[] // Can be single or array
+  >
+> = {
+  "Steps Tracker": {
+    icon: HeartPulse,
+    tooltip: "Consumes Health Data Source",
+    color: "text-red-500 dark:text-red-400",
+  },
+  "To-do List": {
+    icon: ListChecks,
+    tooltip: "Consumes Todos Data Source",
+    color: "text-green-500 dark:text-green-400",
+  },
+  "Month Calendar": {
+    icon: CalendarDays,
+    tooltip: "Consumes Calendar Data Source",
+    color: "text-blue-500 dark:text-blue-400",
+  },
+  "Daily Calendar": {
+    icon: CalendarDays,
+    tooltip: "Consumes Calendar Data Source",
+    color: "text-blue-500 dark:text-blue-400",
+  },
+  "Daily Summary": [
+    {
+      icon: CalendarDays,
+      tooltip: "Calendar Data",
+      color: "text-blue-500 dark:text-blue-400",
+    },
+    {
+      icon: ListChecks,
+      tooltip: "Todos Data",
+      color: "text-green-500 dark:text-green-400",
+    },
+    {
+      icon: HeartPulse,
+      tooltip: "Health Data",
+      color: "text-red-500 dark:text-red-400",
+    },
+  ],
+  "Goal Tracker": {
+    // Added WIP indicator
+    icon: AlertTriangle,
+    tooltip: "Work in progress",
+    color: "text-yellow-500 dark:text-yellow-400",
+  },
+  "Habit Graph": {
+    icon: AlertTriangle,
+    tooltip: "Work in progress",
+    color: "text-yellow-500 dark:text-yellow-400",
+  },
+  "Sleep/Step": {
+    icon: AlertTriangle,
+    tooltip: "Work in progress",
+    color: "text-yellow-500 dark:text-yellow-400",
+  },
+  Journal: {
+    icon: AlertTriangle,
+    tooltip: "Data saved locally only",
+    color: "text-yellow-500 dark:text-yellow-400",
+  },
+};
+
 export function WidgetToolbox({ onClose }: WidgetToolboxProps) {
-  // Accept onClose prop
   const groupedWidgets = groupWidgets(availableWidgets);
   const groupOrder: WidgetGroup[] = [
     "Tracking",
     "Productivity",
     "Calendar",
     "Other",
-  ]; // Define display order
+  ];
 
   return (
-    // Removed absolute positioning and transition - these are handled by the wrapper in Dashboard.tsx
-    // Added h-full to ensure it fills the wrapper's height
     <aside className="h-full w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shadow-lg overflow-y-auto">
-      <div className="p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
-            Widget Toolbox
-          </h2>
-          {/* Add onClick handler to the close button */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={onClose}
-          >
-            <X size={16} />
-          </Button>
-        </div>
-        <div className="space-y-4">
-          {" "}
-          {/* Increased spacing between groups */}
-          {groupOrder.map((groupName) => {
-            const widgetsInGroup = groupedWidgets[groupName];
-            if (!widgetsInGroup || widgetsInGroup.length === 0) {
-              return null; // Don't render empty groups
-            }
-            return (
-              <div key={groupName}>
-                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">
-                  {groupName}
-                </h3>
-                <div className="space-y-2">
-                  {" "}
-                  {/* Spacing within group */}
-                  {widgetsInGroup.map((widgetType: WidgetType) => (
-                    <Draggable
-                      key={widgetType}
-                      id={widgetType}
-                      data={{ type: "toolbox-item", widgetType }}
-                    >
-                      {/* Add icon and color to toolbox item */}
-                      <div
-                        className={`flex items-center gap-2 p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-700 cursor-grab hover:bg-gray-100 dark:hover:bg-gray-600 hover:border-blue-300 dark:hover:border-blue-500 transition-all duration-200 shadow-sm`}
-                      >
-                        {React.createElement(widgetMetadata[widgetType].icon, {
-                          className: `w-4 h-4 ${widgetMetadata[
-                            widgetType
-                          ].colorAccentClass.replace("border-l-", "text-")}`, // Use accent color for icon
-                        })}
-                        <span className="font-medium text-sm text-gray-800 dark:text-gray-100">
-                          {widgetType}
-                        </span>
-                      </div>
-                    </Draggable>
-                  ))}
+      <TooltipProvider delayDuration={200}>
+        <div className="p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
+              Widget Toolbox
+            </h2>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={onClose}
+            >
+              <X size={16} />
+            </Button>
+          </div>
+          <div className="space-y-4">
+            {groupOrder.map((groupName) => {
+              const widgetsInGroup = groupedWidgets[groupName];
+              if (!widgetsInGroup || widgetsInGroup.length === 0) return null;
+              return (
+                <div key={groupName}>
+                  <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">
+                    {groupName}
+                  </h3>
+                  <div className="space-y-2">
+                    {widgetsInGroup.map((widgetType: WidgetType) => {
+                      const dsInfo = dataSourceInfoMap[widgetType];
+                      return (
+                        <Draggable
+                          key={widgetType}
+                          id={widgetType}
+                          data={{ type: "toolbox-item", widgetType }}
+                        >
+                          <div
+                            className={`flex items-center gap-2 p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-700 cursor-grab hover:bg-gray-100 dark:hover:bg-gray-600 hover:border-blue-300 dark:hover:border-blue-500 transition-all duration-200 shadow-sm`}
+                          >
+                            {/* Widget Icon and Name */}
+                            <div className="flex items-center gap-2 flex-grow">
+                              {React.createElement(
+                                widgetMetadata[widgetType].icon,
+                                {
+                                  className: `w-4 h-4 ${widgetMetadata[
+                                    widgetType
+                                  ].colorAccentClass.replace(
+                                    "border-l-",
+                                    "text-"
+                                  )}`,
+                                }
+                              )}
+                              <span className="font-medium text-sm text-gray-800 dark:text-gray-100">
+                                {widgetType}
+                              </span>
+                            </div>
+                            {/* Data Source Indicator(s) */}
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              {dsInfo &&
+                                (Array.isArray(dsInfo) ? dsInfo : [dsInfo]).map(
+                                  (info, index) => (
+                                    <Tooltip key={index}>
+                                      <TooltipTrigger asChild>
+                                        <div className="p-0.5 rounded bg-gray-100 dark:bg-gray-600 border border-gray-200 dark:border-gray-500 flex items-center justify-center">
+                                          {React.createElement(info.icon, {
+                                            className: `w-3 h-3 ${info.color}`,
+                                          })}
+                                        </div>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="top" align="center">
+                                        <p className="text-xs">
+                                          {info.tooltip}
+                                        </p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  )
+                                )}
+                            </div>
+                          </div>
+                        </Draggable>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
+
+          {/* Warning card about client-side storage */}
+          <div className="mt-6 p-3 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="w-5 h-5 text-yellow-500 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-yellow-700 dark:text-yellow-300">
+                Currently, dashboard layouts are saved client-side only! Your
+                widget data (todos, events, etc.) is saved to the server, but
+                widget positions and sizes are not synced.
+              </p>
+            </div>
+          </div>
         </div>
-      </div>
+      </TooltipProvider>
     </aside>
   );
 }
