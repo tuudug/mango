@@ -39,11 +39,46 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsLoading(false);
     });
 
+    // Function to establish server-side session
+    const establishServerSession = async (token: string | undefined) => {
+      if (!token) return; // Don't proceed if no token
+      try {
+        console.log("Attempting to establish server session...");
+        const response = await fetch("/api/auth/session-login", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+        if (!response.ok) {
+          const errorBody = await response.json();
+          throw new Error(
+            errorBody.message ||
+              `Failed to establish server session: ${response.status}`
+          );
+        }
+        console.log("Server session established successfully.");
+      } catch (error) {
+        console.error("Error establishing server session:", error);
+        // Handle error appropriately - maybe notify user?
+        // For now, just log it. The primary Supabase session is still valid.
+      }
+    };
+
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      (event, session) => {
+        console.log("Supabase Auth Event:", event, session);
         setSession(session);
         setUser(session?.user ?? null);
         setIsLoading(false); // Stop loading on auth change
+
+        // If user signs in, establish the server-side session
+        if (event === "SIGNED_IN" && session?.access_token) {
+          establishServerSession(session.access_token);
+        }
+        // TODO: Handle SIGNED_OUT - potentially clear server session if needed?
+        // Currently, server session might persist until cookie expires.
       }
     );
 

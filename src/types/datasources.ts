@@ -4,6 +4,7 @@
 export interface CalendarItem {
   id: string; // Unique ID (could be from the source, e.g., Google Event ID, or generated for manual)
   sourceInstanceId: string; // ID of the specific connection in data_source_connections table
+  sourceProvider: "manual" | "google_calendar"; // Explicit source provider
   title: string;
   date: string; // YYYY-MM-DD format for simplicity (consider ISO string if time is needed)
   startTime?: string; // Optional: HH:MM format or ISO string part

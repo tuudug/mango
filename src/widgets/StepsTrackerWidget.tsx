@@ -12,12 +12,11 @@ interface StepsTrackerWidgetProps {
   h: number;
 }
 
-// Removed internal DataPoint interface
-
 export const StepsTrackerWidget: React.FC<StepsTrackerWidgetProps> = ({
   w,
 }) => {
-  const { stepData } = useHealth(); // Get step data from context
+  // Use healthData and filter for steps
+  const { healthData } = useHealth();
   const goalSteps = 10000; // Defined goal
 
   // --- Process Data from Context ---
@@ -29,18 +28,23 @@ export const StepsTrackerWidget: React.FC<StepsTrackerWidgetProps> = ({
       const date = subDays(today, i);
       const dateString = format(date, "yyyy-MM-dd");
       const dayLabel = format(date, "eee"); // e.g., "Mon"
-      const entry = stepData.find((d) => d.date === dateString);
+      // Find the entry for the specific date AND type 'steps'
+      const entry = healthData.find(
+        (d) => d.entry_date === dateString && d.type === "steps"
+      );
       days.push({
         date: dayLabel,
-        value: entry ? entry.steps : 0,
+        value: entry ? entry.value : 0, // Use entry.value
       });
     }
     return days;
-  }, [stepData]);
+  }, [healthData]); // Depend on healthData
 
   // Get today's steps for the mini view
   const todayString = format(today, "yyyy-MM-dd");
-  const currentSteps = stepData.find((d) => d.date === todayString)?.steps || 0;
+  const currentSteps =
+    healthData.find((d) => d.entry_date === todayString && d.type === "steps")
+      ?.value || 0; // Use entry_date and value
 
   // Find the max value for scaling the graph
   const maxValue = Math.max(goalSteps, ...last7DaysData.map((d) => d.value));

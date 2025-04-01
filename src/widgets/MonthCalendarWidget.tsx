@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from "react"; // Added useMemo
+import React, { useState, useMemo } from "react";
 import { useCalendar } from "@/contexts/CalendarContext"; // Import context hook
 import { format } from "date-fns"; // Import date utility
+import { LoadingBar } from "@/components/ui/loading-bar"; // Import LoadingBar
 
 interface MonthCalendarWidgetProps {
   // Renamed interface
@@ -11,7 +12,7 @@ export const MonthCalendarWidget: React.FC<MonthCalendarWidgetProps> = ({
   id: _id, // Prefix unused id
 }) => {
   // Renamed component
-  const { events } = useCalendar(); // Get events from context
+  const { events, isLoading, error } = useCalendar(); // Get loading and error states
   // Get current date
   const [currentDate, setCurrentDate] = useState(new Date());
 
@@ -143,10 +144,16 @@ export const MonthCalendarWidget: React.FC<MonthCalendarWidgetProps> = ({
           </svg>
         </button>
       </div>
+
+      {/* Loading Bar - Always rendered, animation controlled by isLoading */}
+      <LoadingBar
+        isLoading={isLoading}
+        colorClassName="bg-red-500" // Month widget color
+        className="mb-1 flex-shrink-0"
+      />
+
       {/* Calendar grid */}
       <div className="flex-1 grid grid-cols-7 gap-0.5 p-0.5">
-        {" "}
-        {/* Reduced gap and padding */}
         {/* Day names */}
         {dayNames.map((day) => (
           <div
@@ -179,7 +186,15 @@ export const MonthCalendarWidget: React.FC<MonthCalendarWidgetProps> = ({
           </div>
         ))}
       </div>
-      {/* Removed Widget ID display */}
+
+      {/* Error State - Overlay */}
+      {error && !isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-gray-800/50 p-2">
+          <p className="text-xs text-red-600 dark:text-red-400 text-center">
+            Error: {error}
+          </p>
+        </div>
+      )}
     </div>
   );
 };

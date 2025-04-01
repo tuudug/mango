@@ -1,8 +1,8 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"; // Import CardTitle
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useCalendar } from "@/contexts/CalendarContext";
-import { CalendarDays, X } from "lucide-react";
+import { CalendarDays, X, Link, Unlink } from "lucide-react"; // Add Link/Unlink icons
 import React, { useState } from "react";
 
 interface CalendarDataSourceProps {
@@ -10,9 +10,17 @@ interface CalendarDataSourceProps {
 }
 
 export function CalendarDataSource({ onClose }: CalendarDataSourceProps) {
-  // Use the new context functions
-  const { events, isLoading, error, addManualEvent, deleteManualEvent } =
-    useCalendar();
+  // Use the new context functions, including connection status and actions
+  const {
+    events,
+    isLoading,
+    error,
+    addManualEvent,
+    deleteManualEvent,
+    isGoogleConnected,
+    connectGoogleCalendar,
+    disconnectGoogleCalendar,
+  } = useCalendar();
   const [newEventTitle, setNewEventTitle] = useState("");
   const [newEventDate, setNewEventDate] = useState("");
 
@@ -54,6 +62,40 @@ export function CalendarDataSource({ onClose }: CalendarDataSourceProps) {
       </CardHeader>
 
       <CardContent className="flex-1 p-4 overflow-y-auto space-y-6">
+        {/* Google Calendar Connection Section */}
+        <div className="space-y-2 border-b pb-4 dark:border-gray-700">
+          <h3 className="text-base font-medium">Google Calendar</h3>
+          {isGoogleConnected ? (
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm text-green-600 dark:text-green-400 flex items-center gap-1">
+                <Link size={14} /> Connected
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={disconnectGoogleCalendar}
+                disabled={isLoading}
+              >
+                {isLoading ? "Disconnecting..." : "Disconnect"}
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                <Unlink size={14} /> Not Connected
+              </p>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={connectGoogleCalendar}
+                disabled={isLoading}
+              >
+                Connect
+              </Button>
+            </div>
+          )}
+        </div>
+
         {/* Add Event Form */}
         <form onSubmit={handleAddEvent} className="space-y-3">
           <h3 className="text-base font-medium">Add New Manual Event</h3>
@@ -113,20 +155,22 @@ export function CalendarDataSource({ onClose }: CalendarDataSourceProps) {
                     className="flex justify-between items-center p-2.5 bg-gray-50 dark:bg-gray-700/50 rounded border border-gray-200 dark:border-gray-700 shadow-sm"
                   >
                     <span className="text-sm">
-                      {/* Optionally indicate source */}
-                      {event.sourceInstanceId !== "manual_calendar" && (
+                      {/* Indicate source visually using sourceProvider */}
+                      {event.sourceProvider === "manual" ? (
                         <span
-                          title={event.sourceInstanceId}
-                          className="text-xs mr-1"
-                        >
-                          {" "}
-                          G{" "}
-                        </span>
+                          title="Manual Entry"
+                          className="inline-block w-2 h-2 mr-2 bg-blue-500 rounded-full"
+                        ></span>
+                      ) : (
+                        <span
+                          title={`Google Calendar (${event.sourceInstanceId})`}
+                          className="inline-block w-2 h-2 mr-2 bg-green-500 rounded-full"
+                        ></span>
                       )}
                       <strong>{event.date}:</strong> {event.title}
                     </span>
                     {/* Only allow deleting manual events */}
-                    {event.sourceInstanceId.startsWith("manual") && (
+                    {event.sourceProvider === "manual" && (
                       <Button
                         variant="destructive"
                         size="sm"

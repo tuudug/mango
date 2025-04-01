@@ -1,10 +1,10 @@
-import React, { useMemo } from "react"; // Removed useState
-import {
-  useCalendar,
-  CalendarEvent as ContextCalendarEvent,
-} from "@/contexts/CalendarContext"; // Import useCalendar hook and type
-import { format } from "date-fns"; // Import date-fns for formatting
-// Removed Button and ChevronDown imports
+import { useCalendar } from "@/contexts/CalendarContext"; // Import useCalendar hook
+import { CalendarItem as ContextCalendarItem } from "@/types/datasources"; // Import type directly
+import { format, addDays, subDays, isToday } from "date-fns"; // Import date-fns functions (removed isSameDay)
+import { useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { LoadingBar } from "@/components/ui/loading-bar"; // Import LoadingBar
 
 interface DailyCalendarWidgetProps {
   id: string; // All widgets receive an ID
@@ -16,29 +16,48 @@ interface DailyCalendarWidgetProps {
 export function DailyCalendarWidget({ id: _id }: DailyCalendarWidgetProps) {
   // Add ESLint disable comment
   // Prefix unused id with _
-  const { events } = useCalendar(); // Get events from context
-  // Removed showCompleted state
+  const { events, isLoading, error } = useCalendar(); // Get loading and error states
+  const [displayedDate, setDisplayedDate] = useState(new Date()); // State for displayed date
 
-  const today = new Date();
-  const formattedDate = today.toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  const today = new Date(); // Keep track of actual today
 
-  const todayDateString = format(today, "yyyy-MM-dd"); // Format today's date for comparison
+  // Format the displayed date for header and filtering
+  const formattedDisplayedDate = useMemo(
+    () =>
+      displayedDate.toLocaleDateString("en-US", {
+        weekday: "long",
+        // year: "numeric", // Keep header concise
+        month: "long",
+        day: "numeric",
+      }),
+    [displayedDate]
+  );
+  const displayedDateString = useMemo(
+    () => format(displayedDate, "yyyy-MM-dd"),
+    [displayedDate]
+  );
 
   // --- Event Filtering Logic ---
 
   // Removed sample event data
   // Removed time parsing helper function
 
-  // Memoize filtered events for today
-  const todaysEvents = useMemo(() => {
-    return events.filter((event) => event.date === todayDateString);
-    // Removed sorting and upcoming/completed logic
-  }, [events, todayDateString]); // Depend on events and today's date string
+  // Memoize and sort filtered events for the displayed date
+  const displayedEvents = useMemo(() => {
+    return events
+      .filter((event) => event.date === displayedDateString) // Filter by displayed date
+      .sort((a, b) => {
+        // Sort all-day events first, then by start time
+        if (a.isAllDay && !b.isAllDay) return -1;
+        if (!a.isAllDay && b.isAllDay) return 1;
+        // If both are all-day or both have times, sort by title (or keep original order)
+        if ((a.isAllDay && b.isAllDay) || (!a.startTime && !b.startTime)) {
+          return a.title.localeCompare(b.title);
+        }
+        // Sort by start time if available
+        return (a.startTime ?? "").localeCompare(b.startTime ?? "");
+      });
+  }, [events, displayedDateString]); // Depend on events and displayed date string
 
   // Colors for the circles (Tailwind classes)
   const colorClasses = [
@@ -67,47 +86,168 @@ export function DailyCalendarWidget({ id: _id }: DailyCalendarWidgetProps) {
     return colorClasses[index];
   };
 
-  // Reusable Event Item Component - Simplified
-  const EventItem = ({ event }: { event: ContextCalendarEvent }) => (
-    <li className="flex items-center gap-2 p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700">
-      <div
-        className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${getColorClassForEvent(
-          event.title // Use title from context event
-        )}`}
-      ></div>
-      <span className="flex-1 text-sm truncate text-gray-800 dark:text-gray-200">
-        {event.title} {/* Display title */}
-      </span>
-      {/* Removed time display */}
-    </li>
+  // Separate all-day and timed events for the displayed date
+  const allDayEvents = useMemo(
+    () => displayedEvents.filter((event) => event.isAllDay),
+    [displayedEvents]
   );
+  const timedEvents = useMemo(
+    () => displayedEvents.filter((event) => !event.isAllDay),
+    [displayedEvents]
+  );
+
+  // --- Navigation Logic ---
+  const minDate = useMemo(() => subDays(today, 7), [today]);
+  const maxDate = useMemo(() => addDays(today, 30), [today]);
+
+  const canGoPrevious = useMemo(
+    () => displayedDate > minDate,
+    [displayedDate, minDate]
+  );
+  const canGoNext = useMemo(
+    () => displayedDate < maxDate,
+    [displayedDate, maxDate]
+  );
+
+  const handlePreviousDay = () => {
+    if (canGoPrevious) {
+      setDisplayedDate((prevDate) => subDays(prevDate, 1));
+    }
+  };
+
+  const handleNextDay = () => {
+    if (canGoNext) {
+      setDisplayedDate((prevDate) => addDays(prevDate, 1));
+    }
+  };
+
+  const handleGoToToday = () => {
+    setDisplayedDate(today);
+  };
+
+  // Reusable Event Item Component - Updated
+  const EventItem = ({ event }: { event: ContextCalendarItem }) => {
+    // Use ContextCalendarItem type
+    const displayTime = event.isAllDay ? "All-day" : event.startTime ?? ""; // Show start time if not all-day, else empty string
+
+    return (
+      <li className="flex items-center gap-2 py-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700">
+        {/* Time */}
+        <span className="text-xs font-mono w-14 text-right text-gray-500 dark:text-gray-400 flex-shrink-0">
+          {displayTime}
+        </span>
+        {/* Color Dot */}
+        <div
+          className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${getColorClassForEvent(
+            event.title
+          )}`}
+        ></div>
+        {/* Title */}
+        <span className="flex-1 text-sm truncate text-gray-800 dark:text-gray-200">
+          {event.title}
+        </span>
+      </li>
+    );
+  };
 
   return (
     <div className="h-full flex flex-col">
-      {/* Header - Adjusted layout */}
-      <div className="p-2 border-b border-gray-200 dark:border-gray-700 flex-shrink-0 flex items-center justify-between">
-        {/* Date */}
-        <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
-          {formattedDate}
-        </p>
-        {/* Removed Completed Events Toggle Button */}
+      {/* Header - Add Navigation */}
+      <div className="p-2 border-b border-gray-200 dark:border-gray-700 flex-shrink-0 flex items-center justify-between gap-1">
+        {/* Previous Day Button */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6"
+          onClick={handlePreviousDay}
+          disabled={!canGoPrevious}
+          aria-label="Previous day"
+        >
+          <ChevronLeft size={16} />
+        </Button>
+
+        {/* Date Display & Today Button */}
+        <div className="flex items-center justify-center flex-grow gap-2">
+          <p className="text-xs font-medium text-gray-700 dark:text-gray-300 text-center">
+            {formattedDisplayedDate}
+          </p>
+          {!isToday(displayedDate) && (
+            <Button
+              variant="outline" // Changed variant
+              size="sm" // Use small size
+              className="h-5 px-1.5 text-xs" // Adjusted height, padding, text size
+              onClick={handleGoToToday}
+            >
+              Today
+            </Button>
+          )}
+        </div>
+
+        {/* Next Day Button */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6"
+          onClick={handleNextDay}
+          disabled={!canGoNext}
+          aria-label="Next day"
+        >
+          <ChevronRight size={16} />
+        </Button>
       </div>
 
-      {/* Event List Area - Simplified */}
-      <div className="flex-1 overflow-y-auto p-2">
-        {/* Removed completed/upcoming distinction */}
-        {todaysEvents.length > 0 ? (
-          <ul className="space-y-1">
-            {todaysEvents.map((event) => (
-              // Use event.id from context as key
-              <EventItem key={event.id} event={event} />
+      {/* Loading Bar - Always rendered, animation controlled by isLoading */}
+      <LoadingBar
+        isLoading={isLoading}
+        colorClassName="bg-orange-500" // Daily widget color
+        className="flex-shrink-0"
+      />
+
+      {/* Event List Area - Uses displayedEvents */}
+      <div className="flex-1 overflow-y-auto py-2 space-y-2 relative">
+        {/* Render All-day events - Add horizontal padding here */}
+        {allDayEvents.length > 0 && (
+          <ul className="space-y-1 px-2">
+            {" "}
+            {/* Added px-2 */}
+            {allDayEvents.map((event) => (
+              // eslint-disable-next-line react/prop-types
+              <EventItem key={`allday-${event.id}`} event={event} />
             ))}
           </ul>
-        ) : (
-          <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-4">
-            No events scheduled for today.
-          </p>
         )}
+        {/* Separator - Now spans full width */}
+        {allDayEvents.length > 0 && timedEvents.length > 0 && (
+          <hr className="border-gray-200 dark:border-gray-700 my-2" />
+        )}
+        {/* Render Timed events - Add horizontal padding here */}
+        {timedEvents.length > 0 && (
+          <ul className="space-y-1 px-2">
+            {" "}
+            {/* Added px-2 */}
+            {timedEvents.map((event) => (
+              // eslint-disable-next-line react/prop-types
+              <EventItem key={`timed-${event.id}`} event={event} />
+            ))}
+          </ul>
+        )}
+        {/* Message if no events */}
+        {!isLoading &&
+          !error &&
+          displayedEvents.length === 0 && ( // Check displayedEvents length only if not loading/error
+            <p className="text-center text-sm text-gray-500 dark:text-gray-400 pt-4 px-2">
+              No events scheduled for this day.
+            </p>
+          )}
+        {/* Error State - Overlay */}
+        {error && !isLoading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-gray-800/50 p-2">
+            <p className="text-xs text-red-600 dark:text-red-400 text-center">
+              Error: {error}
+            </p>
+          </div>
+        )}
+        {/* Removed old loading overlay */}
       </div>
     </div>
   );

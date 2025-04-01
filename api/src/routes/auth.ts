@@ -1,47 +1,164 @@
-import express, { Request, Response, Router, NextFunction } from "express"; // Add NextFunction
+import express, { Response, Router, NextFunction } from "express"; // Removed Request
 import passport from "passport";
 import { supabaseAdmin } from "../supabaseClient"; // For disconnect logic
+// Import shared middleware and the exported interface
+import { ensureAuthenticated, AuthenticatedRequest } from "../middleware/auth";
 
 const router: Router = express.Router();
+
+// Middleware to check if user is authenticated via Passport session
+const ensureSessionAuthenticated = (
+  req: AuthenticatedRequest, // Use AuthenticatedRequest to access req.isAuthenticated
+  res: Response,
+  next: NextFunction
+) => {
+  // Check if req.isAuthenticated exists (added by Passport) and returns true
+  if (req.isAuthenticated && req.isAuthenticated()) {
+    return next();
+  }
+  console.error("Session Auth Error: User not authenticated via session.");
+  // Redirect to login or send error? Sending error for API consistency.
+  res.status(401).json({ message: "User session not authenticated." });
+};
 
 // Route to start the Google OAuth flow
 // GET /api/auth/google/start
 router.get(
   "/google/start",
-  // Add options here to request offline access (for refresh token) and force consent screen
-  passport.authenticate("google", {
-    accessType: "offline",
-    prompt: "consent",
-    // scope is already defined in the strategy config
-  })
+  ensureSessionAuthenticated, // Check for Passport session instead of JWT
+  (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    // Use AuthenticatedRequest
+    // Store the Supabase user ID (from Passport session) in the session BEFORE initiating OAuth
+    // req.user should be populated by deserializeUser with { id: '...' }
+    const userIdFromSession = req.user?.id; // Access req.user directly
+
+    if (userIdFromSession) {
+      // Access req.session directly (added by express-session)
+      req.session.supabaseUserId = userIdFromSession;
+      console.log(
+        `Storing supabaseUserId (${userIdFromSession}) in session for Google OAuth link.`
+      );
+      // Proceed to Passport authentication
+      passport.authenticate("google", {
+        accessType: "offline", // Request refresh token
+        prompt: "consent", // Force consent screen to ensure refresh token is granted
+        // scope is defined in the strategy config
+      })(req, res, next); // Call passport.authenticate middleware
+    } else {
+      // Should not happen if ensureSessionAuthenticated works, but handle defensively
+      console.error(
+        "Error starting Google OAuth: User ID not found in session/req.user."
+      );
+      res.status(401).json({ message: "User session invalid." });
+    }
+  }
 );
+
+// Google OAuth callback route
+const frontendBaseUrl =
+  process.env.FRONTEND_BASE_URL || "http://localhost:5173"; // Default if not set
 
 // Google OAuth callback route
 // GET /api/auth/google/callback
 router.get(
   "/google/callback",
   passport.authenticate("google", {
-    failureRedirect: "/login-failure", // TODO: Define a real failure route/page in frontend
-    successRedirect: "/auth-success", // TODO: Define a real success route/page in frontend
+    failureRedirect: `${frontendBaseUrl}/login-failure`, // Use full frontend URL
+    successRedirect: `${frontendBaseUrl}/auth-success`, // Use full frontend URL
     // session: true // Default is true, stores user in session via serializeUser
-  }),
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  (req: Request, res: Response) => {
-    // This function only runs on successful authentication
-    console.log("Google OAuth callback successful. Redirecting...");
-    // Redirect is handled by successRedirect option above
-    // res.redirect('/'); // Or redirect to a specific dashboard page
+  })
+  // Callback removed as successRedirect handles the flow
+);
+
+// --- Google Health Routes ---
+
+// Route to start the Google Health OAuth flow
+router.get(
+  "/google-health/start",
+  ensureSessionAuthenticated, // Check for Passport session
+  (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    const userIdFromSession = req.user?.id;
+    if (userIdFromSession) {
+      req.session.supabaseUserId = userIdFromSession; // Store ID for callback linking
+      console.log(
+        `Storing supabaseUserId (${userIdFromSession}) in session for Google Health OAuth link.`
+      );
+      // Use the 'google-health' strategy
+      const authOptions: passport.AuthenticateOptions & {
+        accessType?: string;
+        prompt?: string;
+      } = {
+        accessType: "offline",
+        prompt: "consent",
+      };
+      passport.authenticate("google-health", authOptions)(req, res, next);
+    } else {
+      console.error(
+        "Error starting Google Health OAuth: User ID not found in session/req.user."
+      );
+      res.status(401).json({ message: "User session invalid." });
+    }
+  }
+);
+
+// Google Health OAuth callback route
+router.get(
+  "/google-health/callback",
+  passport.authenticate("google-health", {
+    // Use the 'google-health' strategy
+    failureRedirect: `${frontendBaseUrl}/login-failure`, // Redirect to frontend failure page
+    successRedirect: `${frontendBaseUrl}/auth-success`, // Redirect to frontend success page
+  })
+);
+
+// --- Session Login ---
+
+// Route to establish a server-side session after frontend Supabase auth
+router.post(
+  "/session-login",
+  ensureAuthenticated, // Requires valid Supabase JWT
+  (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    // req.userId is attached by ensureAuthenticated
+    const userId = req.userId;
+    if (!userId) {
+      // Should not happen if ensureAuthenticated works
+      res
+        .status(401)
+        .json({ message: "User ID not found after JWT validation." });
+      return; // Explicitly return void
+    }
+
+    // Create the user object expected by serializeUser
+    const userToSerialize = { id: userId };
+
+    // Use req.login() provided by Passport to establish the session
+    req.login(userToSerialize, (err) => {
+      if (err) {
+        console.error(
+          "Error establishing Passport session via req.login:",
+          err
+        );
+        return next(err); // Pass error to global handler
+      }
+      console.log(`Passport session established for user ID: ${userId}`);
+      res.status(200).json({ message: "Session established successfully." });
+    });
   }
 );
 
 // Define handler function separately
-const handleGoogleDisconnect = async (req: Request, res: Response) => {
-  // **TODO: Add authentication middleware to ensure user is logged in**
-  // const userId = req.user?.id; // Assuming req.user is populated by deserializeUser
-  const userId = "PLACEHOLDER_USER_ID"; // Replace with actual user ID logic
+const handleGoogleDisconnect = async (
+  req: AuthenticatedRequest, // Use AuthenticatedRequest (JWT middleware applied below)
+  res: Response,
+  next: NextFunction // Add next for error handling
+) => {
+  // For disconnect, we still want JWT authentication to ensure the correct user is making the request
+  const userId = req.userId; // Get userId from ensureAuthenticated (JWT) middleware
 
-  if (!userId || userId === "PLACEHOLDER_USER_ID") {
-    return res.status(401).json({ message: "User not authenticated" });
+  if (!userId) {
+    // This check should be handled by ensureAuthenticated, but keep for safety
+    res.status(401).json({ message: "User not authenticated via JWT" });
+    return; // Explicitly return void
   }
 
   try {
@@ -54,9 +171,11 @@ const handleGoogleDisconnect = async (req: Request, res: Response) => {
 
     if (error) {
       console.error("Error disconnecting Google account:", error);
-      return res
-        .status(500)
-        .json({ message: "Failed to disconnect Google account" });
+      // Pass the error to the global handler instead of returning response directly
+      next(
+        error || new Error("Supabase error during Google account disconnect")
+      );
+      return; // Explicitly return void
     }
 
     // Optional: Could also revoke the token via Google API here
@@ -72,26 +191,18 @@ const handleGoogleDisconnect = async (req: Request, res: Response) => {
       .json({ message: "Google account disconnected successfully" });
   } catch (err) {
     console.error("Server error during disconnect:", err);
-    res.status(500).json({ message: "Internal server error" });
+    // Pass error to the global error handler
+    next(err);
   }
 };
 
-// Helper to wrap async route handlers
-const asyncHandler =
-  (
-    fn: (
-      req: Request,
-      res: Response,
-      next: NextFunction
-    ) => Promise<void | Response>
-  ) =>
-  (req: Request, res: Response, next: NextFunction) => {
-    Promise.resolve(fn(req, res, next)).catch(next); // Catch errors and pass to Express error handler
-  };
-
-// Route to disconnect Google account (example - requires user to be logged into our app)
+// Route to disconnect Google account
 // POST /api/auth/google/disconnect
-router.post("/google/disconnect", asyncHandler(handleGoogleDisconnect)); // Wrap the handler
+router.post(
+  "/google/disconnect",
+  ensureAuthenticated, // Ensure user is logged in
+  handleGoogleDisconnect // No need for asyncHandler if errors are passed to next()
+);
 
 // TODO: Add route for checking auth status?
 // router.get('/status', (req, res) => { ... });

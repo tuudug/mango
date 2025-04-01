@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Trash } from "lucide-react";
 import { useTodos } from "@/contexts/TodosContext"; // Import useTodos hook
+import { LoadingBar } from "@/components/ui/loading-bar"; // Import LoadingBar
 
 interface TodoListWidgetProps {
   id: string; // Keep id prop if needed for other purposes, but prefix if unused
@@ -12,7 +13,14 @@ interface TodoListWidgetProps {
 export const TodoListWidget: React.FC<TodoListWidgetProps> = ({ id: _id }) => {
   // Prefix unused id
   // Get todos and management functions from context
-  const { todos, addTodo: addTodoContext, deleteTodo, toggleTodo } = useTodos();
+  const {
+    todos,
+    isLoading, // Get loading state
+    error, // Get error state (optional display)
+    addTodo: addTodoContext,
+    deleteTodo,
+    toggleTodo,
+  } = useTodos();
 
   // Keep local state for the input field only
   const [newTodoText, setNewTodoText] = useState("");
@@ -34,7 +42,7 @@ export const TodoListWidget: React.FC<TodoListWidgetProps> = ({ id: _id }) => {
   };
 
   // Calculate completion stats
-  const completedCount = todos.filter((todo) => todo.completed).length;
+  const completedCount = todos.filter((todo) => todo.is_completed).length; // Use is_completed
   const totalCount = todos.length;
   const percentComplete =
     totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
@@ -42,10 +50,15 @@ export const TodoListWidget: React.FC<TodoListWidgetProps> = ({ id: _id }) => {
   return (
     // Added dark mode classes
     <div className="p-2 h-full w-full flex flex-col text-sm text-gray-700 dark:text-gray-300">
+      {/* Header Area (for potential title/loading bar) */}
+      <div className="flex-shrink-0 mb-2">
+        {/* Optional Title could go here */}
+        {/* Loading Bar */}
+        <LoadingBar isLoading={isLoading} colorClassName="bg-yellow-500" />
+      </div>
+
       {/* Progress bar - Taller and with percentage inside */}
-      <div className="relative w-full h-4 bg-gray-200 dark:bg-gray-700 rounded-full mb-2 overflow-hidden">
-        {" "}
-        {/* Increased height, added relative, overflow-hidden */}
+      <div className="relative w-full h-4 bg-gray-200 dark:bg-gray-700 rounded-full mb-2 overflow-hidden flex-shrink-0">
         {/* Progress Fill */}
         <div
           className="absolute top-0 left-0 h-full bg-green-500 dark:bg-green-600 rounded-full transition-all duration-500 ease-in-out" // Added absolute positioning
@@ -72,14 +85,14 @@ export const TodoListWidget: React.FC<TodoListWidgetProps> = ({ id: _id }) => {
           onChange={(e) => setNewTodoText(e.target.value)}
           onKeyPress={handleKeyPress}
           placeholder="↵ Quick todo"
-          // Dark mode input
+          disabled={isLoading} // Disable input when loading
           className="flex-1 px-2 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
         />
       </div>
       {/* Todo list */}
-      <div className="flex-1 overflow-y-auto pr-1">
+      <div className="flex-1 overflow-y-auto pr-1 relative">
         {" "}
-        {/* Added padding-right for scrollbar */}
+        {/* Added relative for error overlay */}
         <ul className="space-y-1.5">
           {" "}
           {/* Reduced spacing */}
@@ -92,37 +105,45 @@ export const TodoListWidget: React.FC<TodoListWidgetProps> = ({ id: _id }) => {
             >
               <input
                 type="checkbox"
-                // Stop propagation on checkbox click to avoid double toggle (optional but cleaner)
-                onClick={(e) => e.stopPropagation()}
-                checked={todo.completed}
-                onChange={() => toggleTodo(todo.id)}
-                className="h-3.5 w-3.5 text-blue-600 dark:text-blue-500 rounded border-gray-300 dark:border-gray-600 focus:ring-blue-500 dark:focus:ring-blue-600 bg-white dark:bg-gray-700 mr-2" // Dark mode checkbox
+                onClick={(e) => e.stopPropagation()} // Stop propagation
+                checked={todo.is_completed} // Use is_completed
+                onChange={() => toggleTodo(todo.id)} // Use context toggle
+                disabled={isLoading} // Disable when loading
+                className="h-3.5 w-3.5 text-blue-600 dark:text-blue-500 rounded border-gray-300 dark:border-gray-600 focus:ring-blue-500 dark:focus:ring-blue-600 bg-white dark:bg-gray-700 mr-2 flex-shrink-0" // Added flex-shrink-0
               />
               <span
                 className={`flex-1 text-sm ${
-                  // Dark mode text color
-                  /* Kept text-sm */
-                  todo.completed
+                  todo.is_completed // Use is_completed
                     ? "line-through text-gray-400 dark:text-gray-500"
                     : "text-gray-700 dark:text-gray-300"
                 }`}
               >
-                {todo.text}
+                {todo.title} {/* Use title */}
               </span>
               <button
                 onClick={(e) => {
                   e.stopPropagation(); // Prevent li onClick from firing
-                  deleteTodo(todo.id);
+                  deleteTodo(todo.id); // Use context delete
                 }}
-                className="text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity ml-auto flex-shrink-0 p-0.5" // Added padding for click area
+                disabled={isLoading} // Disable when loading
+                className="text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity ml-auto flex-shrink-0 p-0.5"
               >
                 <Trash size={14} /> {/* Replaced SVG with Lucide icon */}
               </button>
             </li>
           ))}
         </ul>
+        {/* Error State Overlay */}
+        {error && !isLoading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-gray-800/50 p-2">
+            <p className="text-xs text-red-600 dark:text-red-400 text-center">
+              Error: {error}
+            </p>
+          </div>
+        )}
       </div>
-      {todos.length === 0 && (
+      {/* No Todos Message - Conditionally render based on loading/error state */}
+      {!isLoading && !error && todos.length === 0 && (
         <div className="flex-1 flex items-center justify-center text-gray-400 dark:text-gray-500 text-sm italic">
           No tasks yet. Add one above!
         </div>

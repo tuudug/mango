@@ -1,11 +1,13 @@
-import express, { Express, Request, Response } from "express";
+import express, { Express, Request, Response, NextFunction } from "express"; // Add NextFunction
 import dotenv from "dotenv";
 import session from "express-session";
 import passport from "passport";
 // We will create this file next
 import configurePassport from "./config/passport";
-import authRoutes from "./routes/auth"; // Import the auth routes
-import calendarRoutes from "./routes/calendar"; // Import the calendar routes
+import authRoutes from "./routes/auth";
+import calendarRoutes from "./routes/calendar";
+import healthRoutes from "./routes/health";
+import todosRoutes from "./routes/todos"; // Import the todos routes
 
 dotenv.config();
 
@@ -50,6 +52,47 @@ app.use("/api/auth", authRoutes);
 
 // Mount calendar routes
 app.use("/api/calendar", calendarRoutes);
+
+// Mount health routes
+app.use("/api/health", healthRoutes);
+
+// Mount todos routes
+app.use("/api/todos", todosRoutes);
+
+// --- Global Error Handler ---
+// This middleware MUST be defined AFTER all other app.use() and routes calls
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+app.use((err: unknown, req: Request, res: Response, next: NextFunction) => {
+  // Type checking for unknown error type
+  let httpError: HttpError;
+  if (err instanceof Error) {
+    httpError = err as HttpError; // Cast to HttpError after checking it's an Error
+    console.error("[Global Error Handler]:", httpError.message);
+    console.error(httpError.stack); // Log the stack trace for debugging
+  } else {
+    // Handle cases where the thrown value is not an Error object
+    console.error("[Global Error Handler]: Received non-Error value:", err);
+    // Create a default Error object
+    httpError = new Error("An unexpected error occurred.") as HttpError;
+    httpError.status = 500;
+  }
+
+  // Determine status code - default to 500 if not set
+  const statusCode = httpError.statusCode || httpError.status || 500;
+
+  // Send a generic error response
+  res.status(statusCode).json({
+    message: httpError.message || "An unexpected error occurred on the server.",
+    // Optionally include stack in development
+    stack: process.env.NODE_ENV === "development" ? httpError.stack : undefined,
+  });
+});
+
+// --- Custom Error Interface (Placed after the middleware for clarity) ---
+interface HttpError extends Error {
+  status?: number;
+  statusCode?: number;
+}
 
 app.listen(port, () => {
   console.log(`[server]: API Server is running at http://localhost:${port}`);

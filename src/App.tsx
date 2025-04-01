@@ -1,16 +1,19 @@
-import { useState } from "react"; // Import useState
+import { useState } from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom"; // Import routing components
 import "./App.css";
 import { LoginForm } from "./components/auth/LoginForm";
 import { SignupForm } from "./components/auth/SignupForm";
 import { Dashboard } from "./components/Dashboard";
 import { Button } from "./components/ui/button";
 import { useAuth } from "./contexts/AuthContext";
+import AuthSuccessPage from "./components/auth/AuthSuccessPage"; // Import success page
+import AuthFailurePage from "./components/auth/AuthFailurePage"; // Import failure page
 
-function App() {
-  const { user, session, signOut, isLoading } = useAuth();
-  const [showLogin, setShowLogin] = useState(true); // State to toggle between login/signup
+// Component to handle the main logic (Dashboard or Auth forms)
+function MainContent() {
+  const { user, session, isLoading } = useAuth();
+  const [showLogin, setShowLogin] = useState(true);
 
-  // Show loading indicator while checking auth state
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -19,19 +22,10 @@ function App() {
     );
   }
 
-  // If user is logged in (session exists), show the Dashboard
   if (session && user) {
-    return (
-      <div className="h-full w-full">
-        {" "}
-        {/* Remove relative positioning */}
-        <Dashboard />
-        {/* Logout button is now handled within UserProfilePanel inside Dashboard */}
-      </div>
-    );
+    return <Dashboard />;
   }
 
-  // If user is not logged in, show Login or Signup form
   return (
     <div className="flex flex-col justify-center items-center h-screen bg-gray-100 dark:bg-gray-900">
       {showLogin ? <LoginForm /> : <SignupForm />}
@@ -45,6 +39,21 @@ function App() {
           : "Already have an account? Login"}
       </Button>
     </div>
+  );
+  // Removed stray closing tags here
+}
+
+// Main App component with routing
+function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<MainContent />} />
+        <Route path="/auth-success" element={<AuthSuccessPage />} />
+        <Route path="/login-failure" element={<AuthFailurePage />} />
+        {/* Add other routes here if needed */}
+      </Routes>
+    </Router>
   );
 }
 

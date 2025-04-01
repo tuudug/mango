@@ -1,4 +1,4 @@
-# Current Progress: Data Source Abstraction & Backend API (As of 2025-04-01 ~2:05 AM)
+# Current Progress: Data Source Abstraction & Backend API (As of 2025-04-01 ~2:40 PM)
 
 ## Goal: Abstract Data Sources and Integrate External Providers
 
@@ -34,13 +34,24 @@ The objective is to refactor the application to handle data sources (like Calend
     - Created `.env` file with credentials.
     - Initialized Supabase clients (`supabaseAdmin`) in `api/src/supabaseClient.ts`.
     - Set up Express server (`api/src/server.ts`) with session middleware and Passport initialization.
-    - Configured Passport Google OAuth 2.0 strategy (`api/src/config/passport.ts`) (placeholders remain).
-    - Created Google OAuth authentication routes (`api/src/routes/auth.ts`).
-    - Implemented `ensureAuthenticated` middleware (`api/src/routes/calendar.ts`) to verify JWT and create/attach a **request-scoped Supabase client (`req.supabase`)**.
+    - Configured Passport Google OAuth 2.0 strategy (`api/src/config/passport.ts`) for Calendar and Health, including user linking via session.
+    - Created Google OAuth authentication routes (`api/src/routes/auth.ts`) for Calendar and Health, including session login bridge.
+    - Refactored `ensureAuthenticated` middleware into `api/src/middleware/auth.ts`.
+    - Implemented token encryption/decryption utils (`api/src/utils/crypto.ts`).
+    - Implemented global error handler in `api/src/server.ts`.
     - Created Calendar API routes (`api/src/routes/calendar.ts`):
-      - `GET /api/calendar`: Fetches manual events using the **request-scoped client** (respecting RLS). Placeholder for fetching Google events.
-      - `POST /api/calendar/manual`: Creates manual events using the **request-scoped client** (respecting RLS), after ensuring the manual connection record exists (using `supabaseAdmin`).
-      - `DELETE /api/calendar/manual/:eventId`: Deletes manual events using the **request-scoped client** (respecting RLS).
+      - `GET /api/calendar`: Fetches and merges manual & Google Calendar events (past 7 / next 30 days), handles token refresh/decryption, returns connection status.
+      - `POST /api/calendar/manual`: Creates manual events.
+      - `DELETE /api/calendar/manual/:eventId`: Deletes manual events.
+    - Created Health API routes (`api/src/routes/health.ts`):
+      - `GET /api/health`: Fetches manual & Google Health steps (last 7 days), aggregates steps, returns connection status.
+      - `POST /api/health/manual`: Creates manual health entries.
+      - `DELETE /api/health/manual/:entryId`: Deletes manual health entries.
+    - Created Todos API routes (`api/src/routes/todos.ts`):
+      - `GET /api/todos`: Fetches manual todos.
+      - `POST /api/todos/manual`: Creates manual todos.
+      - `PUT /api/todos/manual/:itemId/toggle`: Toggles todo completion.
+      - `DELETE /api/todos/manual/:itemId`: Deletes manual todos.
 3.  **Frontend (`/src`):**
     - Installed `@supabase/supabase-js`.
     - Created frontend Supabase client (`src/lib/supabaseClient.ts`).
@@ -51,22 +62,35 @@ The objective is to refactor the application to handle data sources (like Calend
     - Updated `App.tsx` for conditional rendering (Auth vs Dashboard).
     - Updated `UserProfilePanel.tsx` to use `useAuth` for logout.
     - Defined shared types in `src/types/datasources.ts`.
-    - Refactored `CalendarContext` (`src/contexts/CalendarContext.tsx`) to use backend API and send auth token.
-    - Updated `CalendarDataSource` component (`src/components/datasources/CalendarDataSource.tsx`).
+    - Refactored `CalendarContext` (`src/contexts/CalendarContext.tsx`) to use backend API, handle connection status, add throttled refresh.
+    - Refactored `HealthContext` (`src/contexts/HealthContext.tsx`) to use backend API, handle connection status.
+    - Refactored `TodosContext` (`src/contexts/TodosContext.tsx`) to use backend API, add throttled refresh.
+    - Updated `CalendarDataSource` component (`src/components/datasources/CalendarDataSource.tsx`) with connect/disconnect UI.
+    - Updated `HealthDataSource` component (`src/components/datasources/HealthDataSource.tsx`) with connect/disconnect UI and delete functionality.
+    - Updated `TodosDataSource` component (`src/components/datasources/TodosDataSource.tsx`) to use refactored context.
+    - Updated `DailyCalendarWidget` and `MonthCalendarWidget` to display times, separate all-day events, add day navigation, and use subtle loading bar.
+    - Updated `StepsTrackerWidget` to use refactored context.
+    - Added `AuthSuccessPage` and `AuthFailurePage` components and routing in `App.tsx`.
     - Configured Vite proxy (`vite.config.ts`).
 4.  **Testing:**
-    - **Manual calendar event add/delete functionality confirmed working** via frontend UI, backend API, and Supabase, using frontend Supabase authentication and the secure RLS-respecting backend approach.
+    - Manual calendar event add/delete/toggle functionality confirmed working.
+    - Google Calendar connection/disconnection flow confirmed working.
+    - Google Calendar event fetching confirmed working.
+    - Manual health entry add/delete functionality confirmed working.
+    - Google Health connection flow confirmed working.
+    - Google Health step fetching confirmed working.
+    - Manual todo add/delete/toggle functionality confirmed working.
 
-## Remaining TODOs / Next Steps:
+## Remaining TODOs / Next Steps (Backburner):
 
 - **Backend:**
-  - Implement Google Calendar API fetching logic in `GET /api/calendar`.
-  - Implement token encryption/decryption for `data_source_connections.credentials`.
-  - Implement token refresh logic for Google OAuth tokens.
-  - Replace placeholder user linking in Passport config (`api/src/config/passport.ts`).
-  - Implement proper error handling (e.g., global Express error handler).
+  - Implement token refresh logic for **Google Health** tokens.
+  - Implement disconnect logic/route for **Google Health**.
+  - Refine data merging logic (e.g., summing vs. overwriting) for Health steps.
+  - Add support for other health data types (sleep, weight, etc.) from Google Health.
+  - Add support for external Todo providers (e.g., Google Tasks).
 - **Frontend:**
-  - Build the UI for connecting/disconnecting Google Calendar.
-  - Refine loading/error states in UI components.
-  - Implement visual differentiation for events based on `sourceInstanceId`.
-  - Refactor other contexts/components (`Health`, `Todos`) if needed.
+  - Refine loading/error states for non-calendar/health widgets.
+  - Add UI for managing other health data types (sleep, weight).
+  - Add UI for connecting/disconnecting other potential external providers (Google Tasks).
+  - Implement confirmation dialogs before deleting data.

@@ -1,8 +1,8 @@
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card"; // Import Shadcn Card components
-import { Input } from "@/components/ui/input"; // Import Shadcn Input
+import { Button } from "@/components/ui/button"; // Keep one Button import
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { useHealth } from "@/contexts/HealthContext";
-import { HeartPulse, X } from "lucide-react"; // Import icons
+import { HeartPulse, X, Link, Unlink, Trash2 } from "lucide-react"; // Add Link/Unlink, Trash2
 import React, { useState } from "react";
 
 // Define props including onClose
@@ -11,15 +11,31 @@ interface HealthDataSourceProps {
 }
 
 export function HealthDataSource({ onClose }: HealthDataSourceProps) {
-  const { stepData, addOrUpdateSteps } = useHealth();
+  // Use new context structure, including connection status and actions
+  const {
+    healthData,
+    isLoading,
+    error,
+    addManualHealthEntry,
+    deleteManualHealthEntry, // Import delete function
+    isGoogleHealthConnected,
+    connectGoogleHealth,
+    disconnectGoogleHealth,
+  } = useHealth();
   const [newSteps, setNewSteps] = useState("");
   const [newStepsDate, setNewStepsDate] = useState(""); // YYYY-MM-DD
 
-  const handleAddSteps = (e: React.FormEvent) => {
-    e.preventDefault();
+  // Make the handler async
+  const handleAddSteps = async (e: React.FormEvent) => {
+    e.preventDefault(); // Keep one preventDefault
     const stepsNumber = parseInt(newSteps, 10);
     if (!isNaN(stepsNumber) && newStepsDate && stepsNumber >= 0) {
-      addOrUpdateSteps({ date: newStepsDate, steps: stepsNumber });
+      // Call the context function to add entry
+      await addManualHealthEntry({
+        entry_date: newStepsDate,
+        type: "steps", // Hardcode type for now
+        value: stepsNumber,
+      });
       setNewSteps("");
       setNewStepsDate("");
     } else {
@@ -27,17 +43,21 @@ export function HealthDataSource({ onClose }: HealthDataSourceProps) {
     }
   };
 
+  // Delete handler using the context function
+  const handleDeleteEntry = async (entryId: string) => {
+    // Optional: Add confirmation dialog here
+    console.log(`Requesting delete for manual health entry: ${entryId}`);
+    await deleteManualHealthEntry(entryId); // Call context function
+  };
+
   return (
     // Use Card as the main container, match panel background, remove rounding
     <Card className="h-full flex flex-col shadow-lg border-l bg-white dark:bg-gray-800 rounded-none">
       <CardHeader className="flex flex-row items-center justify-between p-4 border-b flex-shrink-0 dark:border-gray-700">
-        {" "}
-        {/* Added dark border */}
         <div className="flex items-center gap-2">
           <HeartPulse className="w-5 h-5 text-red-500 dark:text-red-400" />
-          <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
-            Health Data
-          </h2>
+          {/* Use CardTitle */}
+          <CardTitle className="text-lg font-semibold">Health Data</CardTitle>
         </div>
         {onClose && (
           <Button
@@ -53,9 +73,43 @@ export function HealthDataSource({ onClose }: HealthDataSourceProps) {
       </CardHeader>
 
       <CardContent className="flex-1 p-4 overflow-y-auto space-y-6">
+        {/* Google Health Connection Section */}
+        <div className="space-y-2 border-b pb-4 dark:border-gray-700">
+          <h3 className="text-base font-medium">Google Health</h3>
+          {isGoogleHealthConnected ? (
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm text-green-600 dark:text-green-400 flex items-center gap-1">
+                <Link size={14} /> Connected
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={disconnectGoogleHealth}
+                disabled={isLoading} // Use context isLoading
+              >
+                {isLoading ? "Disconnecting..." : "Disconnect"}
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                <Unlink size={14} /> Not Connected
+              </p>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={connectGoogleHealth}
+                disabled={isLoading} // Use context isLoading
+              >
+                Connect
+              </Button>
+            </div>
+          )}
+        </div>
+
         {/* Add/Update Steps Form */}
         <form onSubmit={handleAddSteps} className="space-y-3">
-          <h3 className="text-base font-medium">Add/Update Daily Steps</h3>
+          <h3 className="text-base font-medium">Add Manual Step Entry</h3>
           <div className="flex flex-col sm:flex-row gap-3">
             <Input
               type="date"
@@ -65,6 +119,7 @@ export function HealthDataSource({ onClose }: HealthDataSourceProps) {
               }
               required
               className="p-2"
+              disabled={isLoading} // Disable when loading
             />
             <Input
               type="number"
@@ -76,34 +131,77 @@ export function HealthDataSource({ onClose }: HealthDataSourceProps) {
               required
               min="0"
               className="flex-grow p-2"
+              disabled={isLoading} // Disable when loading
             />
-            <Button type="submit" size="sm">
-              Save Steps
+            <Button type="submit" size="sm" disabled={isLoading}>
+              {isLoading ? "Saving..." : "Save Steps"}
             </Button>
           </div>
         </form>
 
+        {/* Display Error if any */}
+        {error && (
+          <p className="text-sm text-red-600 dark:text-red-400">
+            Error: {error}
+          </p>
+        )}
+
         {/* Recorded Step Data List */}
         <div className="space-y-3">
           <h3 className="text-base font-medium">Recorded Step Data</h3>
-          {stepData.length === 0 ? (
+          {isLoading && healthData.length === 0 && (
+            <p className="text-sm text-gray-500">Loading data...</p>
+          )}
+          {!isLoading && healthData.length === 0 && !error && (
             <p className="text-sm text-gray-500 dark:text-gray-400 italic">
-              No step data found.
+              No step data found. Add an entry above.
             </p>
-          ) : (
+          )}
+          {healthData.length > 0 && (
             <ul className="space-y-2">
-              {stepData
-                .sort((a, b) => b.date.localeCompare(a.date)) // Sort by date descending
+              {healthData
+                // Filter only step data for now
+                .filter((entry) => entry.type === "steps")
+                .sort((a, b) => b.entry_date.localeCompare(a.entry_date)) // Sort by date descending
                 .map((entry) => (
                   <li
-                    key={entry.date}
-                    className="flex justify-between items-center p-2.5 bg-gray-50 dark:bg-gray-700/50 rounded border border-gray-200 dark:border-gray-700 shadow-sm"
+                    key={entry.id} // Use entry ID from backend
+                    className="flex justify-between items-center p-2.5 bg-gray-50 dark:bg-gray-700/50 rounded border border-gray-200 dark:border-gray-700 shadow-sm gap-2" // Added gap
                   >
-                    <span className="text-sm">
-                      <strong>{entry.date}:</strong>{" "}
-                      {entry.steps.toLocaleString()} steps
+                    <span className="text-sm flex items-center gap-1.5 flex-grow">
+                      {" "}
+                      {/* Added flex-grow */}
+                      {/* Source Indicator */}
+                      {entry.sourceProvider === "manual" ? (
+                        <span
+                          title="Manual Entry"
+                          className="inline-block w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"
+                        ></span>
+                      ) : (
+                        <span
+                          title="Google Health"
+                          className="inline-block w-2 h-2 bg-green-500 rounded-full flex-shrink-0"
+                        ></span>
+                      )}
+                      <strong>{entry.entry_date}:</strong>{" "}
+                      <span className="truncate">
+                        {entry.value.toLocaleString()} steps
+                      </span>{" "}
+                      {/* Added truncate */}
                     </span>
-                    {/* No delete button */}
+                    {/* Delete Button for Manual Entries */}
+                    {entry.sourceProvider === "manual" && (
+                      <Button
+                        variant="ghost" // Use ghost for less emphasis
+                        size="icon"
+                        className="h-6 w-6 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/50 flex-shrink-0" // Make smaller, red on hover
+                        onClick={() => handleDeleteEntry(entry.id)}
+                        disabled={isLoading} // Disable while loading/saving
+                        aria-label="Delete manual entry"
+                      >
+                        <Trash2 size={14} />
+                      </Button>
+                    )}
                   </li>
                 ))}
             </ul>

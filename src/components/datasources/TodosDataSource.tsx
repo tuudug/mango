@@ -1,10 +1,10 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card"; // Import Shadcn Card components
-import { Checkbox } from "@/components/ui/checkbox"; // Import Shadcn Checkbox
-import { Input } from "@/components/ui/input"; // Import Shadcn Input
-import { Label } from "@/components/ui/label"; // Import Shadcn Label
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"; // Import CardTitle
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useTodos } from "@/contexts/TodosContext";
-import { ListChecks, X } from "lucide-react"; // Import icons
+import { ListChecks, X, Trash2 } from "lucide-react"; // Import icons, add Trash2
 import React, { useState } from "react";
 
 // Define props including onClose
@@ -13,15 +13,31 @@ interface TodosDataSourceProps {
 }
 
 export function TodosDataSource({ onClose }: TodosDataSourceProps) {
-  const { todos, addTodo, deleteTodo, toggleTodo } = useTodos();
+  // Use refactored context
+  const { todos, isLoading, error, addTodo, deleteTodo, toggleTodo } =
+    useTodos();
   const [newTodoText, setNewTodoText] = useState("");
+  // Optional: Add state for due date input if desired
+  // const [newTodoDueDate, setNewTodoDueDate] = useState<string | null>(null);
 
-  const handleAddTodo = (e: React.FormEvent) => {
+  const handleAddTodo = async (e: React.FormEvent) => {
+    // Make async
     e.preventDefault();
     if (newTodoText.trim()) {
-      addTodo(newTodoText.trim());
+      // Call async context function
+      await addTodo(newTodoText.trim()); // Pass only title for now
       setNewTodoText("");
+      // setNewTodoDueDate(null); // Reset due date if using
     }
+  };
+
+  // Handlers now call async context functions directly
+  const handleDeleteTodo = async (id: string) => {
+    await deleteTodo(id);
+  };
+
+  const handleToggleTodo = async (id: string) => {
+    await toggleTodo(id);
   };
 
   return (
@@ -32,9 +48,8 @@ export function TodosDataSource({ onClose }: TodosDataSourceProps) {
         {/* Added dark border */}
         <div className="flex items-center gap-2">
           <ListChecks className="w-5 h-5 text-green-500 dark:text-green-400" />
-          <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
-            Todos Data
-          </h2>
+          {/* Use CardTitle */}
+          <CardTitle className="text-lg font-semibold">Todos Data</CardTitle>
         </div>
         {onClose && (
           <Button
@@ -63,55 +78,75 @@ export function TodosDataSource({ onClose }: TodosDataSourceProps) {
               }
               required
               className="flex-grow p-2"
+              disabled={isLoading} // Disable when loading
             />
-            <Button type="submit" size="sm">
-              Add Todo
+            {/* Optional: Add Due Date Input Here */}
+            <Button type="submit" size="sm" disabled={isLoading}>
+              {isLoading ? "Adding..." : "Add Todo"}
             </Button>
           </div>
         </form>
 
+        {/* Display Error if any */}
+        {error && (
+          <p className="text-sm text-red-600 dark:text-red-400">
+            Error: {error}
+          </p>
+        )}
+
         {/* Existing Todos List */}
         <div className="space-y-3">
           <h3 className="text-base font-medium">Existing Todos</h3>
-          {todos.length === 0 ? (
+          {isLoading && todos.length === 0 && (
+            <p className="text-sm text-gray-500">Loading todos...</p>
+          )}
+          {!isLoading && todos.length === 0 && !error && (
             <p className="text-sm text-gray-500 dark:text-gray-400 italic">
-              No todos found.
+              No todos found. Add one above.
             </p>
-          ) : (
+          )}
+          {todos.length > 0 && (
             <ul className="space-y-2">
               {todos.map((todo) => (
                 <li
-                  key={todo.id}
-                  className="flex items-center justify-between p-2.5 bg-gray-50 dark:bg-gray-700/50 rounded border border-gray-200 dark:border-gray-700 shadow-sm"
+                  key={todo.id} // Use ID from backend
+                  className="flex items-center justify-between p-2.5 bg-gray-50 dark:bg-gray-700/50 rounded border border-gray-200 dark:border-gray-700 shadow-sm gap-2" // Added gap
                 >
-                  {/* Use Shadcn Checkbox and Label */}
+                  {/* Checkbox and Label */}
                   <div className="flex items-center space-x-3 flex-grow mr-2">
                     <Checkbox
                       id={`todo-${todo.id}`}
-                      checked={todo.completed}
-                      onCheckedChange={() => toggleTodo(todo.id)} // Use onCheckedChange
-                      aria-label={`Mark ${todo.text} as ${
-                        todo.completed ? "incomplete" : "complete"
+                      checked={todo.is_completed} // Use is_completed
+                      onCheckedChange={() => handleToggleTodo(todo.id)} // Use handler
+                      aria-label={`Mark ${todo.title} as ${
+                        // Use title
+                        todo.is_completed ? "incomplete" : "complete"
                       }`}
+                      disabled={isLoading} // Disable when loading
                     />
                     <Label
                       htmlFor={`todo-${todo.id}`}
                       className={`text-sm flex-grow ${
-                        todo.completed
+                        todo.is_completed // Use is_completed
                           ? "line-through text-gray-500 dark:text-gray-400"
                           : ""
                       }`}
                     >
-                      {todo.text}
+                      {todo.title} {/* Use title */}
+                      {/* Optional: Display due date */}
+                      {/* {todo.due_date && <span className="text-xs ml-2 text-gray-400">({todo.due_date})</span>} */}
                     </Label>
                   </div>
+                  {/* Delete Button */}
                   <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => deleteTodo(todo.id)}
-                    className="flex-shrink-0"
+                    variant="ghost" // Changed to ghost
+                    size="icon"
+                    className="h-6 w-6 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/50 flex-shrink-0" // Smaller icon button
+                    onClick={() => handleDeleteTodo(todo.id)} // Use handler
+                    disabled={isLoading}
+                    aria-label="Delete todo"
                   >
-                    Delete
+                    <Trash2 size={14} />
                   </Button>
                 </li>
               ))}
