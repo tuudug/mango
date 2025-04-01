@@ -22,7 +22,6 @@ export function CalendarDataSource({ onClose }: CalendarDataSourceProps) {
     connectGoogleCalendar,
     disconnectGoogleCalendar,
     lastFetchTime, // Get last fetch time
-    fetchEventsIfNeeded, // Get throttled fetch
   } = useCalendar();
   const [newEventTitle, setNewEventTitle] = useState("");
   const [newEventDate, setNewEventDate] = useState("");
