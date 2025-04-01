@@ -39,6 +39,11 @@ export default defineConfig({
           },
         ],
       },
+      // Add this configuration
+      workbox: {
+        // Ensure API requests are not intercepted by the service worker's navigation fallback.
+        navigateFallbackDenylist: [/^\/api/],
+      },
     }),
   ],
   resolve: {
