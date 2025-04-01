@@ -37,7 +37,10 @@ app.use(
     cookie: {
       secure: process.env.NODE_ENV === "production", // Use secure cookies in production
       maxAge: 1000 * 60 * 60 * 24, // Session duration: 1 day
+      httpOnly: true, // Prevent client-side JS access
+      sameSite: "lax", // Good default for session cookies, helps prevent CSRF
     },
+    // Consider adding a persistent session store (e.g., connect-pg-simple) for production scalability
   })
 );
 
@@ -48,7 +51,16 @@ app.use(passport.session());
 // Configure Passport strategies
 configurePassport(passport);
 
+// Trust the first proxy hop (e.g., DigitalOcean App Platform's load balancer/proxy)
+// This is crucial for secure cookies and accurate IP address info behind a proxy.
+// Place this BEFORE any routes that rely on session or req.ip/req.protocol.
+app.set("trust proxy", 1);
+
 app.use(express.json());
+
+// Initialize Passport and restore authentication state, if any, from the session.
+app.use(passport.initialize());
+app.use(passport.session());
 
 // Simple root route for testing
 app.get("/api", (req: Request, res: Response) => {
