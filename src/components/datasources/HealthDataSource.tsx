@@ -30,7 +30,6 @@ export function HealthDataSource({ onClose }: HealthDataSourceProps) {
     connectGoogleHealth,
     disconnectGoogleHealth,
     lastFetchTime, // Get last fetch time
-    fetchHealthDataIfNeeded, // Get throttled fetch
   } = useHealth();
   const [newSteps, setNewSteps] = useState("");
   const [newStepsDate, setNewStepsDate] = useState(""); // YYYY-MM-DD

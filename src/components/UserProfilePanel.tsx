@@ -1,7 +1,6 @@
-import React from "react";
 import { Button } from "@/components/ui/button";
-import { User, X, Settings, LogOut } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext"; // Import useAuth
+import { LogOut, Settings, User, X } from "lucide-react";
 
 interface UserProfilePanelProps {
   onClose: () => void; // Function to close the panel

@@ -444,7 +444,7 @@ export function Dashboard() {
 
   // Handle resize events from react-grid-layout
   const handleResize = useCallback(
-    (layout: Layout[], oldItem: Layout, newItem: Layout) => {
+    (_layout: Layout[], _oldItem: Layout, newItem: Layout) => {
       setItems((prevItems) =>
         prevItems.map((item) => {
           if (item.id === newItem.i) {

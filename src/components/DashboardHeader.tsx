@@ -1,4 +1,3 @@
-import React from "react";
 // Removed Button, Sun, Moon, and useTheme imports as they are no longer needed
 
 // No props needed

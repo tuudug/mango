@@ -23,7 +23,6 @@ export function TodosDataSource({ onClose }: TodosDataSourceProps) {
     deleteTodo,
     toggleTodo,
     lastFetchTime, // Get last fetch time
-    fetchTodosIfNeeded, // Get throttled fetch
   } = useTodos();
   const [newTodoText, setNewTodoText] = useState("");
   const [nextSyncCountdown, setNextSyncCountdown] = useState<string>(""); // State for countdown

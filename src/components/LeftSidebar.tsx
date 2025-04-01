@@ -1,16 +1,16 @@
-import React, { useState, useEffect } from "react"; // Import useState and useEffect
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils"; // Import cn for conditional classes
 import {
-  Pencil,
   Bot,
-  User,
-  Milestone,
   CalendarDays,
   HeartPulse,
   ListTodo,
+  Milestone,
+  Pencil,
+  User,
 } from "lucide-react";
+import { useEffect, useState } from "react"; // Import useState and useEffect
 import { ChangelogModal } from "./ChangelogModal";
-import { cn } from "@/lib/utils"; // Import cn for conditional classes
 
 interface LeftSidebarProps {
   isToolboxOpen: boolean;

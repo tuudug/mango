@@ -20,10 +20,13 @@ declare module "express-session" {
 
 const googleClientID = process.env.GOOGLE_CLIENT_ID;
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
-const googleCallbackURL = process.env.GOOGLE_REDIRECT_URI;
+// Construct callback URLs using API_BASE_URL
+const apiBaseUrl = process.env.API_BASE_URL || "http://localhost:3001";
+const googleCalendarCallbackURL = `${apiBaseUrl}/api/auth/google/callback`;
+const googleHealthCallbackURL = `${apiBaseUrl}/api/auth/google-health/callback`;
 
-if (!googleClientID || !googleClientSecret || !googleCallbackURL) {
-  console.error("Google OAuth credentials or callback URL missing in .env");
+if (!googleClientID || !googleClientSecret) {
+  console.error("Google OAuth Client ID or Secret missing in .env");
   process.exit(1);
 }
 
@@ -40,7 +43,7 @@ export default function configurePassport(
       {
         clientID: googleClientID!,
         clientSecret: googleClientSecret!,
-        callbackURL: googleCallbackURL!, // Calendar callback
+        callbackURL: googleCalendarCallbackURL, // Use constructed URL
         passReqToCallback: true,
         scope: [
           "profile",
@@ -148,11 +151,9 @@ export default function configurePassport(
     "google-health", // Name this strategy differently
     new GoogleStrategy(
       {
-        clientID: googleClientID!, // Reuse same client ID/secret
+        clientID: googleClientID!,
         clientSecret: googleClientSecret!,
-        callbackURL: `${
-          process.env.API_BASE_URL || "http://localhost:3001"
-        }/api/auth/google-health/callback`, // Specific health callback
+        callbackURL: googleHealthCallbackURL, // Use constructed URL
         passReqToCallback: true,
         scope: [
           "profile",

@@ -1,22 +1,18 @@
-import React, { useMemo } from "react";
-import { useCalendar } from "@/contexts/CalendarContext";
-import { useTodos } from "@/contexts/TodosContext";
-import { useHealth } from "@/contexts/HealthContext";
-import { format } from "date-fns"; // Removed isToday
-import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
+import { useCalendar } from "@/contexts/CalendarContext";
+import { useHealth } from "@/contexts/HealthContext";
+import { useTodos } from "@/contexts/TodosContext";
+import { format } from "date-fns"; // Removed isToday
 import { CalendarDays, CheckSquare, Footprints } from "lucide-react"; // Icons for sections
-
-interface DailySummaryWidgetProps {
-  id: string;
-}
+import { useMemo } from "react";
 
 const MAX_EVENTS_TO_SHOW = 3;
 const MAX_TODOS_TO_SHOW = 5;
 const STEP_GOAL = 10000;
 
-export function DailySummaryWidget({ id: _id }: DailySummaryWidgetProps) {
+export function DailySummaryWidget() {
   const { events: calendarEvents, isLoading: calendarLoading } = useCalendar();
   const { todos, isLoading: todosLoading, toggleTodo } = useTodos();
   const { healthData, isLoading: healthLoading } = useHealth();
