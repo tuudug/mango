@@ -9,8 +9,7 @@ import { Request } from "express"; // Import Request type
 import { supabaseAdmin } from "../supabaseClient"; // Use admin client for token storage
 import { encrypt } from "../utils/crypto"; // Import the encrypt function
 
-// Import type definitions
-import "../types/express.d";
+// Type definitions from ../types/express.d.ts are loaded automatically by TS
 
 dotenv.config();
 
@@ -237,18 +236,16 @@ export default function configurePassport(
 
   // --- Session Management (Shared for both strategies) ---
   // Stores the user ID (from Supabase) in the session.
+  // Note: Express.User is augmented in ../types/express.d.ts to include 'id'
   passportInstance.serializeUser((user: Express.User, done) => {
-    // 'user' here is the object passed from the 'done' callback in the strategy ({ id: supabaseUserId })
-    console.log("Serialize User ID:", user.id);
+    console.log("Serialize User ID:", user.id); // user.id should now be recognized
     done(null, user.id);
   });
 
   // Retrieves the user from the stored ID in the session.
   passportInstance.deserializeUser((id: string, done) => {
-    // 'id' here is the Supabase user ID stored during serializeUser
     console.log("Deserialize User ID:", id);
-    // In a real app, you'd look up the user in the DB
-    // For OAuth flow, we just need the ID to match with our JWT handling
-    done(null, { id });
+    // Attach the ID to req.user, matching the augmented Express.User type
+    done(null, { id: id });
   });
 }
