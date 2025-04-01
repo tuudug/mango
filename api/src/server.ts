@@ -12,8 +12,16 @@ import todosRoutes from "./routes/todos"; // Import the todos routes
 dotenv.config();
 
 const app: Express = express();
-const port = process.env.PORT || 3001;
+// Use the PORT environment variable provided by the platform (e.g., DigitalOcean)
+// Defaulting locally might still be useful, but prioritize process.env.PORT
+const port = process.env.PORT || 3001; // Keep default for local dev if needed
 const sessionSecret = process.env.SESSION_SECRET;
+
+if (!process.env.PORT) {
+  console.warn(
+    "PORT environment variable not set. Defaulting to 3001 for local development."
+  );
+}
 
 if (!sessionSecret) {
   console.error("Error: SESSION_SECRET is not defined in .env file.");
