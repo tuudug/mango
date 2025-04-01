@@ -22,7 +22,8 @@ interface CalendarContextType {
   connectGoogleCalendar: () => void;
   disconnectGoogleCalendar: () => Promise<void>;
   confirmGoogleConnection: () => void;
-  fetchEventsIfNeeded: () => void; // Add throttled fetch
+  fetchEventsIfNeeded: () => void;
+  lastFetchTime: Date | null; // Expose last fetch time
 }
 
 // Create the context with a default value
@@ -278,7 +279,8 @@ export const CalendarProvider: React.FC<CalendarProviderProps> = ({
     connectGoogleCalendar,
     disconnectGoogleCalendar,
     confirmGoogleConnection,
-    fetchEventsIfNeeded, // Add new function
+    fetchEventsIfNeeded,
+    lastFetchTime, // Expose last fetch time
   };
 
   return (

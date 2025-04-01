@@ -16,10 +16,11 @@ export const TodoListWidget: React.FC<TodoListWidgetProps> = ({ id: _id }) => {
   const {
     todos,
     isLoading, // Get loading state
-    error, // Get error state (optional display)
+    error,
     addTodo: addTodoContext,
     deleteTodo,
     toggleTodo,
+    togglingTodoId, // Get ID of item being toggled
   } = useTodos();
 
   // Keep local state for the input field only
@@ -108,8 +109,8 @@ export const TodoListWidget: React.FC<TodoListWidgetProps> = ({ id: _id }) => {
                 onClick={(e) => e.stopPropagation()} // Stop propagation
                 checked={todo.is_completed} // Use is_completed
                 onChange={() => toggleTodo(todo.id)} // Use context toggle
-                disabled={isLoading} // Disable when loading
-                className="h-3.5 w-3.5 text-blue-600 dark:text-blue-500 rounded border-gray-300 dark:border-gray-600 focus:ring-blue-500 dark:focus:ring-blue-600 bg-white dark:bg-gray-700 mr-2 flex-shrink-0" // Added flex-shrink-0
+                disabled={isLoading || togglingTodoId === todo.id} // Disable if global loading OR this item is toggling
+                className="h-3.5 w-3.5 text-blue-600 dark:text-blue-500 rounded border-gray-300 dark:border-gray-600 focus:ring-blue-500 dark:focus:ring-blue-600 bg-white dark:bg-gray-700 mr-2 flex-shrink-0"
               />
               <span
                 className={`flex-1 text-sm ${
@@ -125,7 +126,7 @@ export const TodoListWidget: React.FC<TodoListWidgetProps> = ({ id: _id }) => {
                   e.stopPropagation(); // Prevent li onClick from firing
                   deleteTodo(todo.id); // Use context delete
                 }}
-                disabled={isLoading} // Disable when loading
+                disabled={isLoading || togglingTodoId === todo.id} // Disable if global loading OR this item is toggling
                 className="text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity ml-auto flex-shrink-0 p-0.5"
               >
                 <Trash size={14} /> {/* Replaced SVG with Lucide icon */}

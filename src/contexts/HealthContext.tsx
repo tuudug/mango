@@ -4,25 +4,25 @@ import React, {
   useEffect,
   useContext,
   ReactNode,
-  useCallback, // Import useCallback
+  useCallback,
 } from "react";
-import { useAuth } from "./AuthContext"; // Import useAuth
+import { useAuth } from "./AuthContext";
 
 // Define the structure for health entries from backend
 export interface HealthEntry {
   id: string;
   connection_id: string;
   entry_date: string;
-  type: string; // e.g., 'steps'
+  type: string;
   value: number;
   created_at: string;
   updated_at: string;
-  sourceProvider: "manual" | "google_health"; // Added source provider
+  sourceProvider: "manual" | "google_health";
 }
 
 // Define the shape of the context data
 interface HealthContextType {
-  healthData: HealthEntry[]; // Store raw entries
+  healthData: HealthEntry[];
   isLoading: boolean;
   error: string | null;
   fetchHealthData: () => Promise<void>;
@@ -31,62 +31,56 @@ interface HealthContextType {
     type: string;
     value: number;
   }) => Promise<void>;
-  deleteManualHealthEntry: (entryId: string) => Promise<void>; // Add delete function
-  // Add connection status and actions
+  deleteManualHealthEntry: (entryId: string) => Promise<void>;
   isGoogleHealthConnected: boolean;
   connectGoogleHealth: () => void;
   disconnectGoogleHealth: () => Promise<void>;
+  fetchHealthDataIfNeeded: () => void; // Add throttled fetch
+  lastFetchTime: Date | null; // Expose last fetch time
 }
 
-// Create the context with a default value
 const HealthContext = createContext<HealthContextType | undefined>(undefined);
 
-// Define the props for the provider component
 interface HealthProviderProps {
   children: ReactNode;
 }
 
-// Create the provider component
 export const HealthProvider: React.FC<HealthProviderProps> = ({ children }) => {
   const [healthData, setHealthData] = useState<HealthEntry[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [isGoogleHealthConnected, setIsGoogleHealthConnected] =
-    useState<boolean>(false); // Add state
-  const { session } = useAuth(); // Get session for auth token
+    useState<boolean>(false);
+  const [lastFetchTime, setLastFetchTime] = useState<Date | null>(null); // Track last fetch time
+  const { session } = useAuth();
 
-  // Helper to get auth headers (similar to CalendarContext)
+  const REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+
   const getAuthHeaders = useCallback(() => {
-    const headers: HeadersInit = {
-      "Content-Type": "application/json",
-    };
+    const headers: HeadersInit = { "Content-Type": "application/json" };
     if (session?.access_token) {
       headers["Authorization"] = `Bearer ${session.access_token}`;
     }
     return headers;
   }, [session]);
 
-  // Function to fetch health data from the backend API
   const fetchHealthData = useCallback(async () => {
-    if (!session) return; // Don't fetch if not logged in
-
+    if (!session) return;
     setIsLoading(true);
     setError(null);
     try {
       const response = await fetch("/api/health", {
         headers: getAuthHeaders(),
       });
-      if (!response.ok) {
+      if (!response.ok)
         throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      // Expect response format: { healthEntries: HealthEntry[], isGoogleHealthConnected: boolean }
       const data: {
         healthEntries: HealthEntry[];
         isGoogleHealthConnected: boolean;
       } = await response.json();
-      setHealthData(data.healthEntries || []); // Ensure it's an array
-      // Set connection status from backend
+      setHealthData(data.healthEntries || []);
       setIsGoogleHealthConnected(data.isGoogleHealthConnected);
+      setLastFetchTime(new Date()); // Update last fetch time
       console.log(
         "Google Health Connected Status (from backend):",
         data.isGoogleHealthConnected
@@ -94,31 +88,59 @@ export const HealthProvider: React.FC<HealthProviderProps> = ({ children }) => {
     } catch (e) {
       console.error("Failed to fetch health data:", e);
       setError(e instanceof Error ? e.message : "An unknown error occurred");
-      setHealthData([]); // Clear data on error
-      setIsGoogleHealthConnected(false); // Assume disconnected on error
+      setHealthData([]);
+      setIsGoogleHealthConnected(false);
     } finally {
       setIsLoading(false);
     }
   }, [session, getAuthHeaders]);
 
-  // Fetch data on initial mount or when session changes
-  useEffect(() => {
-    if (session) {
+  const fetchHealthDataIfNeeded = useCallback(() => {
+    if (isLoading) return;
+    const now = new Date();
+    if (
+      !lastFetchTime ||
+      now.getTime() - lastFetchTime.getTime() > REFRESH_INTERVAL_MS
+    ) {
+      console.log("Health refresh interval elapsed, fetching...");
       fetchHealthData();
     } else {
-      setHealthData([]); // Clear data if logged out
-      setIsGoogleHealthConnected(false); // Reset connection status
+      console.log("Skipping health fetch, refresh interval not elapsed.");
     }
-  }, [session, fetchHealthData]);
+  }, [isLoading, lastFetchTime, fetchHealthData]);
 
-  // Function to add a new manual health entry via backend
+  useEffect(() => {
+    if (session) {
+      fetchHealthDataIfNeeded();
+    } else {
+      setHealthData([]);
+      setIsGoogleHealthConnected(false);
+      setLastFetchTime(null);
+    }
+  }, [session]); // Intentionally omit fetchHealthDataIfNeeded
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        console.log(
+          "Health Window became visible, checking if fetch needed..."
+        );
+        fetchHealthDataIfNeeded();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [fetchHealthDataIfNeeded]);
+
   const addManualHealthEntry = async (entry: {
     entry_date: string;
     type: string;
     value: number;
   }) => {
     if (!session) {
-      setError("You must be logged in to add health data.");
+      setError("You must be logged in.");
       return;
     }
     setIsLoading(true);
@@ -135,68 +157,51 @@ export const HealthProvider: React.FC<HealthProviderProps> = ({ children }) => {
           const errorBody = await response.json();
           errorMsg = errorBody.message || errorMsg;
         } catch {
-          /* Ignore parsing error */
+          /* Ignore */
         }
         throw new Error(errorMsg);
       }
-      // Re-fetch health data to get the updated list including the new one
       await fetchHealthData();
     } catch (e) {
       console.error("Failed to add manual health entry:", e);
       setError(e instanceof Error ? e.message : "An unknown error occurred");
-      // Optionally, revert optimistic update here if implemented
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Function to initiate Google Health connection
   const connectGoogleHealth = () => {
-    // Redirect the browser to the backend endpoint that starts the OAuth flow
     window.location.href = "/api/auth/google-health/start";
   };
 
-  // Function to disconnect Google Health
   const disconnectGoogleHealth = async () => {
     if (!session) {
-      setError("You must be logged in to disconnect Google Health.");
+      setError("You must be logged in.");
       return;
     }
     setIsLoading(true);
     setError(null);
     try {
-      // TODO: Implement backend route POST /api/auth/google-health/disconnect
-      // For now, just log and refetch to update status based on backend check
       console.warn("Backend disconnect for Google Health not implemented yet.");
-      // const response = await fetch("/api/auth/google-health/disconnect", {
-      //   method: "POST",
-      //   headers: getAuthHeaders(),
-      // });
-      // if (!response.ok) { throw new Error(...) }
-
-      // Refetch data - the backend GET /api/health should report disconnected status
-      await fetchHealthData();
+      // TODO: Implement backend disconnect route
+      // const response = await fetch("/api/auth/google-health/disconnect", { method: "POST", headers: getAuthHeaders() });
+      // if (!response.ok) throw new Error("Failed to disconnect");
+      await fetchHealthData(); // Refetch to update status
     } catch (e) {
       console.error("Failed to disconnect Google Health:", e);
-      setError(
-        e instanceof Error
-          ? e.message
-          : "An unknown error occurred during disconnect"
-      );
-      // Refetch even on error
-      await fetchHealthData();
+      setError(e instanceof Error ? e.message : "An unknown error occurred");
+      await fetchHealthData(); // Refetch even on error
     } finally {
-      // setIsLoading(false); // fetchHealthData handles this
+      /* setIsLoading(false); // fetchHealthData handles this */
     }
   };
 
-  // Function to delete a manual health entry via backend
   const deleteManualHealthEntry = async (entryId: string) => {
     if (!session) {
-      setError("You must be logged in to delete health data.");
+      setError("You must be logged in.");
       return;
     }
-    setIsLoading(true); // Indicate loading, maybe disable delete button?
+    setIsLoading(true);
     setError(null);
     try {
       const response = await fetch(`/api/health/manual/${entryId}`, {
@@ -209,33 +214,32 @@ export const HealthProvider: React.FC<HealthProviderProps> = ({ children }) => {
           const errorBody = await response.json();
           errorMsg = errorBody.message || errorMsg;
         } catch {
-          /* Ignore parsing error */
+          /* Ignore */
         }
         throw new Error(errorMsg);
       }
-      // Refetch data to update the list
       await fetchHealthData();
     } catch (e) {
       console.error("Failed to delete manual health entry:", e);
       setError(e instanceof Error ? e.message : "An unknown error occurred");
-      // Refetch even on error to ensure UI consistency if delete partially failed
-      await fetchHealthData();
+      await fetchHealthData(); // Refetch even on error
     } finally {
-      // setIsLoading(false); // fetchHealthData handles this
+      /* setIsLoading(false); // fetchHealthData handles this */
     }
   };
 
-  // Provide the context value to children
   const value = {
     healthData,
     isLoading,
     error,
     fetchHealthData,
     addManualHealthEntry,
-    deleteManualHealthEntry, // Add delete function
+    deleteManualHealthEntry,
     isGoogleHealthConnected,
     connectGoogleHealth,
     disconnectGoogleHealth,
+    fetchHealthDataIfNeeded,
+    lastFetchTime, // Expose last fetch time
   };
 
   return (
@@ -243,7 +247,6 @@ export const HealthProvider: React.FC<HealthProviderProps> = ({ children }) => {
   );
 };
 
-// Custom hook to use the Health context
 export const useHealth = (): HealthContextType => {
   const context = useContext(HealthContext);
   if (context === undefined) {

@@ -30,7 +30,9 @@ interface TodosContextType {
   addTodo: (title: string, due_date?: string | null) => Promise<void>; // Updated params
   deleteTodo: (id: string) => Promise<void>;
   toggleTodo: (id: string) => Promise<void>;
-  fetchTodosIfNeeded: () => void; // Add throttled fetch
+  fetchTodosIfNeeded: () => void;
+  lastFetchTime: Date | null;
+  togglingTodoId: string | null; // ID of todo currently being toggled
 }
 
 // Create the context with a default value
@@ -44,10 +46,11 @@ interface TodosProviderProps {
 // Create the provider component
 export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
   const [todos, setTodos] = useState<TodoItem[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false); // Global loading for fetch/add/delete
   const [error, setError] = useState<string | null>(null);
-  const [lastFetchTime, setLastFetchTime] = useState<Date | null>(null); // Track last fetch time
-  const { session } = useAuth(); // Get session for auth token
+  const [lastFetchTime, setLastFetchTime] = useState<Date | null>(null);
+  const [togglingTodoId, setTogglingTodoId] = useState<string | null>(null); // State for item being toggled
+  const { session } = useAuth();
 
   const REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -197,24 +200,40 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
     }
   };
 
-  // Function to toggle the completion status via backend
+  // Function to toggle the completion status via backend (with optimistic update)
   const toggleTodo = async (id: string) => {
     if (!session) {
       setError("You must be logged in to toggle todos.");
       return;
     }
-    // Optimistic update (optional)
-    // const originalTodos = [...todos];
-    // setTodos((prev) => prev.map((t) => t.id === id ? { ...t, is_completed: !t.is_completed } : t));
-    setIsLoading(true); // Indicate activity
+
+    const originalTodos = [...todos];
+    const todoIndex = originalTodos.findIndex((t) => t.id === id);
+    if (todoIndex === -1) return; // Todo not found
+
+    const originalTodo = originalTodos[todoIndex];
+    const updatedTodo = {
+      ...originalTodo,
+      is_completed: !originalTodo.is_completed,
+      // Optionally update updated_at locally? Backend handles the real one.
+    };
+
+    // Optimistic UI update
+    setTodos((prev) => prev.map((t) => (t.id === id ? updatedTodo : t)));
+
+    // No global loading indicator for optimistic toggle
+    setTogglingTodoId(id); // Set loading state for this specific item
     setError(null);
+
     try {
       const response = await fetch(`/api/todos/manual/${id}/toggle`, {
         method: "PUT",
         headers: getAuthHeaders(),
       });
+
       if (!response.ok) {
-        // setTodos(originalTodos); // Revert optimistic update
+        // Revert optimistic update on failure
+        setTodos(originalTodos);
         let errorMsg = `HTTP error! status: ${response.status}`;
         try {
           const errorBody = await response.json();
@@ -224,17 +243,21 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
         }
         throw new Error(errorMsg);
       }
-      // Update state with response or refetch
-      // const updatedTodo = await response.json();
-      // setTodos((prev) => prev.map((t) => t.id === id ? updatedTodo : t));
-      await fetchTodos(); // Simple refetch
+      // Success: API confirmed the change, state is already updated.
+      // Optionally trigger a silent background refetch if needed later.
+      // await fetchTodos();
+      console.log(`Successfully toggled todo ${id}`);
     } catch (e) {
-      // setTodos(originalTodos); // Revert optimistic update
+      // Revert optimistic update on any error during API call
+      setTodos(originalTodos);
       console.error("Failed to toggle todo:", e);
       setError(e instanceof Error ? e.message : "An unknown error occurred");
-      await fetchTodos(); // Refetch even on error
+      // Optionally refetch to ensure consistency after error
+      // await fetchTodos();
     } finally {
-      setIsLoading(false);
+      // No global loading indicator to stop
+      // setIsLoading(false);
+      setTogglingTodoId(null); // Clear loading state for this item
     }
   };
 
@@ -247,7 +270,9 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
     addTodo,
     deleteTodo,
     toggleTodo,
-    fetchTodosIfNeeded, // Add throttled fetch
+    fetchTodosIfNeeded,
+    lastFetchTime,
+    togglingTodoId, // Expose toggling state
   };
 
   return (

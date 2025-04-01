@@ -2,8 +2,9 @@ import { Button } from "@/components/ui/button"; // Keep one Button import
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useHealth } from "@/contexts/HealthContext";
-import { HeartPulse, X, Link, Unlink, Trash2 } from "lucide-react"; // Add Link/Unlink, Trash2
-import React, { useState } from "react";
+import { HeartPulse, X, Link, Unlink, Trash2 } from "lucide-react";
+import React, { useState, useEffect } from "react"; // Import useEffect
+import { formatDistanceToNow } from "date-fns"; // For relative time
 
 // Define props including onClose
 interface HealthDataSourceProps {
@@ -17,13 +18,30 @@ export function HealthDataSource({ onClose }: HealthDataSourceProps) {
     isLoading,
     error,
     addManualHealthEntry,
-    deleteManualHealthEntry, // Import delete function
+    deleteManualHealthEntry,
     isGoogleHealthConnected,
     connectGoogleHealth,
     disconnectGoogleHealth,
+    lastFetchTime, // Get last fetch time
+    fetchHealthDataIfNeeded, // Get throttled fetch
   } = useHealth();
   const [newSteps, setNewSteps] = useState("");
   const [newStepsDate, setNewStepsDate] = useState(""); // YYYY-MM-DD
+  const [timeAgo, setTimeAgo] = useState<string>(""); // State for relative time display
+
+  // Update relative time display periodically
+  useEffect(() => {
+    const updateDisplay = () => {
+      if (lastFetchTime) {
+        setTimeAgo(formatDistanceToNow(lastFetchTime, { addSuffix: true }));
+      } else {
+        setTimeAgo("");
+      }
+    };
+    updateDisplay(); // Initial update
+    const intervalId = setInterval(updateDisplay, 60000); // Update every minute
+    return () => clearInterval(intervalId); // Cleanup interval
+  }, [lastFetchTime]);
 
   // Make the handler async
   const handleAddSteps = async (e: React.FormEvent) => {
@@ -206,6 +224,25 @@ export function HealthDataSource({ onClose }: HealthDataSourceProps) {
                 ))}
             </ul>
           )}
+        </div>
+
+        {/* Sync Status Footer */}
+        <div className="mt-auto pt-2 border-t dark:border-gray-700 text-center">
+          {lastFetchTime ? (
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Last synced: {timeAgo}
+            </p>
+          ) : isLoading ? (
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Syncing...
+            </p>
+          ) : (
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Not synced yet.
+            </p>
+          )}
+          {/* Optionally add a manual refresh button */}
+          {/* <Button variant="link" size="sm" onClick={fetchHealthDataIfNeeded} disabled={isLoading}>Refresh</Button> */}
         </div>
       </CardContent>
     </Card>

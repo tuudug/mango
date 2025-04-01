@@ -4,8 +4,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useTodos } from "@/contexts/TodosContext";
-import { ListChecks, X, Trash2 } from "lucide-react"; // Import icons, add Trash2
-import React, { useState } from "react";
+import { ListChecks, X, Trash2 } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { addMinutes, differenceInSeconds } from "date-fns"; // Import more date-fns
 
 // Define props including onClose
 interface TodosDataSourceProps {
@@ -14,11 +15,52 @@ interface TodosDataSourceProps {
 
 export function TodosDataSource({ onClose }: TodosDataSourceProps) {
   // Use refactored context
-  const { todos, isLoading, error, addTodo, deleteTodo, toggleTodo } =
-    useTodos();
+  const {
+    todos,
+    isLoading,
+    error,
+    addTodo,
+    deleteTodo,
+    toggleTodo,
+    lastFetchTime, // Get last fetch time
+    fetchTodosIfNeeded, // Get throttled fetch
+  } = useTodos();
   const [newTodoText, setNewTodoText] = useState("");
-  // Optional: Add state for due date input if desired
-  // const [newTodoDueDate, setNewTodoDueDate] = useState<string | null>(null);
+  const [nextSyncCountdown, setNextSyncCountdown] = useState<string>(""); // State for countdown
+
+  // Countdown timer effect
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout | null = null;
+
+    const updateCountdown = () => {
+      if (lastFetchTime) {
+        const nextSyncTime = addMinutes(lastFetchTime, 5); // 5 minutes after last fetch
+        const now = new Date();
+        const secondsRemaining = differenceInSeconds(nextSyncTime, now);
+
+        if (secondsRemaining > 0) {
+          const minutes = Math.floor(secondsRemaining / 60);
+          const seconds = secondsRemaining % 60;
+          setNextSyncCountdown(
+            `${minutes}m ${seconds < 10 ? "0" : ""}${seconds}s`
+          );
+        } else {
+          setNextSyncCountdown("now");
+          if (intervalId) clearInterval(intervalId);
+        }
+      } else {
+        setNextSyncCountdown("");
+        if (intervalId) clearInterval(intervalId);
+      }
+    };
+
+    updateCountdown();
+    intervalId = setInterval(updateCountdown, 1000);
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [lastFetchTime]);
 
   const handleAddTodo = async (e: React.FormEvent) => {
     // Make async
@@ -152,6 +194,25 @@ export function TodosDataSource({ onClose }: TodosDataSourceProps) {
               ))}
             </ul>
           )}
+        </div>
+
+        {/* Sync Status Footer */}
+        <div className="mt-auto pt-2 border-t dark:border-gray-700 text-center">
+          {isLoading ? (
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Syncing...
+            </p>
+          ) : lastFetchTime && nextSyncCountdown ? (
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Next sync in: {nextSyncCountdown}
+            </p>
+          ) : (
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Not synced yet.
+            </p>
+          )}
+          {/* Optional Refresh Button */}
+          {/* <Button variant="link" size="sm" onClick={fetchTodosIfNeeded} disabled={isLoading}>Refresh</Button> */}
         </div>
       </CardContent>
     </Card>
