@@ -13,7 +13,7 @@ export function DashboardHeader() {
           Mango
         </h1>
         <span className="text-xs font-mono text-gray-400 dark:text-gray-500">
-          v0.1
+          v0.1.1
         </span>
       </div>
 

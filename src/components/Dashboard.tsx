@@ -32,6 +32,8 @@ import { WidgetToolbox } from "./WidgetToolbox"; // Import Toolbox
 import { CalendarDataSource } from "./datasources/CalendarDataSource";
 import { HealthDataSource } from "./datasources/HealthDataSource";
 import { TodosDataSource } from "./datasources/TodosDataSource";
+import { Button } from "./ui/button"; // Import Button
+import { X } from "lucide-react"; // Import X icon
 
 // Create responsive grid layout
 const ResponsiveGridLayout = WidthProvider(Responsive);
@@ -683,6 +685,22 @@ export function Dashboard() {
         <DragOverlay>
           {activeWidget ? <WidgetPreview type={activeWidget} /> : null}
         </DragOverlay>
+        {/* Floating Edit Mode Indicator */}
+        <div
+          className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-gray-800 dark:bg-gray-700 text-white px-4 py-2 rounded-full shadow-lg flex items-center space-x-3 transition-transform duration-300 ease-in-out ${
+            isToolboxOpen ? "translate-y-0" : "translate-y-20" // Slide up/down
+          }`}
+        >
+          <span>You are in edit mode</span>
+          <Button
+            variant="ghost"
+            size="icon" // Use icon size
+            className="text-gray-300 hover:bg-gray-700 dark:hover:bg-gray-600 hover:text-white rounded-full h-6 w-6" // Adjusted styling
+            onClick={toggleToolbox} // Use the existing toggle function
+          >
+            <X className="h-4 w-4" /> {/* Use X icon */}
+          </Button>
+        </div>
       </div>
     </DndContext>
   );

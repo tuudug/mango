@@ -1,5 +1,12 @@
 [
   {
+    "version": "0.1.1",
+    "date": "2025-04-01",
+    "data": [
+      "Added visual indicator for dashboard edit mode with slide animation and improved exit button."
+    ]
+  },
+  {
     "version": "0.1",
     "date": "2025-04-01",
     "data": [
