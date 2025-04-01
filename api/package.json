@@ -22,10 +22,12 @@
     "typescript": "^5.8.2"
   },
   "devDependencies": {
+    "@types/date-fns": "^2.5.3",
     "@types/express": "^5.0.1",
     "@types/express-session": "^1.18.1",
     "@types/node": "^22.13.14",
     "@types/passport": "^1.0.17",
-    "@types/passport-google-oauth20": "^2.0.16"
+    "@types/passport-google-oauth20": "^2.0.16",
+    "date-fns": "^4.1.0"
   }
 }

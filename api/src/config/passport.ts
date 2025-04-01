@@ -9,14 +9,10 @@ import { Request } from "express"; // Import Request type
 import { supabaseAdmin } from "../supabaseClient"; // Use admin client for token storage
 import { encrypt } from "../utils/crypto"; // Import the encrypt function
 
-dotenv.config();
+// Import type definitions
+import "../types/express.d";
 
-// Define session interface to include our custom property
-declare module "express-session" {
-  interface SessionData {
-    supabaseUserId?: string;
-  }
-}
+dotenv.config();
 
 const googleClientID = process.env.GOOGLE_CLIENT_ID;
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
@@ -29,9 +25,6 @@ if (!googleClientID || !googleClientSecret) {
   console.error("Google OAuth Client ID or Secret missing in .env");
   process.exit(1);
 }
-
-// Placeholder for user type - replace with actual user model later
-type User = { id: string /* other properties */ };
 
 export default function configurePassport(
   passportInstance: passport.PassportStatic
@@ -244,20 +237,18 @@ export default function configurePassport(
 
   // --- Session Management (Shared for both strategies) ---
   // Stores the user ID (from Supabase) in the session.
-  passportInstance.serializeUser((user, done) => {
+  passportInstance.serializeUser((user: Express.User, done) => {
     // 'user' here is the object passed from the 'done' callback in the strategy ({ id: supabaseUserId })
-    console.log("Serialize User ID:", (user as User).id);
-    done(null, (user as User).id);
+    console.log("Serialize User ID:", user.id);
+    done(null, user.id);
   });
 
-  // Retrieves the user ID from the session. Attaches a minimal user object to req.user.
-  // Note: This doesn't fetch full user details from DB, which might be needed elsewhere.
-  // The primary goal here is to re-populate req.user for session continuity if needed.
-  // Our API routes rely on the JWT via ensureAuthenticated, not this deserialized user.
-  passportInstance.deserializeUser((id, done) => {
+  // Retrieves the user from the stored ID in the session.
+  passportInstance.deserializeUser((id: string, done) => {
+    // 'id' here is the Supabase user ID stored during serializeUser
     console.log("Deserialize User ID:", id);
-    // For now, just pass back the ID in a user-like object.
-    // If full user details were needed from DB based on session, fetch here.
-    done(null, { id: id as string }); // Attach minimal user object { id: '...' } to req.user
+    // In a real app, you'd look up the user in the DB
+    // For OAuth flow, we just need the ID to match with our JWT handling
+    done(null, { id });
   });
 }

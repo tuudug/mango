@@ -132,17 +132,24 @@ router.post(
     const userToSerialize = { id: userId };
 
     // Use req.login() provided by Passport to establish the session
-    req.login(userToSerialize, (err) => {
-      if (err) {
-        console.error(
-          "Error establishing Passport session via req.login:",
-          err
-        );
-        return next(err); // Pass error to global handler
-      }
-      console.log(`Passport session established for user ID: ${userId}`);
-      res.status(200).json({ message: "Session established successfully." });
-    });
+    if (req.login) {
+      req.login(userToSerialize, (err) => {
+        if (err) {
+          console.error(
+            "Error establishing Passport session via req.login:",
+            err
+          );
+          return next(err); // Pass error to global handler
+        }
+        console.log(`Passport session established for user ID: ${userId}`);
+        res.status(200).json({ message: "Session established successfully." });
+      });
+    } else {
+      console.error("req.login function is not available");
+      res
+        .status(500)
+        .json({ message: "Session setup failed - internal error" });
+    }
   }
 );
 

@@ -1,42 +1,20 @@
 import { Request, Response, NextFunction } from "express";
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "../supabaseClient"; // Use admin client for verification
 
-// Define the shape of the user object attached by Passport's deserializeUser
-interface PassportUser {
-  id: string;
-}
-
-// Augment the Express Request type and the global Express.User type
-declare global {
-  namespace Express {
-    // eslint-disable-next-line @typescript-eslint/no-empty-interface
-    interface User extends PassportUser {} // Add our 'id' property to Express.User
-
-    interface Request {
-      userId?: string; // Keep our custom userId attached by ensureAuthenticated (JWT)
-      supabase?: SupabaseClient; // Keep our custom request-scoped client
-      // Note: Passport also adds req.user, req.login, req.logout, req.isAuthenticated
-    }
-  }
-}
+// Import type definitions from our custom types file
+import "../types/express.d";
 
 // Define and export an interface that extends Express.Request
-// This explicitly includes our custom properties and Passport's req.user
-export interface AuthenticatedRequest extends Request {
-  userId?: string;
-  supabase?: SupabaseClient;
-  user?: PassportUser; // Add Passport's user type
-}
+export type AuthenticatedRequest = Request;
 
 /**
  * Middleware to verify Supabase JWT from Authorization header.
  * Attaches userId and a request-scoped Supabase client (req.supabase)
  * to the request object upon successful verification.
- * Uses the exported AuthenticatedRequest interface.
  */
 export const ensureAuthenticated = (
-  req: AuthenticatedRequest, // Use the exported interface
+  req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
 ): void => {
