@@ -1,25 +1,25 @@
-import React, { useState, useMemo, useCallback } from "react";
-import { useTodos, NestedTodoItem, TodoItem } from "@/contexts/TodosContext"; // Added TodoItem
-import { LoadingBar } from "@/components/ui/loading-bar";
 import { Input } from "@/components/ui/input";
+import { LoadingBar } from "@/components/ui/loading-bar";
+import { NestedTodoItem, useTodos } from "@/contexts/TodosContext"; // Added TodoItem
 import {
-  DndContext,
   closestCenter,
+  DndContext,
+  DragEndEvent,
+  DragStartEvent,
   KeyboardSensor,
-  PointerSensor,
+  PointerSensor, // Import DragStartEvent
+  UniqueIdentifier,
   useSensor,
   useSensors,
-  DragEndEvent,
-  DragStartEvent, // Import DragStartEvent
-  UniqueIdentifier,
 } from "@dnd-kit/core";
+import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import {
   arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
+import React, { useCallback, useMemo, useState } from "react";
 import { TodoListItem } from "./TodoListItem";
 
 // --- Helper Type for findItemAndSiblings ---
@@ -114,13 +114,13 @@ export const TodoListWidget: React.FC<TodoListWidgetProps> = ({ id: _id }) => {
     [breakdownTodo]
   );
 
-  const handleMoveUp = useCallback((id: string) => {
-    console.log("Move Up requested for:", id, "(Placeholder in Widget)");
-  }, []);
+  // const handleMoveUp = useCallback((id: string) => {
+  //   console.log("Move Up requested for:", id, "(Placeholder in Widget)");
+  // }, []);
 
-  const handleMoveDown = useCallback((id: string) => {
-    console.log("Move Down requested for:", id, "(Placeholder in Widget)");
-  }, []);
+  // const handleMoveDown = useCallback((id: string) => {
+  //   console.log("Move Down requested for:", id, "(Placeholder in Widget)");
+  // }, []);
 
   const handleAddTopLevelTodo = () => {
     if (newTodoText.trim() === "") return;

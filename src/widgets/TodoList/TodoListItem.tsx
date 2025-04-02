@@ -1,27 +1,15 @@
-import React, { useState, useRef, useEffect } from "react";
-import {
-  Trash,
-  Pencil,
-  GripVertical,
-  ChevronDown,
-  ChevronRight,
-  PlusCircle,
-  Sparkles,
-  ArrowUpCircle,
-  ArrowDownCircle,
-} from "lucide-react";
-import { NestedTodoItem, useTodos, TodoItem } from "@/contexts/TodosContext";
-import { Button } from "@/components/ui/button";
+import { NestedTodoItem, useTodos } from "@/contexts/TodosContext";
+import { cn } from "@/lib/utils";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { cn } from "@/lib/utils";
+import { ChevronDown, ChevronRight } from "lucide-react";
+import React, { useState } from "react";
 import { TodoItemActions } from "./TodoItemActions";
 import { TodoItemEditForm } from "./TodoItemEditForm";
 
 // --- Custom Hook for Editing State ---
 const useTodoItemEditing = (
   todoId: string,
-  initialTitle: string,
   onSaveCallback: (id: string, newTitle: string) => void
 ) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -84,7 +72,7 @@ export const TodoListItem: React.FC<TodoListItemProps> = ({
   const { toggleTodo, deleteTodo: deleteTodoContext, moveTodo } = useTodos();
 
   const { isEditing, startEditing, cancelEditing, saveEdit } =
-    useTodoItemEditing(todo.id, todo.title, onEditSave);
+    useTodoItemEditing(todo.id, onEditSave);
 
   const {
     attributes,
