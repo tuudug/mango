@@ -29,6 +29,15 @@ export default tseslint.config(
         { allowConstantExport: true },
       ],
       "react/react-in-jsx-scope": "off",
+      // Add rule to ignore unused vars starting with _
+      "@typescript-eslint/no-unused-vars": [
+        "warn", // Or "error" based on preference
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+        },
+      ],
     },
     settings: {
       react: {

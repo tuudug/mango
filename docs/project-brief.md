@@ -15,6 +15,10 @@ These components handle the interaction and persistence of core application data
 - [x] **Calendar Data Source (`CalendarDataSource.tsx`):** Manages calendar events (add, delete, view) using `CalendarContext`.
 - [x] **Health Data Source (`HealthDataSource.tsx`):** Manages daily step counts (add, update, view) using `HealthContext`.
 - [x] **Todos Data Source (`TodosDataSource.tsx`):** Manages todo items (add, delete, toggle completion) using `TodosContext`.
+  - **[x] Editing:** Added ability to edit todo item text.
+  - **[x] Reordering:** Added drag-and-drop reordering (within same level).
+  - **[x] Sub-items:** Added support for nested sub-items (up to 2 levels).
+  - **[x] AI Breakdown:** Added "magic" button to generate sub-tasks using Gemini (placeholder logic replaced).
 
 ## Key Features
 
@@ -64,7 +68,7 @@ These components handle the interaction and persistence of core application data
 - [x] Layout persistence (`localStorage` - layout only, no widget data).
 - [x] **Refined Widget List & Categories (Used for Paths):**
   - **Productivity:**
-    - [x] To-do List (`TodoListWidget.tsx`)
+    - [x] To-do List (`TodoListWidget.tsx` -> `TodoList/index.tsx`) - **Enhanced with Edit, Reorder, Sub-items, AI Breakdown**
     - [x] Month Calendar (`MonthCalendarWidget.tsx`)
     - [x] Daily Calendar (`DailyCalendarWidget.tsx`)
     - [x] Goal Tracker (`GoalTrackerWidget.tsx`)
@@ -122,6 +126,8 @@ These components handle the interaction and persistence of core application data
 - [x] Intuitive interface (Implemented Left sidebar, sliding panels for Toolbox, GM, Profile, Paths).
 - [x] Dashboard customization implemented.
 - [ ] Emphasis on Positive Reinforcement (Guiding principle).
+- **[x] PWA Update Notifications:** Implemented prompt for app updates.
+- **[x] Toast Notifications:** Added system for user feedback.
 
 ## LLM Prompting Considerations
 
@@ -132,5 +138,6 @@ These components handle the interaction and persistence of core application data
 - [ ] Randomized Timing.
 - [ ] Urgency/Scarcity (carefully implemented).
 - [ ] Adherence to Game Master Availability limits (upgradable via Paths/Subscription).
+- **[x] Task Breakdown:** Implemented Gemini integration for breaking down todo items, including prompt refinement.
 
 _(Removed Skill Tree Concept Diagram)_

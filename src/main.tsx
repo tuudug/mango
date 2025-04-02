@@ -1,37 +1,31 @@
-import React from "react"; // Import React
-import ReactDOM from "react-dom/client"; // Import ReactDOM
+import React from "react";
+import ReactDOM from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
-import { ThemeProvider } from "./components/ThemeProvider.tsx";
+import "./scrollbars.css"; // Import custom scrollbar styles
 import { AuthProvider } from "./contexts/AuthContext.tsx"; // Import AuthProvider
-import { CalendarProvider } from "./contexts/CalendarContext.tsx";
-import { HealthProvider } from "./contexts/HealthContext.tsx";
-import { TodosProvider } from "./contexts/TodosContext.tsx";
+import { ThemeProvider } from "./components/ThemeProvider.tsx"; // Import ThemeProvider
+import { CalendarProvider } from "./contexts/CalendarContext.tsx"; // Import CalendarProvider
+import { HealthProvider } from "./contexts/HealthContext.tsx"; // Import HealthProvider
+import { TodosProvider } from "./contexts/TodosContext.tsx"; // Import TodosProvider
+import { ToastProvider } from "./contexts/ToastContext.tsx"; // Import ToastProvider
 
-// Get the root element
-const rootElement = document.getElementById("root");
-
-if (rootElement) {
-  // Create root using ReactDOM
-  const root = ReactDOM.createRoot(rootElement);
-  root.render(
-    <React.StrictMode>
-      {/* Wrap entire app with AuthProvider */}
+ReactDOM.createRoot(document.getElementById("root")!).render(
+  <React.StrictMode>
+    <ThemeProvider>
       <AuthProvider>
-        {/* Remove defaultTheme and storageKey props as they are not accepted */}
-        <ThemeProvider>
-          {/* Other providers */}
-          <TodosProvider>
+        <ToastProvider>
+          {" "}
+          {/* Wrap relevant providers/App */}
+          <CalendarProvider>
             <HealthProvider>
-              <CalendarProvider>
+              <TodosProvider>
                 <App />
-              </CalendarProvider>
+              </TodosProvider>
             </HealthProvider>
-          </TodosProvider>
-        </ThemeProvider>
+          </CalendarProvider>
+        </ToastProvider>
       </AuthProvider>
-    </React.StrictMode>
-  );
-} else {
-  console.error("Failed to find the root element");
-}
+    </ThemeProvider>
+  </React.StrictMode>
+);

@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils"; // Import cn for conditional classes
+import { cn, compareVersions } from "@/lib/utils"; // Import cn and compareVersions
 import {
   Bot,
   CalendarDays,
@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react"; // Import useState and useEffect
 import { ChangelogModal } from "./ChangelogModal";
+// Import the changelog data
+import changelogData from "../../public/changelog.json";
 
 interface LeftSidebarProps {
   isToolboxOpen: boolean;
@@ -29,8 +31,13 @@ interface LeftSidebarProps {
   toggleTodosDataSource: () => void;
 }
 
-const CURRENT_APP_VERSION = "0.1"; // Define current app version
+// Removed CURRENT_APP_VERSION constant
 const LOCALSTORAGE_KEY = "mango_last_read_changelog_version";
+
+// Get the latest version from the changelog (first entry)
+// Add a fallback in case the file is empty or malformed
+const latestVersion =
+  changelogData && changelogData.length > 0 ? changelogData[0].version : "0"; // Fallback to "0"
 
 export function LeftSidebar({
   isToolboxOpen,
@@ -54,24 +61,23 @@ export function LeftSidebar({
   // Check localStorage on mount
   useEffect(() => {
     try {
-      const lastReadVersion = localStorage.getItem(LOCALSTORAGE_KEY);
-      // Basic comparison, assumes simple numeric versions for now
-      if (
-        !lastReadVersion ||
-        parseFloat(lastReadVersion) < parseFloat(CURRENT_APP_VERSION)
-      ) {
+      const lastReadVersion = localStorage.getItem(LOCALSTORAGE_KEY) || "0"; // Default to "0" if not found
+      // Use compareVersions for accurate comparison
+      if (compareVersions(latestVersion, lastReadVersion) > 0) {
         setHasNewChangelog(true);
+      } else {
+        setHasNewChangelog(false); // Ensure it's false if versions match or are older
       }
     } catch (error) {
       console.error("Error reading from localStorage:", error);
-      // Decide if we should show notification on error? Maybe not.
       setHasNewChangelog(false);
     }
   }, []); // Run only once on mount
 
   const handleLogoClick = () => {
     try {
-      localStorage.setItem(LOCALSTORAGE_KEY, CURRENT_APP_VERSION);
+      // Save the *actual* latest version when clicked
+      localStorage.setItem(LOCALSTORAGE_KEY, latestVersion);
       setHasNewChangelog(false); // Hide notification once clicked
       setIsChangelogOpen(true); // Open modal
     } catch (error) {

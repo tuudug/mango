@@ -1,5 +1,18 @@
 [
   {
+    "version": "0.1.2",
+    "date": "2025-04-02",
+    "data": [
+      "Added Check for update button!",
+      "Added Todo item editing.",
+      "Added Todo item drag-and-drop reordering (within same level).",
+      "Added Todo sub-items (up to 2 levels) with expand/collapse.",
+      "Added 'Add Sub-item' button.",
+      "Added 'Magic Breakdown' button using Google Gemini.",
+      "Added toast notifications for errors and actions."
+    ]
+  },
+  {
     "version": "0.1.1",
     "date": "2025-04-01",
     "data": [

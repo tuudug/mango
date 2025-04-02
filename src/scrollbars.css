@@ -1,0 +1,31 @@
+/* Custom Scrollbar Styles */
+
+/* WebKit Browsers (Chrome, Safari, Edge) */
+.custom-scrollbar-yellow::-webkit-scrollbar {
+  width: 3px; /* Changed width to 3px */
+  height: 3px; /* Changed height to 3px */
+}
+
+.custom-scrollbar-yellow::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 3px;
+}
+
+.custom-scrollbar-yellow::-webkit-scrollbar-thumb {
+  background-color: #facc15; /* Tailwind yellow-400 */
+  border-radius: 3px;
+  /* Removed border and background-clip for thinner scrollbar */
+}
+
+.custom-scrollbar-yellow::-webkit-scrollbar-thumb:hover {
+  background-color: #f59e0b; /* Tailwind yellow-500 */
+}
+
+/* Firefox scrollbar styles */
+.custom-scrollbar-yellow {
+  scrollbar-width: thin; /* "auto" or "thin" */
+  scrollbar-color: #facc15 transparent; /* thumb and track color */
+}
+
+/* Add more custom scrollbar classes here if needed */
+/* e.g., .custom-scrollbar-blue, .custom-scrollbar-red */

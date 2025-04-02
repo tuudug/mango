@@ -11,7 +11,7 @@ import { X, Pencil } from "lucide-react";
 // Widget component imports
 import { StepsTrackerWidget } from "../widgets/StepsTrackerWidget"; // Renamed import
 import { HabitGraphWidget } from "../widgets/HabitGraphWidget";
-import { TodoListWidget } from "../widgets/TodoListWidget";
+import TodoListWidget from "../widgets/TodoList/index"; // Updated path
 import { MonthCalendarWidget } from "../widgets/MonthCalendarWidget"; // Renamed import and path
 import { DailyCalendarWidget } from "../widgets/DailyCalendarWidget"; // New import
 import { SleepStepWidget } from "../widgets/SleepStepWidget";

@@ -10,6 +10,7 @@
     /* Bundler mode */
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
+    "resolveJsonModule": true, // Added to allow JSON imports
     "isolatedModules": true,
     "moduleDetection": "force",
     "noEmit": true,
@@ -27,7 +28,9 @@
       "@/*": [
         "./src/*"
       ]
-    }
+    },
+    // Add types for Vite and PWA plugin client-side features
+    "types": ["vite/client", "vite-plugin-pwa/client"]
   },
   "include": ["src"]
 }
