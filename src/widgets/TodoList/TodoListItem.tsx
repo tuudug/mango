@@ -2,20 +2,52 @@ import React, { useState, useRef, useEffect } from "react";
 import {
   Trash,
   Pencil,
-  Save,
-  XCircle,
   GripVertical,
   ChevronDown,
   ChevronRight,
   PlusCircle,
   Sparkles,
+  ArrowUpCircle,
+  ArrowDownCircle,
 } from "lucide-react";
-import { NestedTodoItem } from "@/contexts/TodosContext"; // Import NestedTodoItem type
+import { NestedTodoItem, useTodos, TodoItem } from "@/contexts/TodosContext";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
+import { TodoItemActions } from "./TodoItemActions";
+import { TodoItemEditForm } from "./TodoItemEditForm";
+
+// --- Custom Hook for Editing State ---
+const useTodoItemEditing = (
+  todoId: string,
+  initialTitle: string,
+  onSaveCallback: (id: string, newTitle: string) => void
+) => {
+  const [isEditing, setIsEditing] = useState(false);
+
+  const startEditing = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setIsEditing(true);
+  };
+
+  const cancelEditing = (e?: React.MouseEvent | React.FocusEvent) => {
+    e?.stopPropagation();
+    setIsEditing(false);
+  };
+
+  const saveEdit = (newTitle: string) => {
+    onSaveCallback(todoId, newTitle);
+    setIsEditing(false);
+  };
+
+  return {
+    isEditing,
+    startEditing,
+    cancelEditing,
+    saveEdit,
+  };
+};
 
 // --- Constants ---
 const MAX_TODO_LEVEL = 2;
@@ -26,14 +58,13 @@ export interface TodoListItemProps {
   level: number;
   isToggling: boolean;
   isLoading: boolean;
-  onToggle: (id: string) => void;
-  onDelete: (id: string) => void;
   onEditSave: (id: string, newTitle: string) => void;
   onAddSubItem: (title: string, parentId: string) => void;
-  onBreakdown: (id: string) => void;
-  renderChildren: (items: NestedTodoItem[], level: number) => React.ReactNode;
-  isExpanded: boolean; // Added prop
-  onToggleExpand: (id: string) => void; // Added prop
+  onBreakdown: (todo: NestedTodoItem) => void;
+  isExpanded: boolean;
+  onToggleExpand: (id: string) => void;
+  isItemExpanded: (id: string) => boolean;
+  isDraggingTopLevel?: boolean; // Added optional prop for animation control
 }
 
 // --- Component ---
@@ -42,19 +73,18 @@ export const TodoListItem: React.FC<TodoListItemProps> = ({
   level,
   isToggling,
   isLoading,
-  onToggle,
-  onDelete,
   onEditSave,
   onAddSubItem,
   onBreakdown,
-  renderChildren,
-  isExpanded, // Use prop
-  onToggleExpand, // Use prop
+  isExpanded,
+  onToggleExpand,
+  isItemExpanded,
+  isDraggingTopLevel, // Receive prop
 }) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editText, setEditText] = useState(todo.title);
-  // Removed local isExpanded state
-  const inputRef = useRef<HTMLInputElement>(null);
+  const { toggleTodo, deleteTodo: deleteTodoContext, moveTodo } = useTodos();
+
+  const { isEditing, startEditing, cancelEditing, saveEdit } =
+    useTodoItemEditing(todo.id, todo.title, onEditSave);
 
   const {
     attributes,
@@ -63,103 +93,64 @@ export const TodoListItem: React.FC<TodoListItemProps> = ({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: todo.id });
+  } = useSortable({ id: todo.id, disabled: level > 0 });
 
-  // Style for the outer li (handles dragging transform and indentation via margin)
   const liStyle = {
     transform: CSS.Transform.toString(transform),
     transition,
-    marginLeft: `${level * 1.5}rem`, // Use margin for indentation
+    marginLeft: `${level * 1.5}rem`,
   };
 
-  // Style for the inner content div (handles visual appearance)
   const contentStyle = {
     opacity: isDragging ? 0.5 : 1,
     zIndex: isDragging ? 10 : undefined,
   };
 
-  useEffect(() => {
-    if (isEditing && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
-    }
-  }, [isEditing]);
-
-  const handleEditClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setEditText(todo.title);
-    setIsEditing(true);
-  };
-
-  const handleCancelClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsEditing(false);
-  };
-
-  const handleSaveClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (editText.trim() && editText.trim() !== todo.title) {
-      onEditSave(todo.id, editText.trim());
-    }
-    setIsEditing(false);
-  };
-
-  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    e.stopPropagation();
-    if (e.key === "Enter") {
-      if (editText.trim() && editText.trim() !== todo.title) {
-        onEditSave(todo.id, editText.trim());
-      }
-      setIsEditing(false);
-    } else if (e.key === "Escape") {
-      setIsEditing(false);
-    }
-  };
-
-  // Use the passed-in handler
   const handleToggleExpand = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onToggleExpand(todo.id); // Call handler from props
+    onToggleExpand(todo.id);
   };
 
   const handleAddSubClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     onAddSubItem("New Sub-item", todo.id);
-    // Removed setIsExpanded(true); Parent handles expansion via context handler
   };
 
   const handleBreakdownClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onBreakdown(todo.id);
-    // Removed setIsExpanded(true); Parent handles expansion via context handler
+    onBreakdown(todo);
+  };
+
+  const handleMoveUp = (id: string) => {
+    moveTodo(id, "up");
+  };
+
+  const handleMoveDown = (id: string) => {
+    moveTodo(id, "down");
   };
 
   const canHaveChildren = level < MAX_TODO_LEVEL;
   const hasChildren = todo.children && todo.children.length > 0;
 
-  // Define border color based on level for the inner div
   const levelBorderClass =
     level === 1
       ? "border-l-2 border-l-slate-300 dark:border-l-slate-600"
       : level === 2
       ? "border-l-2 border-l-slate-400 dark:border-l-slate-500"
-      : ""; // Level 0 has no extra left border thickness/color
+      : "";
 
   return (
     <>
-      {/* Outer li for DnD and indentation */}
       <li ref={setNodeRef} style={liStyle} className="list-none relative">
-        {/* Inner div for content box, background, border, padding */}
         <div
           style={contentStyle}
           className={cn(
             "flex items-center py-1 pr-1.5 pl-1 border border-gray-200 dark:border-gray-700 rounded-md group transition-colors bg-white dark:bg-gray-800",
-            levelBorderClass, // Add conditional left border class
+            levelBorderClass,
             isDragging && "shadow-lg",
-            todo.isNew && "animate-fade-in-down" // Apply animation if new
+            todo.isNew && "animate-fade-in-down"
           )}
         >
-          {/* Expand/Collapse Button */}
           {hasChildren ? (
             <button
               onClick={handleToggleExpand}
@@ -177,36 +168,28 @@ export const TodoListItem: React.FC<TodoListItemProps> = ({
               )}
             </button>
           ) : (
-            // Placeholder to align content when no expand button exists
             <div className="w-6 h-6 mr-1 flex-shrink-0"></div>
           )}
 
-          {/* Checkbox */}
           <input
             type="checkbox"
             onClick={(e) => e.stopPropagation()}
             checked={todo.is_completed}
-            onChange={() => onToggle(todo.id)}
+            onChange={() => toggleTodo(todo.id)}
             disabled={isLoading || isToggling || isEditing}
             className="h-3.5 w-3.5 text-blue-600 dark:text-blue-500 rounded border-gray-300 dark:border-gray-600 focus:ring-blue-500 dark:focus:ring-blue-600 bg-white dark:bg-gray-700 mr-2 flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
           />
 
-          {/* Title or Edit Input */}
           {isEditing ? (
-            <Input
-              ref={inputRef}
-              type="text"
-              value={editText}
-              onChange={(e) => setEditText(e.target.value)}
-              onKeyDown={handleInputKeyDown}
-              onBlur={() => setIsEditing(false)}
-              onClick={(e) => e.stopPropagation()}
-              className="flex-1 h-6 px-1 py-0 text-sm border-blue-500 ring-1 ring-blue-500 rounded focus:outline-none"
-              disabled={isLoading}
+            <TodoItemEditForm
+              initialTitle={todo.title}
+              isLoading={isLoading}
+              onSave={saveEdit}
+              onCancel={cancelEditing}
             />
           ) : (
             <span
-              onClick={handleEditClick}
+              onClick={startEditing}
               className={cn(
                 "flex-1 text-sm cursor-text",
                 todo.is_completed
@@ -218,114 +201,50 @@ export const TodoListItem: React.FC<TodoListItemProps> = ({
             </span>
           )}
 
-          {/* Action Buttons */}
-          <div className="flex items-center ml-auto pl-1 flex-shrink-0 space-x-0.5">
-            {isEditing ? (
-              <>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleSaveClick}
-                  disabled={isLoading || !editText.trim()}
-                  className="h-6 w-6 p-1 text-green-600 hover:text-green-700 dark:text-green-500 dark:hover:text-green-400 disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Save"
-                >
-                  {" "}
-                  <Save size={14} />{" "}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleCancelClick}
-                  disabled={isLoading}
-                  className="h-6 w-6 p-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Cancel"
-                >
-                  {" "}
-                  <XCircle size={14} />{" "}
-                </Button>
-              </>
-            ) : (
-              <>
-                {canHaveChildren && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={handleAddSubClick}
-                    disabled={isLoading || isToggling}
-                    className="h-6 w-6 p-1 text-gray-400 dark:text-gray-500 hover:text-green-500 dark:hover:text-green-400 opacity-0 group-hover:enabled:opacity-100 transition-opacity disabled:cursor-not-allowed"
-                    title="Add sub-item"
-                  >
-                    {" "}
-                    <PlusCircle size={14} />{" "}
-                  </Button>
-                )}
-                {canHaveChildren && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={handleBreakdownClick}
-                    disabled={isLoading || isToggling}
-                    className="h-6 w-6 p-1 text-gray-400 dark:text-gray-500 hover:text-purple-500 dark:hover:text-purple-400 opacity-0 group-hover:enabled:opacity-100 transition-opacity disabled:cursor-not-allowed"
-                    title="Break down task"
-                  >
-                    {" "}
-                    <Sparkles size={14} />{" "}
-                  </Button>
-                )}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  {...attributes}
-                  {...listeners}
-                  disabled={isLoading || isToggling}
-                  aria-label="Drag to reorder"
-                  className="h-6 w-6 p-1 cursor-grab touch-none text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 opacity-0 group-hover:enabled:opacity-100 transition-opacity disabled:cursor-not-allowed"
-                  title="Drag to reorder"
-                >
-                  {" "}
-                  <GripVertical size={14} />{" "}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleEditClick}
-                  disabled={isLoading || isToggling}
-                  className="h-6 w-6 p-1 text-gray-400 dark:text-gray-500 hover:text-blue-500 dark:hover:text-blue-400 opacity-0 group-hover:enabled:opacity-100 transition-opacity disabled:cursor-not-allowed"
-                  title="Edit"
-                >
-                  {" "}
-                  <Pencil size={14} />{" "}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDelete(todo.id);
-                  }}
-                  disabled={isLoading || isToggling}
-                  className="h-6 w-6 p-1 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 opacity-0 group-hover:enabled:opacity-100 transition-opacity disabled:cursor-not-allowed"
-                  title="Delete"
-                >
-                  {" "}
-                  <Trash size={14} />{" "}
-                </Button>
-              </>
-            )}
-          </div>
+          <TodoItemActions
+            todoId={todo.id}
+            level={level}
+            isEditing={isEditing}
+            isLoading={isLoading}
+            isToggling={isToggling}
+            canHaveChildren={canHaveChildren}
+            onEditClick={startEditing}
+            onDelete={deleteTodoContext}
+            onAddSubClick={handleAddSubClick}
+            onBreakdownClick={handleBreakdownClick}
+            onMoveUp={handleMoveUp}
+            onMoveDown={handleMoveDown}
+            dndAttributes={attributes}
+            dndListeners={listeners}
+          />
         </div>
       </li>
-      {/* Render Children with Animation Wrapper - outside the inner content div */}
+      {/* Conditionally apply transition class based on dragging state */}
       <div
         className={cn(
-          "overflow-hidden transition-all duration-300 ease-in-out",
+          "overflow-hidden",
+          !isDraggingTopLevel && "transition-all duration-300 ease-in-out", // Only animate if not dragging
           isExpanded ? "max-h-[999px] opacity-100" : "max-h-0 opacity-0"
         )}
       >
         {hasChildren && (
           <ul className="list-none pl-0 m-0 space-y-1.5 pt-1.5">
-            {renderChildren(todo.children, level + 1)}
+            {todo.children.map((child) => (
+              <TodoListItem
+                key={child.id}
+                todo={child}
+                level={level + 1}
+                isToggling={isToggling}
+                isLoading={isLoading}
+                isExpanded={isItemExpanded(child.id)}
+                onToggleExpand={onToggleExpand}
+                isItemExpanded={isItemExpanded}
+                onEditSave={onEditSave}
+                onAddSubItem={onAddSubItem}
+                onBreakdown={onBreakdown}
+                isDraggingTopLevel={isDraggingTopLevel} // Pass down drag state
+              />
+            ))}
           </ul>
         )}
       </div>

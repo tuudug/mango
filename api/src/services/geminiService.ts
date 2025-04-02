@@ -74,23 +74,33 @@ const sanitizeInput = (input: string): string => {
 /**
  * Calls the Gemini API to break down a task title into sub-tasks.
  * @param taskTitle The title of the todo item to break down.
+ * @param parentTitle Optional title of the parent task for context.
  * @returns An array of sub-task strings, or null if more context is needed.
  * @throws Throws an error if the API call fails or returns unsafe content.
  */
 export const breakdownTask = async (
-  taskTitle: string
+  taskTitle: string,
+  parentTitle?: string // Added optional parentTitle
 ): Promise<string[] | null> => {
-  // Sanitize the input title before using it in the prompt
-  const sanitizedTitle = sanitizeInput(taskTitle);
+  // Sanitize inputs
+  const sanitizedTaskTitle = sanitizeInput(taskTitle);
+  const sanitizedParentTitle = parentTitle
+    ? sanitizeInput(parentTitle)
+    : undefined;
 
-  const prompt = `
-<todo_text>
-${sanitizedTitle}
-</todo_text>
+  // Construct the prompt conditionally
+  let promptContext = `<todo_text>\n${sanitizedTaskTitle}\n</todo_text>`;
+  if (sanitizedParentTitle) {
+    promptContext = `<parent_task_text>\n${sanitizedParentTitle}\n</parent_task_text>\n${promptContext}`;
+  }
 
-<verbosity_level>3</verbosity_level>
-
-You are given a todo list item from our user in the todo_text tag. Your job is to break down the task into several simple, actionable sub-tasks, depending on the verbosity_level defined (1=least, 5=most).
+  const promptInstruction = `
+You are given a todo list item in the todo_text tag. ${
+    sanitizedParentTitle
+      ? "It is a sub-task of the task given in the parent_task_text tag."
+      : ""
+  }
+Your job is to break down the task from todo_text into several simple, actionable sub-tasks, depending on the verbosity_level defined (1=least, 5=most).
 
 If the given text is too ambiguous to break down and requires more context, you MUST return ONLY the text: <need_more_context>
 
@@ -107,10 +117,20 @@ IMPORTANT RULES for sub-task text:
 - Do NOT include any text outside the <item_N> tags.
   `.trim();
 
+  const prompt = `
+${promptContext}
+
+<verbosity_level>3</verbosity_level>
+
+${promptInstruction}
+  `.trim();
+
   try {
     console.log(
-      `Sending refined prompt to Gemini for task: "${sanitizedTitle}"`
-    ); // Log sanitized title
+      `Sending refined prompt to Gemini for task: "${sanitizedTaskTitle}" ${
+        sanitizedParentTitle ? `(Parent: "${sanitizedParentTitle}")` : ""
+      }`
+    );
     const result = await model.generateContent({
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig,
@@ -138,7 +158,8 @@ IMPORTANT RULES for sub-task text:
       console.warn(
         "Gemini response did not contain valid <item_N> tags, but wasn't <need_more_context>."
       );
-      return [];
+      // Consider returning null here too, as it's an unexpected format? Or empty array?
+      return []; // Returning empty array for now
     }
 
     console.log(`Parsed ${subTasks.length} sub-tasks from Gemini response.`);

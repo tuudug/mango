@@ -36,7 +36,7 @@ interface TodosContextType {
   todos: TodoItem[];
   nestedTodos: NestedTodoItem[];
   isLoading: boolean;
-  error: string | null; // Keep internal error state? Maybe just use toasts.
+  error: string | null;
   fetchTodos: () => Promise<void>;
   addTodo: (
     title: string,
@@ -50,7 +50,8 @@ interface TodosContextType {
     parentId: string | null,
     orderedIds: string[]
   ) => Promise<void>;
-  breakdownTodo: (id: string) => Promise<void>;
+  breakdownTodo: (todo: TodoItem) => Promise<void>;
+  moveTodo: (id: string, direction: "up" | "down") => Promise<void>; // Added moveTodo
   fetchTodosIfNeeded: () => void;
   lastFetchTime: Date | null;
   togglingTodoId: string | null;
@@ -89,12 +90,12 @@ const buildTree = (items: TodoItem[]): NestedTodoItem[] => {
 export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
   const [todos, setTodos] = useState<TodoItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null); // Keep for potential non-toast errors
+  const [error, setError] = useState<string | null>(null);
   const [lastFetchTime, setLastFetchTime] = useState<Date | null>(null);
   const [togglingTodoId, setTogglingTodoId] = useState<string | null>(null);
   const [editingTodoId, setEditingTodoId] = useState<string | null>(null);
   const { session } = useAuth();
-  const { showToast } = useToast(); // Use the toast hook
+  const { showToast } = useToast();
 
   const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
@@ -121,15 +122,14 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
       console.error("Failed to fetch todos:", e);
       const errorMsg = e instanceof Error ? e.message : "Failed to fetch todos";
       setError(errorMsg);
-      showToast(errorMsg, "error"); // Show toast on fetch error
+      showToast(errorMsg, "error");
       setTodos([]);
     } finally {
       setIsLoading(false);
     }
-  }, [session, getAuthHeaders, showToast]); // Added showToast dependency
+  }, [session, getAuthHeaders, showToast]);
 
   const fetchTodosIfNeeded = useCallback(() => {
-    // ... (no changes needed here)
     if (isLoading) return;
     const now = new Date();
     if (
@@ -144,7 +144,6 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
   }, [isLoading, lastFetchTime, fetchTodos]);
 
   useEffect(() => {
-    // ... (no changes needed here)
     if (session) {
       fetchTodosIfNeeded();
     } else {
@@ -154,7 +153,6 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
   }, [session]);
 
   useEffect(() => {
-    // ... (no changes needed here)
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
         console.log("Todo Window became visible, checking if fetch needed...");
@@ -198,7 +196,7 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
         }
         throw new Error(errorMsg);
       }
-      await fetchTodos(); // Refetch to get new item with correct state
+      await fetchTodos();
     } catch (e) {
       console.error("Failed to add todo:", e);
       const errorMsg = e instanceof Error ? e.message : "Failed to add todo";
@@ -244,21 +242,19 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
         }
         throw new Error(errorMsg);
       }
-      // No refetch needed if cascade delete works and optimistic update is sufficient
     } catch (e) {
       setTodos(originalTodos);
       console.error("Failed to delete todo:", e);
       const errorMsg = e instanceof Error ? e.message : "Failed to delete todo";
       setError(errorMsg);
       showToast(errorMsg, "error");
-      await fetchTodos(); // Refetch on error
+      await fetchTodos();
     } finally {
       setIsLoading(false);
     }
   };
 
   const toggleTodo = async (id: string) => {
-    // ... (keep optimistic update, add toast on error)
     if (!session) {
       showToast("You must be logged in to toggle todos.", "error");
       return;
@@ -296,14 +292,13 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
       console.error("Failed to toggle todo:", e);
       const errorMsg = e instanceof Error ? e.message : "Failed to toggle todo";
       setError(errorMsg);
-      showToast(errorMsg, "error"); // Show toast on error
+      showToast(errorMsg, "error");
     } finally {
       setTogglingTodoId(null);
     }
   };
 
   const editTodo = async (id: string, newTitle: string) => {
-    // ... (keep optimistic update, add toast on error)
     if (!session || !newTitle.trim()) {
       showToast("Login and title required to edit.", "warning");
       return;
@@ -345,7 +340,7 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
       console.error("Failed to edit todo:", e);
       const errorMsg = e instanceof Error ? e.message : "Failed to edit todo";
       setError(errorMsg);
-      showToast(errorMsg, "error"); // Show toast on error
+      showToast(errorMsg, "error");
     } finally {
       setEditingTodoId(null);
     }
@@ -355,7 +350,6 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
     parentId: string | null,
     orderedIds: string[]
   ) => {
-    // ... (keep optimistic update, add toast on error)
     if (!session) {
       showToast("You must be logged in to reorder todos.", "error");
       return;
@@ -399,32 +393,52 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
       console.log(
         `Successfully reordered todos under parent ${parentId || "NULL"}`
       );
-      await fetchTodos(); // Refetch might be safest
+      await fetchTodos();
     } catch (e) {
       setTodos(originalTodos);
       console.error("Failed to reorder todos:", e);
       const errorMsg =
         e instanceof Error ? e.message : "Failed to reorder todos";
       setError(errorMsg);
-      showToast(errorMsg, "error"); // Show toast on error
+      showToast(errorMsg, "error");
       await fetchTodos();
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Updated breakdownTodo to handle specific API responses and show toasts
-  const breakdownTodo = async (id: string) => {
+  const breakdownTodo = async (todo: TodoItem) => {
+    const id = todo.id;
     if (!session) {
       showToast("You must be logged in to break down todos.", "error");
       return;
     }
     setIsLoading(true);
     setError(null);
+
+    let parentTitle: string | undefined = undefined;
+    if (todo.level === 1 && todo.parent_id) {
+      const parent = todos.find((t) => t.id === todo.parent_id);
+      if (parent) {
+        parentTitle = parent.title;
+        console.log(`Found parent title for breakdown: "${parentTitle}"`);
+      } else {
+        console.warn(
+          `Parent todo with id ${todo.parent_id} not found in context state.`
+        );
+      }
+    }
+
     try {
+      const requestBody: { parentTitle?: string } = {};
+      if (parentTitle) {
+        requestBody.parentTitle = parentTitle;
+      }
+
       const response = await fetch(`/api/todos/manual/${id}/breakdown`, {
         method: "POST",
         headers: getAuthHeaders(),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
@@ -433,12 +447,11 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
         try {
           const errorBody = await response.json();
           errorMsg = errorBody.message || errorMsg;
-          errorCode = errorBody.code; // Check for specific code from API
+          errorCode = errorBody.code;
         } catch {
           /* Ignore */
         }
 
-        // Handle specific "need more context" error
         if (response.status === 422 && errorCode === "NEED_MORE_CONTEXT") {
           showToast(
             "Task too ambiguous",
@@ -446,14 +459,13 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
             "Please refine the task title for automatic breakdown."
           );
         } else {
-          throw new Error(errorMsg); // Throw other errors
+          throw new Error(errorMsg);
         }
       } else {
         const result = await response.json();
         const createdCount = result.createdSubItems?.length || 0;
         if (createdCount > 0) {
           showToast(`Generated ${createdCount} sub-tasks!`, "success");
-          // Add animation flag to new items before setting state
           const newItemsWithFlag = result.createdSubItems.map(
             (item: TodoItem) => ({ ...item, isNew: true })
           );
@@ -462,7 +474,6 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
               a.level === b.level ? a.position - b.position : a.level - b.level
             )
           );
-          // Remove flag after animation duration
           setTimeout(() => {
             setTodos((currentTodos) =>
               currentTodos.map((t) =>
@@ -473,19 +484,85 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
                   : t
               )
             );
-          }, 1000); // Match animation duration (adjust if needed)
+          }, 1000);
         } else {
           showToast("No sub-tasks generated.", "info");
         }
-        // No full refetch needed if API returns created items
-        // await fetchTodos();
       }
     } catch (e) {
       console.error("Failed to break down todo:", e);
       const errorMsg =
         e instanceof Error ? e.message : "Failed to break down task";
       setError(errorMsg);
-      showToast(errorMsg, "error"); // Show generic error toast
+      showToast(errorMsg, "error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // New function to handle moving items up/down
+  const moveTodo = async (id: string, direction: "up" | "down") => {
+    if (!session) {
+      showToast("You must be logged in to move todos.", "error");
+      return;
+    }
+    // Optimistic update (optional but good UX)
+    // Find the item and its siblings
+    const itemToMove = todos.find((t) => t.id === id);
+    if (!itemToMove) return;
+    const siblings = todos
+      .filter((t) => t.parent_id === itemToMove.parent_id)
+      .sort((a, b) => a.position - b.position);
+    const currentIndex = siblings.findIndex((t) => t.id === id);
+
+    if (direction === "up" && currentIndex > 0) {
+      // Swap positions optimistically
+      const targetIndex = currentIndex - 1;
+      const tempPos = siblings[targetIndex].position;
+      siblings[targetIndex].position = siblings[currentIndex].position;
+      siblings[currentIndex].position = tempPos;
+      setTodos([...todos]); // Trigger re-render
+    } else if (direction === "down" && currentIndex < siblings.length - 1) {
+      // Swap positions optimistically
+      const targetIndex = currentIndex + 1;
+      const tempPos = siblings[targetIndex].position;
+      siblings[targetIndex].position = siblings[currentIndex].position;
+      siblings[currentIndex].position = tempPos;
+      setTodos([...todos]); // Trigger re-render
+    } else {
+      return; // Cannot move further
+    }
+
+    setIsLoading(true); // Consider a different loading state?
+    setError(null);
+    try {
+      const response = await fetch(`/api/todos/manual/${id}/move`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ direction }),
+      });
+      if (!response.ok) {
+        // Revert optimistic update on error
+        await fetchTodos(); // Simplest way to revert is refetch
+        let errorMsg = `HTTP error! status: ${response.status}`;
+        try {
+          const errorBody = await response.json();
+          errorMsg = errorBody.message || errorMsg;
+        } catch {
+          /* Ignore */
+        }
+        throw new Error(errorMsg);
+      }
+      console.log(`Successfully moved todo ${id} ${direction}`);
+      // Refetch to confirm final order from DB
+      await fetchTodos();
+    } catch (e) {
+      console.error(`Failed to move todo ${direction}:`, e);
+      const errorMsg =
+        e instanceof Error ? e.message : `Failed to move todo ${direction}`;
+      setError(errorMsg);
+      showToast(errorMsg, "error");
+      await fetchTodos(); // Refetch on error
     } finally {
       setIsLoading(false);
     }
@@ -505,6 +582,7 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
     editTodo,
     reorderTodos,
     breakdownTodo,
+    moveTodo, // Add moveTodo to context value
     fetchTodosIfNeeded,
     lastFetchTime,
     togglingTodoId,

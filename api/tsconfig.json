@@ -10,6 +10,10 @@
     "forceConsistentCasingInFileNames": true, // Disallow inconsistently-cased references to the same file
     "resolveJsonModule": true // Include modules imported with .json extension
   },
+  "watchOptions": {
+    // Use polling for file watching, which can be more reliable on Windows/Docker/WSL
+    "watchFile": "fixedPollingInterval"
+  },
   "include": ["src/**/*"], // Specifies the files to include in the program
   "exclude": ["node_modules", "**/*.spec.ts"] // Specifies the files to exclude
 }

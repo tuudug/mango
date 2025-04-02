@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useCallback } from "react"; // Added useCallback
-import { useTodos, NestedTodoItem } from "@/contexts/TodosContext";
+import React, { useState, useMemo, useCallback } from "react";
+import { useTodos, NestedTodoItem, TodoItem } from "@/contexts/TodosContext"; // Added TodoItem
 import { LoadingBar } from "@/components/ui/loading-bar";
 import { Input } from "@/components/ui/input";
 import {
@@ -10,6 +10,8 @@ import {
   useSensor,
   useSensors,
   DragEndEvent,
+  DragStartEvent, // Import DragStartEvent
+  UniqueIdentifier,
 } from "@dnd-kit/core";
 import {
   arrayMove,
@@ -18,7 +20,34 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
-import { TodoListItem } from "./TodoListItem"; // Import the extracted component
+import { TodoListItem } from "./TodoListItem";
+
+// --- Helper Type for findItemAndSiblings ---
+interface FindResult {
+  item: NestedTodoItem | null;
+  siblings: NestedTodoItem[] | null;
+  parentId: string | null;
+}
+
+// --- Recursive Helper to Find Item, its Siblings, and Parent ID ---
+const findItemAndSiblings = (
+  items: NestedTodoItem[],
+  idToFind: UniqueIdentifier,
+  currentParentId: string | null = null
+): FindResult => {
+  for (const item of items) {
+    if (item.id === idToFind) {
+      return { item, siblings: items, parentId: currentParentId };
+    }
+    if (item.children && item.children.length > 0) {
+      const result = findItemAndSiblings(item.children, idToFind, item.id);
+      if (result.item) {
+        return result; // Found in children
+      }
+    }
+  }
+  return { item: null, siblings: null, parentId: null }; // Not found at this level or below
+};
 
 // --- Main Widget Component ---
 interface TodoListWidgetProps {
@@ -31,34 +60,16 @@ export const TodoListWidget: React.FC<TodoListWidgetProps> = ({ id: _id }) => {
     isLoading,
     error,
     addTodo: addTodoContext,
-    deleteTodo,
-    toggleTodo,
     editTodo,
     reorderTodos,
     breakdownTodo,
     togglingTodoId,
+    // moveTodo // Context function for move buttons
   } = useTodos();
 
   const [newTodoText, setNewTodoText] = useState("");
-  // State to manage expanded items
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
-
-  // Initialize expanded state based on fetched todos (optional, could default to collapsed)
-  // This runs only once when the component mounts or nestedTodos initially loads
-  // We might want to default all to collapsed instead. Let's default to collapsed.
-  // useEffect(() => {
-  //   const initialExpanded = new Set<string>();
-  //   const setInitial = (items: NestedTodoItem[]) => {
-  //     items.forEach(item => {
-  //       if (item.children && item.children.length > 0) {
-  //         initialExpanded.add(item.id); // Default expand items with children
-  //         setInitial(item.children);
-  //       }
-  //     });
-  //   };
-  //   setInitial(nestedTodos);
-  //   setExpandedItems(initialExpanded);
-  // }, []); // Run only once
+  const [isDraggingTopLevel, setIsDraggingTopLevel] = useState(false); // State for drag animation control
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -67,7 +78,6 @@ export const TodoListWidget: React.FC<TodoListWidgetProps> = ({ id: _id }) => {
     })
   );
 
-  // Toggle expansion state for an item
   const toggleItemExpansion = useCallback((id: string) => {
     setExpandedItems((prev) => {
       const newSet = new Set(prev);
@@ -80,30 +90,37 @@ export const TodoListWidget: React.FC<TodoListWidgetProps> = ({ id: _id }) => {
     });
   }, []);
 
-  // Check if an item is expanded
   const isItemExpanded = useCallback(
     (id: string) => {
-      return expandedItems.has(id);
+      // If dragging, nothing is considered expanded visually (for animation control)
+      return !isDraggingTopLevel && expandedItems.has(id);
     },
-    [expandedItems]
+    [expandedItems, isDraggingTopLevel] // Add dependency
   );
 
-  // Modified Add/Breakdown handlers to ensure parent expansion
   const handleAddSubItem = useCallback(
     async (title: string, parentId: string) => {
-      setExpandedItems((prev) => new Set(prev).add(parentId)); // Ensure parent is expanded
+      setExpandedItems((prev) => new Set(prev).add(parentId));
       await addTodoContext(title, parentId);
     },
     [addTodoContext]
   );
 
   const handleBreakdown = useCallback(
-    async (id: string) => {
-      setExpandedItems((prev) => new Set(prev).add(id)); // Ensure parent is expanded
-      await breakdownTodo(id);
+    async (todo: NestedTodoItem) => {
+      setExpandedItems((prev) => new Set(prev).add(todo.id));
+      await breakdownTodo(todo);
     },
     [breakdownTodo]
   );
+
+  const handleMoveUp = useCallback((id: string) => {
+    console.log("Move Up requested for:", id, "(Placeholder in Widget)");
+  }, []);
+
+  const handleMoveDown = useCallback((id: string) => {
+    console.log("Move Down requested for:", id, "(Placeholder in Widget)");
+  }, []);
 
   const handleAddTopLevelTodo = () => {
     if (newTodoText.trim() === "") return;
@@ -117,81 +134,65 @@ export const TodoListWidget: React.FC<TodoListWidgetProps> = ({ id: _id }) => {
     }
   };
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-
-    if (over && active.id !== over.id) {
-      let parentId: string | null = null;
-      let siblings: NestedTodoItem[] = [];
-
-      const findSiblings = (
-        items: NestedTodoItem[],
-        idToFind: string
-      ): boolean => {
-        for (const item of items) {
-          if (item.id === idToFind) {
-            siblings = items;
-            return true;
-          }
-          if (item.children && item.children.length > 0) {
-            if (findSiblings(item.children, idToFind)) {
-              parentId = item.id;
-              return true;
-            }
-          }
-        }
-        return false;
-      };
-
-      findSiblings(nestedTodos, active.id as string);
-
-      const oldIndex = siblings.findIndex((t) => t.id === active.id);
-      const newIndex = siblings.findIndex((t) => t.id === over.id);
-
-      if (oldIndex !== -1 && newIndex !== -1) {
-        const newOrderedIds = arrayMove(siblings, oldIndex, newIndex).map(
-          (t) => t.id
-        );
-        reorderTodos(parentId, newOrderedIds);
-      } else {
-        console.warn(
-          "Could not determine siblings for drag and drop",
-          active.id,
-          over.id
-        );
-      }
+  // --- Drag Handlers ---
+  const handleDragStart = (event: DragStartEvent) => {
+    // Check if the dragged item is top-level
+    const activeItem = nestedTodos.find((item) => item.id === event.active.id);
+    if (activeItem && activeItem.level === 0) {
+      setIsDraggingTopLevel(true); // Set dragging state
+      setExpandedItems(new Set()); // Collapse immediately
     }
   };
 
-  // Recursive rendering function - pass down expansion state and toggle handler
-  const renderTodoList = (
-    items: NestedTodoItem[],
-    level: number
-  ): React.ReactNode => {
-    return (
-      <SortableContext
-        items={items.map((t) => t.id)}
-        strategy={verticalListSortingStrategy}
-      >
-        {items.map((todo) => (
-          <TodoListItem
-            key={todo.id}
-            todo={todo}
-            level={level}
-            isToggling={togglingTodoId === todo.id}
-            isLoading={isLoading}
-            isExpanded={isItemExpanded(todo.id)} // Pass expanded state
-            onToggleExpand={toggleItemExpansion} // Pass toggle handler
-            onToggle={toggleTodo}
-            onDelete={deleteTodo}
-            onEditSave={editTodo}
-            onAddSubItem={handleAddSubItem} // Use wrapped handler
-            onBreakdown={handleBreakdown} // Use wrapped handler
-            renderChildren={renderTodoList}
-          />
-        ))}
-      </SortableContext>
-    );
+  const handleDragEnd = (event: DragEndEvent) => {
+    setIsDraggingTopLevel(false); // Reset dragging state regardless of outcome
+
+    const { active, over } = event;
+    if (!over || active.id === over.id) {
+      return;
+    }
+
+    const activeResult = findItemAndSiblings(nestedTodos, active.id);
+    const overResult = findItemAndSiblings(nestedTodos, over.id);
+
+    if (
+      activeResult.item &&
+      overResult.item &&
+      activeResult.parentId === overResult.parentId &&
+      activeResult.siblings
+    ) {
+      if (activeResult.item.level === 0) {
+        // Redundant check now, but safe
+        const currentSiblings = activeResult.siblings;
+        const parentId = activeResult.parentId;
+
+        const oldIndex = currentSiblings.findIndex((t) => t.id === active.id);
+        const newIndex = currentSiblings.findIndex((t) => t.id === over.id);
+
+        if (oldIndex !== -1 && newIndex !== -1) {
+          const newOrderedIds = arrayMove(
+            currentSiblings,
+            oldIndex,
+            newIndex
+          ).map((t) => t.id);
+          reorderTodos(parentId, newOrderedIds);
+        } else {
+          console.warn(
+            "Could not determine indices within siblings for drag and drop",
+            active.id,
+            over.id,
+            currentSiblings
+          );
+        }
+      }
+      // No need for the 'else' warning anymore as drag is disabled for nested
+    } else {
+      console.warn(
+        "Drag and drop failed: Items not found or not siblings.",
+        activeResult,
+        overResult
+      );
+    }
   };
 
   // Calculate completion stats
@@ -259,12 +260,34 @@ export const TodoListWidget: React.FC<TodoListWidgetProps> = ({ id: _id }) => {
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
+          onDragStart={handleDragStart} // Updated handler
+          onDragEnd={handleDragEnd} // Updated handler
           modifiers={[restrictToVerticalAxis]}
         >
-          <ul className="space-y-1.5 list-none p-0 m-0">
-            {renderTodoList(nestedTodos, 0)}
-          </ul>
+          <SortableContext
+            items={nestedTodos.map((t) => t.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <ul className="space-y-1.5 list-none p-0 m-0">
+              {nestedTodos.map((todo) => (
+                <TodoListItem
+                  key={todo.id}
+                  todo={todo}
+                  level={0}
+                  isToggling={togglingTodoId === todo.id}
+                  isLoading={isLoading}
+                  isExpanded={isItemExpanded(todo.id)} // Uses updated logic
+                  onToggleExpand={toggleItemExpansion}
+                  onEditSave={editTodo}
+                  onAddSubItem={handleAddSubItem}
+                  onBreakdown={handleBreakdown}
+                  isItemExpanded={isItemExpanded} // Pass down check function
+                  isDraggingTopLevel={isDraggingTopLevel} // Pass down drag state
+                  // onMoveUp/Down removed as they are handled via context in TodoListItem
+                />
+              ))}
+            </ul>
+          </SortableContext>
         </DndContext>
 
         {/* Error State Overlay */}
