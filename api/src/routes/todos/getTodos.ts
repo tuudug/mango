@@ -1,20 +1,6 @@
 import { Response, NextFunction } from "express";
 import { AuthenticatedRequest } from "../../middleware/auth"; // Adjust path as needed
-
-// Define the TodoItem type locally or import from a shared types file if available
-interface TodoItem {
-  id: string;
-  connection_id: string;
-  title: string;
-  is_completed: boolean;
-  due_date?: string | null;
-  created_at: string;
-  updated_at: string;
-  position: number;
-  parent_id?: string | null;
-  level: number;
-  sourceProvider: "manual";
-}
+import { TodoItem } from "../../types/todo";
 
 export const getTodosHandler = async (
   req: AuthenticatedRequest,

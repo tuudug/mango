@@ -1,21 +1,7 @@
 import { Response, NextFunction } from "express";
 import { AuthenticatedRequest } from "../../middleware/auth";
 import { breakdownTask } from "../../services/geminiService"; // Import the service
-
-// Define the TodoItem type locally or import
-interface TodoItem {
-  id: string;
-  connection_id: string;
-  title: string;
-  is_completed: boolean;
-  due_date?: string | null;
-  created_at: string;
-  updated_at: string;
-  position: number;
-  parent_id?: string | null;
-  level: number;
-  sourceProvider: "manual";
-}
+import { TodoItem } from "../../types/todo";
 
 const MAX_TODO_LEVEL = 2; // Consider moving to a shared constants file
 
