@@ -36,9 +36,12 @@ export const EditModeIndicator: React.FC<EditModeIndicatorProps> = ({
     // Outer div handles positioning and centering ONLY
     <div
       className={cn(
-        `fixed bottom-6 left-1/2 -translate-x-1/2 z-50 transition-transform duration-300 ease-in-out`,
-        // Use translate-y-full to ensure it's fully off-screen when hidden
-        isToolboxOpen ? "translate-y-0" : "translate-y-full"
+        // Base styles for positioning and transition
+        `fixed bottom-6 left-1/2 -translate-x-1/2 z-50 transition-all duration-300 ease-in-out`, // Use transition-all
+        // Conditional styles for visibility (transform + opacity + pointer-events)
+        isToolboxOpen
+          ? "translate-y-0 opacity-100 pointer-events-auto"
+          : "translate-y-full opacity-0 pointer-events-none"
       )}
     >
       {/* Inner div handles appearance and shake animation */}
