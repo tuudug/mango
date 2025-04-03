@@ -13,7 +13,7 @@ import {
 import { restrictToWindowEdges } from "@dnd-kit/modifiers";
 import { Loader2 } from "lucide-react";
 import { nanoid } from "nanoid";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react"; // Added useRef
 import { Layout } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
@@ -35,8 +35,14 @@ export function Dashboard() {
   const { isLoading: isAuthLoading } = useAuth(); // Get auth loading state
 
   // Use the custom hook for layout management
-  const { items, setItems, isLoadingLayout, fetchLayout, saveLayoutToServer } =
-    useDashboardLayout();
+  const {
+    items,
+    setItems,
+    isLoadingLayout, // Still used for initial load
+    // isBackgroundFetching, // Can be used for subtle indicators if needed later
+    fetchLayout,
+    saveLayoutToServer,
+  } = useDashboardLayout();
   const [isToolboxOpen, setIsToolboxOpen] = useState(false);
 
   // State for view/edit targets remains
@@ -44,6 +50,7 @@ export function Dashboard() {
     useState<DashboardName>("default");
   const [editTargetDashboard, setEditTargetDashboard] =
     useState<DashboardName>("default");
+  const prevEditTargetRef = useRef<DashboardName>("default"); // Ref to track previous edit target
 
   // State for DnD remains
   const [activeWidget, setActiveWidget] = useState<WidgetType | null>(null);
@@ -53,20 +60,24 @@ export function Dashboard() {
   const [shakeCount, setShakeCount] = useState(0);
   const triggerShakeIndicator = () => setShakeCount((c) => c + 1);
 
-  // --- Initial Load & Focus Handling (Remains mostly the same) ---
+  // State for loader when switching between desktop/mobile edit modes
+  const [isSwitchingEditMode, setIsSwitchingEditMode] = useState(false);
+
+  // --- Initial Load & Focus Handling ---
   useEffect(() => {
     const loadInitial = async () => {
       const isMobile = window.innerWidth < 768;
       const initialName: DashboardName = isMobile ? "mobile" : "default";
       setCurrentViewDashboardName(initialName);
       setEditTargetDashboard(initialName);
-      await fetchLayout(initialName);
+      // Initial fetch is NOT background
+      await fetchLayout(initialName, false, { background: false });
     };
     if (!isAuthLoading) {
       loadInitial();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthLoading]);
+  }, [isAuthLoading]); // fetchLayout removed as it's called inside
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -77,7 +88,8 @@ export function Dashboard() {
       ) {
         const lastSyncTime = getCachedLastSyncTime();
         if (!lastSyncTime || Date.now() - lastSyncTime > CACHE_STALE_DURATION) {
-          fetchLayout(currentViewDashboardName, true);
+          // Fetch on focus should be background
+          fetchLayout(currentViewDashboardName, true, { background: true });
         }
       }
     };
@@ -90,10 +102,31 @@ export function Dashboard() {
   useEffect(() => {
     // Fetch layout for the target being edited when toolbox opens or target changes
     if (isToolboxOpen && !isAuthLoading) {
-      fetchLayout(editTargetDashboard, true);
+      const previousTarget = prevEditTargetRef.current;
+      const targetChanged = previousTarget !== editTargetDashboard;
+
+      if (targetChanged) {
+        // Switching between desktop/mobile edit view - show loader
+        console.log(
+          `Edit target changed from ${previousTarget} to ${editTargetDashboard}. Fetching with loader.`
+        );
+        setIsSwitchingEditMode(true);
+        fetchLayout(editTargetDashboard, true, { background: false }).finally(
+          () => setIsSwitchingEditMode(false)
+        );
+      } else {
+        // Just opening toolbox or target hasn't changed - fetch without specific loader (hook handles initial load state)
+        console.log(
+          `Toolbox opened or target ${editTargetDashboard} unchanged. Fetching.`
+        );
+        // Fetch non-background on initial toolbox open to ensure latest data is shown for editing
+        fetchLayout(editTargetDashboard, true, { background: false });
+      }
     }
+    // Update ref *after* comparison
+    prevEditTargetRef.current = editTargetDashboard;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editTargetDashboard, isToolboxOpen, isAuthLoading]); // Rerun if target or toolbox state changes while auth is ready
+  }, [editTargetDashboard, isToolboxOpen, isAuthLoading]); // fetchLayout removed as it's called inside
   // --- End Initial Load & Focus Handling ---
 
   // --- Only Toolbox Toggle Logic Remains ---
@@ -104,11 +137,10 @@ export function Dashboard() {
       if (nextIsOpen) {
         // --- OPENING TOOLBOX ---
         console.log(
-          `Opening toolbox. Fetching latest for edit target: ${currentViewDashboardName}`
+          `Opening toolbox. Setting edit target to: ${currentViewDashboardName}`
         );
         setEditTargetDashboard(currentViewDashboardName); // Set edit target to current view
-        fetchLayout(currentViewDashboardName, true); // Force fetch the layout being viewed
-        // Note: Closing other panels is handled within LeftSidebar's handlers
+        // Fetching is handled by the useEffect watching editTargetDashboard and isToolboxOpen
       } else {
         // --- CLOSING TOOLBOX ---
         // ALWAYS reset state to default view when closing toolbox
@@ -125,9 +157,10 @@ export function Dashboard() {
         } else {
           // Closed explicitly by user (forceState is undefined)
           console.log(
-            `Toolbox closed explicitly. Set view to ${viewTarget} and fetching.`
+            `Toolbox closed explicitly. Set view to ${viewTarget} and fetching background.`
           );
-          fetchLayout(viewTarget, true); // Force fetch the default layout
+          // Fetch default layout in background when closing toolbox
+          fetchLayout(viewTarget, true, { background: true });
         }
       }
       return nextIsOpen; // Return the new state for isToolboxOpen
@@ -139,7 +172,7 @@ export function Dashboard() {
     setEditTargetDashboard((prev) =>
       prev === "default" ? "mobile" : "default"
     );
-    // The useEffect watching editTargetDashboard and isToolboxOpen handles fetching
+    // The useEffect watching editTargetDashboard and isToolboxOpen handles fetching & loader
   };
 
   // --- DnD Handlers (Remain the same) ---
@@ -309,8 +342,18 @@ export function Dashboard() {
 
   // --- Render Logic ---
   if (isAuthLoading) {
+    // Loader for initial auth check
     return (
       <div className="flex h-screen items-center justify-center bg-gray-950">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+      </div>
+    );
+  }
+
+  // Loader for initial layout fetch (after auth)
+  if (isLoadingLayout && items.length === 0) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-950 pl-16">
         <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
       </div>
     );
@@ -346,20 +389,21 @@ export function Dashboard() {
                   isMobileEditMode && "flex justify-center items-start pt-4"
                 )}
               >
-                {isLoadingLayout ? (
-                  <div className="flex h-full items-center justify-center">
-                    <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+                {/* Removed main isLoadingLayout check here */}
+                <DashboardGrid
+                  items={items}
+                  isToolboxOpen={isToolboxOpen}
+                  isMobileEditMode={isMobileEditMode}
+                  editTargetDashboard={editTargetDashboard}
+                  onLayoutChange={onLayoutChange}
+                  handleResize={handleResize}
+                  handleDeleteWidget={handleDeleteWidget}
+                />
+                {/* Loader specifically for switching edit modes */}
+                {isSwitchingEditMode && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-gray-950 bg-opacity-50 z-30">
+                    <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
                   </div>
-                ) : (
-                  <DashboardGrid
-                    items={items}
-                    isToolboxOpen={isToolboxOpen}
-                    isMobileEditMode={isMobileEditMode}
-                    editTargetDashboard={editTargetDashboard}
-                    onLayoutChange={onLayoutChange}
-                    handleResize={handleResize}
-                    handleDeleteWidget={handleDeleteWidget}
-                  />
                 )}
               </main>
             </Droppable>

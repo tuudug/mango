@@ -114,3 +114,42 @@ export const savePathStateToLocalStorage = (state: SavedPathState) => {
     console.error("Error saving path state to localStorage:", error);
   }
 };
+
+// --- Layout Comparison Function ---
+
+/**
+ * Deeply compares two dashboard layouts (arrays of GridItem).
+ * Ignores minW and minH properties as they are derived.
+ * Sorts items by ID before comparison to handle potential order differences.
+ */
+export const deepCompareLayouts = (
+  layout1: GridItem[] | null | undefined,
+  layout2: GridItem[] | null | undefined
+): boolean => {
+  if (layout1 === layout2) return true; // Same instance or both null/undefined
+  if (!layout1 || !layout2) return false; // One is null/undefined, the other isn't
+  if (layout1.length !== layout2.length) return false; // Different number of items
+
+  // Sort both arrays by item ID for consistent comparison
+  const sortedLayout1 = [...layout1].sort((a, b) => a.id.localeCompare(b.id));
+  const sortedLayout2 = [...layout2].sort((a, b) => a.id.localeCompare(b.id));
+
+  for (let i = 0; i < sortedLayout1.length; i++) {
+    const item1 = sortedLayout1[i];
+    const item2 = sortedLayout2[i];
+
+    // Compare relevant properties
+    if (
+      item1.id !== item2.id ||
+      item1.type !== item2.type ||
+      item1.x !== item2.x ||
+      item1.y !== item2.y ||
+      item1.w !== item2.w ||
+      item1.h !== item2.h
+    ) {
+      return false; // Found a difference
+    }
+  }
+
+  return true; // No differences found
+};
