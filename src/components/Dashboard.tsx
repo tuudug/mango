@@ -1,4 +1,6 @@
+import { useAuth } from "@/contexts/AuthContext";
 import { WidgetType, defaultWidgetLayouts } from "@/lib/dashboardConfig"; // Import config
+import { cn } from "@/lib/utils";
 import {
   DndContext,
   DragEndEvent,
@@ -9,6 +11,7 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { restrictToWindowEdges } from "@dnd-kit/modifiers";
+import { Loader2 } from "lucide-react";
 import { nanoid } from "nanoid";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Layout } from "react-grid-layout";
@@ -19,9 +22,6 @@ import { Droppable } from "./Droppable";
 import { LeftSidebar } from "./LeftSidebar";
 import { WidgetPreview } from "./WidgetPreview";
 import { WidgetToolbox } from "./WidgetToolbox";
-import { useAuth } from "@/contexts/AuthContext";
-import { cn } from "@/lib/utils";
-import { Loader2 } from "lucide-react";
 
 // Import refactored modules
 import { DashboardGrid } from "./dashboard/components/DashboardGrid";
@@ -263,7 +263,7 @@ export function Dashboard() {
   );
 
   const handleResize = useCallback(
-    (layout: Layout[], _oldItem: Layout, newItemLayout: Layout) => {
+    (_layout: Layout[], _oldItem: Layout, newItemLayout: Layout) => {
       if (!isToolboxOpen) return;
       const newItems = items.map((item) =>
         item.id === newItemLayout.i

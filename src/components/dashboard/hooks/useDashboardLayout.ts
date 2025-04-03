@@ -1,19 +1,19 @@
-import { useState, useCallback, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   GridItem,
   WidgetType,
   defaultWidgetLayouts,
 } from "@/lib/dashboardConfig";
+import { useCallback, useState } from "react";
 import { useDebouncedCallback } from "use-debounce";
+import { CACHE_STALE_DURATION, getDefaultLayout } from "../constants";
+import { CachedGridItemData, DashboardName } from "../types";
 import {
-  getCachedLayout,
-  setCachedLayout,
   getCachedLastSyncTime,
+  getCachedLayout,
   setCachedLastSyncTime,
+  setCachedLayout,
 } from "../utils";
-import { getDefaultLayout, CACHE_STALE_DURATION } from "../constants";
-import { DashboardName, CachedGridItemData } from "../types";
 
 export function useDashboardLayout() {
   const { user, session } = useAuth();
@@ -121,7 +121,7 @@ export function useDashboardLayout() {
       console.log(`Debounced save triggered for dashboard: ${dashboardName}`);
       try {
         const itemsToSave: CachedGridItemData[] = layoutToSave.map(
-          ({ minW, minH, ...rest }) => rest
+          ({ minW: _minW, minH: _minH, ...rest }) => rest
         );
 
         const response = await fetch(`/api/dashboards/${dashboardName}`, {

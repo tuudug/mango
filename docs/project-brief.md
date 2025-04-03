@@ -13,7 +13,11 @@ Here's a checklist based on the project brief ideas:
 These components handle the interaction and persistence of core application data via React Contexts.
 
 - [x] **Calendar Data Source (`CalendarDataSource.tsx`):** Manages calendar events (add, delete, view) using `CalendarContext`.
+  - [ ] **Backend:** Fix token decryption errors.
+  - [ ] **Backend:** Implement refresh token logic.
 - [x] **Health Data Source (`HealthDataSource.tsx`):** Manages daily step counts (add, update, view) using `HealthContext`.
+  - [ ] **Backend:** Fix token decryption errors.
+  - [ ] **Backend:** Implement refresh token logic.
 - [x] **Todos Data Source (`TodosDataSource.tsx`):** Manages todo items (add, delete, toggle completion) using `TodosContext`.
   - **[x] Editing:** Added ability to edit todo item text.
   - **[x] Reordering:** Top-level items use drag-and-drop; nested items use Move Up/Down buttons.
