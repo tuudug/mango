@@ -17,46 +17,61 @@ const latestVersion =
 
 export function DashboardHeader() {
   const [isChecking, setIsChecking] = useState(true);
+  const [isUpdating, setIsUpdating] = useState(false); // Add state for update process
 
-  // Simplify the hook call - remove callbacks
   const {
     offlineReady: [offlineReady, _setOfflineReady],
     needRefresh: [needRefresh, _setNeedRefresh],
     updateServiceWorker,
-  } = useRegisterSW(); // Removed options object
+  } = useRegisterSW();
 
-  // Use useEffect to set isChecking based on offlineReady state
-  // Also handle the case where registration might fail implicitly
-  // by setting a timeout. If offlineReady isn't true after a delay,
-  // assume something went wrong or there's no SW active.
   useEffect(() => {
     if (offlineReady) {
       console.log("Offline ready, setting isChecking to false.");
       setIsChecking(false);
     } else {
-      // Fallback: If not offlineReady after a short delay, stop checking
       const timer = setTimeout(() => {
-        // Check again inside timeout in case it became ready just before timeout fired
         if (!offlineReady) {
           console.log(
             "Timeout reached, assuming no SW or registration failed. Setting isChecking to false."
           );
           setIsChecking(false);
         }
-      }, 5000); // Wait 5 seconds
-
-      return () => clearTimeout(timer); // Cleanup timer on unmount or if offlineReady changes
+      }, 5000);
+      return () => clearTimeout(timer);
     }
   }, [offlineReady]);
 
   const handleUpdate = async () => {
-    if (!needRefresh) return;
+    if (!needRefresh || isUpdating) return; // Prevent multiple clicks
+
+    setIsUpdating(true); // Indicate update is in progress
+
+    // Add listener for controller change *before* triggering update
+    // Use { once: true } so the listener cleans itself up
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.addEventListener(
+        "controllerchange",
+        () => {
+          // Reload ONLY after the new worker has taken control
+          console.log("Service worker controller changed, reloading page.");
+          window.location.reload();
+        },
+        { once: true }
+      );
+    }
+
     try {
-      await updateServiceWorker(true);
-      window.location.reload();
+      console.log("Calling updateServiceWorker...");
+      await updateServiceWorker(true); // Trigger the update
+      console.log("updateServiceWorker promise resolved.");
+      // Reload is now handled by the 'controllerchange' listener
     } catch (error) {
       console.error("Failed to update service worker:", error);
+      setIsUpdating(false); // Reset updating state on error
     }
+    // Note: We don't set isUpdating back to false on success,
+    // because the page should reload via the listener.
   };
 
   // Determine button state and content
@@ -72,6 +87,12 @@ export function DashboardHeader() {
     tooltipContent = "Checking for updates...";
     ariaLabel = "Checking for updates...";
     isDisabled = true;
+  } else if (isUpdating) {
+    // Add state for when update is in progress
+    buttonIcon = <Loader2 className="h-5 w-5 animate-spin" />;
+    tooltipContent = "Updating...";
+    ariaLabel = "Updating application...";
+    isDisabled = true;
   } else if (needRefresh) {
     tooltipContent = "Update available";
     ariaLabel = "Update available";
@@ -80,7 +101,7 @@ export function DashboardHeader() {
     pulseAnimation = "animate-pulse";
   } else {
     // No update available (and not checking anymore)
-    tooltipContent = "Up to date"; // Changed tooltip for clarity
+    tooltipContent = "Up to date";
     ariaLabel = "Up to date";
     isDisabled = true;
   }
@@ -107,7 +128,7 @@ export function DashboardHeader() {
                 onClick={handleUpdate}
                 disabled={isDisabled}
                 className={`relative ${pulseAnimation} ${
-                  isDisabled && !isChecking
+                  isDisabled && !isChecking && !isUpdating // Adjust disabled style condition
                     ? "opacity-50 cursor-not-allowed"
                     : ""
                 }`}

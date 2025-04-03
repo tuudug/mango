@@ -1,5 +1,12 @@
-
 [
+  {
+    "version": "0.1.6",
+    "date": "2025-04-03",
+    "data": [
+      "Fixed mobile dashboard edit indicator was showing even when not in edit mode.",
+      "Further check for update improvements."
+    ]
+  },
   {
     "version": "0.1.5",
     "date": "2025-04-03",

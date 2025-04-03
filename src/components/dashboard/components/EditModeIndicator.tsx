@@ -37,8 +37,8 @@ export const EditModeIndicator: React.FC<EditModeIndicatorProps> = ({
     <div
       className={cn(
         `fixed bottom-6 left-1/2 -translate-x-1/2 z-50 transition-transform duration-300 ease-in-out`,
-        isToolboxOpen ? "translate-y-0" : "translate-y-20"
-        // Note: Shake class is moved to the inner div
+        // Use translate-y-full to ensure it's fully off-screen when hidden
+        isToolboxOpen ? "translate-y-0" : "translate-y-full"
       )}
     >
       {/* Inner div handles appearance and shake animation */}
