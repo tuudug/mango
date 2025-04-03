@@ -1,6 +1,5 @@
 import {
   LucideIcon,
-  // BarChart3, // Removed unused import
   CalendarCheck,
   CheckSquare,
   CalendarDays,
@@ -10,15 +9,22 @@ import {
   HelpCircle,
   CalendarClock,
   Footprints,
-  LayoutDashboard, // Add icon for Daily Summary
+  LayoutDashboard,
+  PiggyBank,
+  BarChartHorizontal, // Import report icon
 } from "lucide-react";
 
 // Widget Groups
-export type WidgetGroup = "Tracking" | "Productivity" | "Calendar" | "Other";
+export type WidgetGroup =
+  | "Tracking"
+  | "Productivity"
+  | "Calendar"
+  | "Finance" // Add Finance group
+  | "Other";
 
 // Widget types
 export type WidgetType =
-  | "Steps Tracker" // Renamed from Trackable Graph
+  | "Steps Tracker"
   | "Habit Graph"
   | "Sleep/Step"
   | "Goal Tracker"
@@ -26,7 +32,9 @@ export type WidgetType =
   | "Journal"
   | "Month Calendar"
   | "Daily Calendar"
-  | "Daily Summary" // New Widget
+  | "Daily Summary"
+  | "Daily Allowance"
+  | "Expenses Report" // Add new widget type
   | "Placeholder";
 
 // Grid item interface used in Dashboard state
@@ -43,7 +51,7 @@ export interface GridItem {
 
 // Available widgets for the toolbox
 export const availableWidgets: WidgetType[] = [
-  "Steps Tracker", // Renamed
+  "Steps Tracker",
   "Habit Graph",
   "Sleep/Step",
   "Goal Tracker",
@@ -51,7 +59,9 @@ export const availableWidgets: WidgetType[] = [
   "Journal",
   "Month Calendar",
   "Daily Calendar",
-  "Daily Summary", // Add to available widgets
+  "Daily Summary",
+  "Daily Allowance",
+  "Expenses Report", // Add to available widgets
   // Placeholder is not available in the toolbox
 ];
 
@@ -60,7 +70,7 @@ export const defaultWidgetLayouts: Record<
   WidgetType,
   { w: number; h: number; minW?: number; minH?: number }
 > = {
-  "Steps Tracker": { w: 8, h: 5, minW: 3, minH: 2 }, // Renamed, adjusted minW/minH for mini view
+  "Steps Tracker": { w: 8, h: 5, minW: 3, minH: 2 },
   "Habit Graph": { w: 8, h: 5, minW: 6, minH: 4 },
   "Sleep/Step": { w: 6, h: 5, minW: 4, minH: 4 },
   "Goal Tracker": { w: 8, h: 7, minW: 6, minH: 5 },
@@ -68,7 +78,9 @@ export const defaultWidgetLayouts: Record<
   Journal: { w: 10, h: 7, minW: 8, minH: 5 },
   "Month Calendar": { w: 4, h: 7, minW: 4, minH: 7 },
   "Daily Calendar": { w: 6, h: 7, minW: 4, minH: 5 },
-  "Daily Summary": { w: 6, h: 7, minW: 5, minH: 6 }, // New Widget Layout
+  "Daily Summary": { w: 6, h: 7, minW: 5, minH: 6 },
+  "Daily Allowance": { w: 6, h: 5, minW: 4, minH: 4 },
+  "Expenses Report": { w: 10, h: 7, minW: 8, minH: 5 }, // Layout for Expenses Report
   Placeholder: { w: 12, h: 7, minW: 8, minH: 5 },
 };
 
@@ -78,8 +90,7 @@ export const widgetMetadata: Record<
   { icon: LucideIcon; colorAccentClass: string; group: WidgetGroup }
 > = {
   "Steps Tracker": {
-    // Renamed
-    icon: Footprints, // Changed icon
+    icon: Footprints,
     colorAccentClass: "border-l-blue-400",
     group: "Tracking",
   },
@@ -109,22 +120,29 @@ export const widgetMetadata: Record<
     group: "Productivity",
   },
   "Month Calendar": {
-    // Renamed
     icon: CalendarDays,
     colorAccentClass: "border-l-red-400",
     group: "Calendar",
   },
   "Daily Calendar": {
-    // New
     icon: CalendarClock,
     colorAccentClass: "border-l-orange-400",
     group: "Calendar",
   },
   "Daily Summary": {
-    // New Widget Metadata
     icon: LayoutDashboard,
     colorAccentClass: "border-l-teal-400",
-    group: "Productivity", // Or maybe 'Other'? Let's try Productivity
+    group: "Productivity",
+  },
+  "Daily Allowance": {
+    icon: PiggyBank,
+    colorAccentClass: "border-l-emerald-400",
+    group: "Finance",
+  },
+  "Expenses Report": {
+    icon: BarChartHorizontal,
+    colorAccentClass: "border-l-cyan-400", // Choose a color
+    group: "Finance", // Assign to Finance group
   },
   Placeholder: {
     icon: HelpCircle,

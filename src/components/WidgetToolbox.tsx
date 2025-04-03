@@ -13,6 +13,7 @@ import {
   ListChecks,
   CalendarDays,
   AlertTriangle,
+  Landmark, // Import finance icon
 } from "lucide-react";
 import { Button } from "./ui/button";
 import {
@@ -32,16 +33,20 @@ interface WidgetToolboxProps {
 const groupWidgets = (
   widgets: WidgetType[]
 ): Record<WidgetGroup, WidgetType[]> => {
+  // Initialize with all possible groups, including Finance
   const grouped: Record<WidgetGroup, WidgetType[]> = {
     Tracking: [],
     Productivity: [],
     Calendar: [],
+    Finance: [], // Add Finance group here
     Other: [],
   };
   widgets.forEach((widgetType) => {
     const group = widgetMetadata[widgetType]?.group || "Other";
+    // Use optional chaining in case a widget type somehow doesn't have metadata
     grouped[group]?.push(widgetType);
   });
+  // Remove empty groups after processing all widgets
   Object.keys(grouped).forEach((key) => {
     if (grouped[key as WidgetGroup].length === 0) {
       delete grouped[key as WidgetGroup];
@@ -83,6 +88,12 @@ const dataSourceInfoMap: Partial<
     icon: CalendarDays,
     tooltip: "Consumes Calendar Data Source",
     color: "text-blue-400",
+  },
+  "Daily Allowance": {
+    // Add indicator for Daily Allowance
+    icon: Landmark,
+    tooltip: "Consumes Finance Data Source",
+    color: "text-emerald-400",
   },
   "Daily Summary": [
     {
@@ -137,9 +148,11 @@ export function WidgetToolbox({
       : availableWidgets; // Show all for default/desktop
 
   const groupedWidgets = groupWidgets(filteredAvailableWidgets);
+  // Add Finance to the desired display order
   const groupOrder: WidgetGroup[] = [
     "Tracking",
     "Productivity",
+    "Finance", // Add Finance here
     "Calendar",
     "Other",
   ];

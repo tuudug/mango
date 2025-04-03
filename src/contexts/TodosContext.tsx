@@ -122,7 +122,7 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
       console.error("Failed to fetch todos:", e);
       const errorMsg = e instanceof Error ? e.message : "Failed to fetch todos";
       setError(errorMsg);
-      showToast(errorMsg, "error");
+      showToast({ title: errorMsg, variant: "error" });
       setTodos([]);
     } finally {
       setIsLoading(false);
@@ -171,7 +171,10 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
     dueDate?: string | null
   ) => {
     if (!session) {
-      showToast("You must be logged in to add todos.", "error");
+      showToast({
+        title: "You must be logged in to add todos.",
+        variant: "error",
+      });
       return;
     }
     setIsLoading(true);
@@ -201,7 +204,7 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
       console.error("Failed to add todo:", e);
       const errorMsg = e instanceof Error ? e.message : "Failed to add todo";
       setError(errorMsg);
-      showToast(errorMsg, "error");
+      showToast({ title: errorMsg, variant: "error" });
     } finally {
       setIsLoading(false);
     }
@@ -209,7 +212,10 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
 
   const deleteTodo = async (id: string) => {
     if (!session) {
-      showToast("You must be logged in to delete todos.", "error");
+      showToast({
+        title: "You must be logged in to delete todos.",
+        variant: "error",
+      });
       return;
     }
     const originalTodos = [...todos];
@@ -247,7 +253,7 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
       console.error("Failed to delete todo:", e);
       const errorMsg = e instanceof Error ? e.message : "Failed to delete todo";
       setError(errorMsg);
-      showToast(errorMsg, "error");
+      showToast({ title: errorMsg, variant: "error" });
       await fetchTodos();
     } finally {
       setIsLoading(false);
@@ -256,7 +262,10 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
 
   const toggleTodo = async (id: string) => {
     if (!session) {
-      showToast("You must be logged in to toggle todos.", "error");
+      showToast({
+        title: "You must be logged in to toggle todos.",
+        variant: "error",
+      });
       return;
     }
     const originalTodos = [...todos];
@@ -292,7 +301,7 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
       console.error("Failed to toggle todo:", e);
       const errorMsg = e instanceof Error ? e.message : "Failed to toggle todo";
       setError(errorMsg);
-      showToast(errorMsg, "error");
+      showToast({ title: errorMsg, variant: "error" });
     } finally {
       setTogglingTodoId(null);
     }
@@ -300,7 +309,10 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
 
   const editTodo = async (id: string, newTitle: string) => {
     if (!session || !newTitle.trim()) {
-      showToast("Login and title required to edit.", "warning");
+      showToast({
+        title: "Login and title required to edit.",
+        variant: "warning",
+      });
       return;
     }
     const originalTodos = [...todos];
@@ -340,7 +352,7 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
       console.error("Failed to edit todo:", e);
       const errorMsg = e instanceof Error ? e.message : "Failed to edit todo";
       setError(errorMsg);
-      showToast(errorMsg, "error");
+      showToast({ title: errorMsg, variant: "error" });
     } finally {
       setEditingTodoId(null);
     }
@@ -351,7 +363,10 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
     orderedIds: string[]
   ) => {
     if (!session) {
-      showToast("You must be logged in to reorder todos.", "error");
+      showToast({
+        title: "You must be logged in to reorder todos.",
+        variant: "error",
+      });
       return;
     }
     const originalTodos = [...todos];
@@ -400,7 +415,7 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
       const errorMsg =
         e instanceof Error ? e.message : "Failed to reorder todos";
       setError(errorMsg);
-      showToast(errorMsg, "error");
+      showToast({ title: errorMsg, variant: "error" });
       await fetchTodos();
     } finally {
       setIsLoading(false);
@@ -410,7 +425,10 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
   const breakdownTodo = async (todo: TodoItem) => {
     const id = todo.id;
     if (!session) {
-      showToast("You must be logged in to break down todos.", "error");
+      showToast({
+        title: "You must be logged in to break down todos.",
+        variant: "error",
+      });
       return;
     }
     setIsLoading(true);
@@ -453,11 +471,12 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
         }
 
         if (response.status === 422 && errorCode === "NEED_MORE_CONTEXT") {
-          showToast(
-            "Task too ambiguous",
-            "warning",
-            "Please refine the task title for automatic breakdown."
-          );
+          showToast({
+            title: "Task too ambiguous",
+            description:
+              "Please refine the task title for automatic breakdown.",
+            variant: "warning",
+          });
         } else {
           throw new Error(errorMsg);
         }
@@ -465,7 +484,10 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
         const result = await response.json();
         const createdCount = result.createdSubItems?.length || 0;
         if (createdCount > 0) {
-          showToast(`Generated ${createdCount} sub-tasks!`, "success");
+          showToast({
+            title: `Generated ${createdCount} sub-tasks!`,
+            variant: "success",
+          });
           const newItemsWithFlag = result.createdSubItems.map(
             (item: TodoItem) => ({ ...item, isNew: true })
           );
@@ -486,7 +508,7 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
             );
           }, 1000);
         } else {
-          showToast("No sub-tasks generated.", "info");
+          showToast({ title: "No sub-tasks generated.", variant: "info" });
         }
       }
     } catch (e) {
@@ -494,7 +516,7 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
       const errorMsg =
         e instanceof Error ? e.message : "Failed to break down task";
       setError(errorMsg);
-      showToast(errorMsg, "error");
+      showToast({ title: errorMsg, variant: "error" });
     } finally {
       setIsLoading(false);
     }
@@ -503,7 +525,10 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
   // New function to handle moving items up/down
   const moveTodo = async (id: string, direction: "up" | "down") => {
     if (!session) {
-      showToast("You must be logged in to move todos.", "error");
+      showToast({
+        title: "You must be logged in to move todos.",
+        variant: "error",
+      });
       return;
     }
     // Optimistic update (optional but good UX)
@@ -561,7 +586,7 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
       const errorMsg =
         e instanceof Error ? e.message : `Failed to move todo ${direction}`;
       setError(errorMsg);
-      showToast(errorMsg, "error");
+      showToast({ title: errorMsg, variant: "error" });
       await fetchTodos(); // Refetch on error
     } finally {
       setIsLoading(false);

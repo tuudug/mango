@@ -2,30 +2,40 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
-import "./scrollbars.css"; // Import custom scrollbar styles
-import { AuthProvider } from "./contexts/AuthContext.tsx"; // Import AuthProvider
-import { ThemeProvider } from "./components/ThemeProvider.tsx"; // Import ThemeProvider
+import { AuthProvider } from "./contexts/AuthContext.tsx";
+import { ThemeProvider } from "./components/ThemeProvider.tsx";
+import { ToastProvider } from "./contexts/ToastContext.tsx"; // Import ToastProvider
 import { CalendarProvider } from "./contexts/CalendarContext.tsx"; // Import CalendarProvider
 import { HealthProvider } from "./contexts/HealthContext.tsx"; // Import HealthProvider
 import { TodosProvider } from "./contexts/TodosContext.tsx"; // Import TodosProvider
-import { ToastProvider } from "./contexts/ToastContext.tsx"; // Import ToastProvider
+import { FinanceProvider } from "./components/datasources/FinanceDataSource.tsx"; // Import FinanceProvider
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <ThemeProvider>
-      <AuthProvider>
-        <ToastProvider>
-          {" "}
-          {/* Wrap relevant providers/App */}
+      <ToastProvider>
+        {" "}
+        {/* Wrap with ToastProvider */}
+        <AuthProvider>
           <CalendarProvider>
+            {" "}
+            {/* Wrap with CalendarProvider */}
             <HealthProvider>
+              {" "}
+              {/* Wrap with HealthProvider */}
               <TodosProvider>
-                <App />
+                {" "}
+                {/* Wrap with TodosProvider */}
+                <FinanceProvider>
+                  {" "}
+                  {/* Wrap with FinanceProvider */}
+                  <App />
+                </FinanceProvider>
               </TodosProvider>
             </HealthProvider>
           </CalendarProvider>
-        </ToastProvider>
-      </AuthProvider>
+        </AuthProvider>
+      </ToastProvider>
     </ThemeProvider>
   </React.StrictMode>
 );

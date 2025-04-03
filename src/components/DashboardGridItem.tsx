@@ -5,8 +5,9 @@ import {
   // Mode, // Removed unused import
   WidgetType,
   widgetMetadata,
-} from "@/lib/dashboardConfig";
-import { X, Pencil } from "lucide-react";
+} from "@/lib/dashboardConfig"; // Corrected import path
+import { X, Pencil, AlertTriangle } from "lucide-react"; // Import AlertTriangle for error
+import { Button } from "@/components/ui/button"; // Import Button
 
 // Widget component imports
 import { StepsTrackerWidget } from "../widgets/StepsTrackerWidget"; // Renamed import
@@ -19,6 +20,8 @@ import { GoalTrackerWidget } from "../widgets/GoalTrackerWidget";
 import { JournalWidget } from "../widgets/JournalWidget";
 import { PlaceholderWidget } from "../widgets/PlaceholderWidget";
 import { DailySummaryWidget } from "../widgets/DailySummaryWidget"; // Import the new widget
+import { DailyAllowanceWidget } from "../widgets/DailyAllowanceWidget"; // Import Daily Allowance widget
+import { ExpensesReportWidget } from "../widgets/ExpensesReportWidget"; // Import Expenses Report widget
 
 interface DashboardGridItemProps {
   item: GridItem;
@@ -47,7 +50,9 @@ const widgetComponentMap: Record<
   Journal: JournalWidget,
   "Month Calendar": MonthCalendarWidget,
   "Daily Calendar": DailyCalendarWidget,
-  "Daily Summary": DailySummaryWidget, // Add mapping for the new widget
+  "Daily Summary": DailySummaryWidget,
+  "Daily Allowance": DailyAllowanceWidget, // Corrected key with space
+  "Expenses Report": ExpensesReportWidget, // Corrected key with space
   Placeholder: PlaceholderWidget,
 };
 
@@ -57,12 +62,45 @@ export function DashboardGridItem({
   handleDeleteWidget,
 }: DashboardGridItemProps) {
   const metadata = widgetMetadata[item.type];
-  const IconComponent = metadata.icon;
   const WidgetContentComponent = widgetComponentMap[item.type];
 
-  if (!WidgetContentComponent) {
-    return <div>Unknown Widget Type: {item.type}</div>;
+  // --- Error Handling for Missing Component or Metadata ---
+  if (!WidgetContentComponent || !metadata) {
+    const errorType = !WidgetContentComponent ? "Component" : "Metadata";
+    console.error(
+      `Error rendering widget: ${errorType} not found for type: ${item.type}`
+    );
+    return (
+      // Added relative positioning for the delete button
+      <div className="relative bg-red-900/50 border border-red-700 rounded-lg p-3 text-red-200 flex flex-col items-center justify-center text-center h-full">
+        {/* Delete button for error state, only shown in edit mode */}
+        {isEditing && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={(e) => {
+              e.stopPropagation(); // Prevent grid drag/resize
+              handleDeleteWidget(item.id);
+            }}
+            className="absolute top-1 right-1 p-0.5 h-5 w-5 text-red-300 hover:text-red-100 hover:bg-red-700/50 rounded"
+            title="Delete Invalid Widget"
+          >
+            <X size={14} />
+          </Button>
+        )}
+        <AlertTriangle className="w-6 h-6 mb-1" />
+        <p className="text-xs font-semibold">Error: Unknown Widget Type</p>
+        {/* Use backticks to avoid quote escaping issues */}
+        <p className="text-[10px]">{`'${item.type}'`}</p>
+      </div>
+    );
   }
+  // --- End Error Handling ---
+
+  const IconComponent = metadata.icon; // Safe to access now
+
+  // Check if in development mode using Vite's env variable
+  const isDevMode = import.meta.env.DEV;
 
   return (
     <WidgetErrorBoundary widgetId={item.id}>
@@ -75,21 +113,34 @@ export function DashboardGridItem({
         {/* Title Bar */}
         {item.type !== "Placeholder" && (
           <div className="flex items-center justify-between p-1.5 border-b border-gray-700 bg-gray-700/50 cursor-grab">
-            {/* Left side: Icon + Title */}
-            <div className="flex items-center gap-1.5">
+            {/* Left side: Icon + Title + Dev Coords */}
+            <div className="flex items-center gap-1.5 overflow-hidden">
+              {" "}
+              {/* Added overflow-hidden */}
               <IconComponent
-                className={`w-3.5 h-3.5 ${metadata.colorAccentClass.replace(
+                className={`w-3.5 h-3.5 flex-shrink-0 ${metadata.colorAccentClass.replace(
+                  // Added flex-shrink-0
                   "border-l-",
                   "text-"
                 )}`}
               />
-              <span className="text-xs font-medium text-gray-200 select-none">
+              <span className="text-xs font-medium text-gray-200 select-none truncate">
+                {" "}
+                {/* Added truncate */}
                 {item.type}
               </span>
+              {/* Display coordinates only in development mode */}
+              {isDevMode && (
+                <span className="text-[10px] text-gray-500 select-none ml-1 whitespace-nowrap">
+                  (x:{item.x}, y:{item.y}, w:{item.w}, h:{item.h})
+                </span>
+              )}
             </div>
             {/* Right side: Controls - Conditionally render based on isEditing */}
             {isEditing && (
-              <div className="flex items-center gap-1 widget-controls-cancel-drag">
+              <div className="flex items-center gap-1 widget-controls-cancel-drag flex-shrink-0">
+                {" "}
+                {/* Added flex-shrink-0 */}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();

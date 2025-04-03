@@ -13,16 +13,20 @@ Here's a checklist based on the project brief ideas:
 These components handle the interaction and persistence of core application data via React Contexts.
 
 - [x] **Calendar Data Source (`CalendarDataSource.tsx`):** Manages calendar events (add, delete, view) using `CalendarContext`.
-  - [ ] **Backend:** Fix token decryption errors.
-  - [ ] **Backend:** Implement refresh token logic.
+  - **[x] Backend:** Fix token decryption errors. (**Resolved: Incorrect ENV VAR**)
+  - **[x] Backend:** Implement refresh token logic. (**Verified: Existing logic works after decryption fix**)
 - [x] **Health Data Source (`HealthDataSource.tsx`):** Manages daily step counts (add, update, view) using `HealthContext`.
-  - [ ] **Backend:** Fix token decryption errors.
-  - [ ] **Backend:** Implement refresh token logic.
+  - **[x] Backend:** Fix token decryption errors. (**Resolved: Incorrect ENV VAR**)
+  - **[x] Backend:** Implement refresh token logic. (**Verified: Existing logic works after decryption fix**)
 - [x] **Todos Data Source (`TodosDataSource.tsx`):** Manages todo items (add, delete, toggle completion) using `TodosContext`.
   - **[x] Editing:** Added ability to edit todo item text.
   - **[x] Reordering:** Top-level items use drag-and-drop; nested items use Move Up/Down buttons.
   - **[x] Sub-items:** Added support for nested sub-items (up to 2 levels).
   - **[x] AI Breakdown:** Added "magic" button to generate sub-tasks using Gemini. **Now includes parent task context.**
+- [x] **Finance Data Source (`FinanceDataSource.tsx`):** Manages manual finance entries and settings.
+  - **[x] Database:** Added `manual_finance_settings` and `manual_finance_entries` tables.
+  - **[x] Backend:** Added API routes (`/api/finance`) for settings and entries (GET, PUT, POST, DELETE).
+  - **[x] Frontend:** Created context, settings panel (in sidebar), expense entry modal.
 
 ## Key Features
 
@@ -46,7 +50,10 @@ These components handle the interaction and persistence of core application data
 ### Trackables
 
 - [ ] User-defined statistics (weight, steps, etc.).
-- [ ] Dashboard display for tracked stats (Partially done - widgets exist, data is static).
+- [x] Dashboard display for tracked stats (Partially done - widgets exist, data is static for some).
+- [x] **Finance Tracking:**
+  - [x] Daily Allowance Widget (`DailyAllowanceWidget.tsx`) - Shows remaining daily budget.
+  - [x] Expenses Report Widget (`ExpensesReportWidget.tsx`) - Shows weekly spending bar chart.
 
 ### Progression System
 
@@ -78,6 +85,7 @@ These components handle the interaction and persistence of core application data
   - [x] Last sync time stored to check cache staleness (12hr).
   - [x] Cache used on initial load; stale cache updated on focus.
   - [x] Fetches forced on entering/exiting edit mode or switching edit target.
+  - **[x] Background Fetching:** Implemented background fetching with comparison to avoid unnecessary re-renders.
 - [x] **Mobile Layout Support:**
   - [x] Separate 'mobile' layout fetched/saved via API & cached.
   - [x] Automatic loading of 'mobile' or 'default' layout based on screen width (initial load).
@@ -86,7 +94,7 @@ These components handle the interaction and persistence of core application data
 - [ ] **Multiple Named Dashboards:** (Future - requires UI for management)
 - [x] **Refined Widget List & Categories (Used for Paths):**
   - **Productivity:**
-    - [x] To-do List (`TodoListWidget.tsx` -> `TodoList/index.tsx`) - **Enhanced with Edit, Reorder (DnD/Buttons), Sub-items, AI Breakdown (w/ Context)**
+    - [x] To-do List (`TodoListWidget.tsx` -> `TodoList/index.tsx`) - **Enhanced with Edit, Reorder (DnD/Buttons), Sub-items, AI Breakdown (w/ Context), Tooltips**
     - [x] Month Calendar (`MonthCalendarWidget.tsx`)
     - [x] Daily Calendar (`DailyCalendarWidget.tsx`)
     - [x] Goal Tracker (`GoalTrackerWidget.tsx`)
@@ -102,6 +110,9 @@ These components handle the interaction and persistence of core application data
       - [ ] _Upgrade:_ Sleep Analysis
       - [ ] _Upgrade:_ Daily Routine Generator
     - [ ] Air Quality Widget
+  - **Finance:** (**New Category**)
+    - [x] Daily Allowance (`DailyAllowanceWidget.tsx`)
+    - [x] Expenses Report (`ExpensesReportWidget.tsx`)
   - **Mindfulness/Focus:**
     - [x] Journaling Widget (`JournalWidget.tsx`)
     - [ ] Affirmation Widget
@@ -141,7 +152,7 @@ These components handle the interaction and persistence of core application data
 ## User Experience (UX)
 
 - [ ] Minimal user input focus.
-- [x] Intuitive interface (Implemented Left sidebar, sliding panels for Toolbox, GM, Profile, Paths).
+- [x] Intuitive interface (Implemented Left sidebar, sliding panels for Toolbox, GM, Profile, Paths, Data Sources, Finance Settings).
 - [x] Dashboard customization implemented.
 - [x] **Panel Behavior:**
   - [x] Panels (except Toolbox) slide over the dashboard content.
@@ -151,11 +162,14 @@ These components handle the interaction and persistence of core application data
 - [x] **Edit Mode Interaction:**
   - [x] Exiting edit mode always returns to the default desktop view.
   - [x] Attempting to open a panel during edit mode shakes the edit indicator and shows a toast.
+  - **[x] Invalid Widget Handling:** Error state with delete button shown for unknown widget types in edit mode.
 - [ ] Emphasis on Positive Reinforcement (Guiding principle).
 - **[x] PWA Update Notifications:** Implemented prompt for app updates & fixed update flow.
-- **[x] Toast Notifications:** Added system for user feedback (`useToast` context).
+- **[x] Toast Notifications:** Added system for user feedback (`useToast` context). **Signature updated.**
 - **[x] Collapse on Drag:** Todo list items collapse during drag to improve DnD experience.
-- **[x] Dashboard Loading:** Improved loading state to avoid full-screen flash (further improved by caching).
+- **[x] Dashboard Loading:** Improved loading state to avoid full-screen flash (further improved by caching & background fetching).
+- **[x] Dark Mode:** Forced dark mode via CSS, ignoring device preference.
+- **[x] Development Aids:** Added widget coordinate display in dev mode.
 
 ## LLM Prompting Considerations
 

@@ -1,10 +1,18 @@
 import React, { createContext, useContext, ReactNode } from "react";
 import { Toaster, toast as sonnerToast } from "sonner";
 
-type ToastType = "success" | "error" | "info" | "warning";
+// Define the structure for toast options, mirroring sonner's capabilities
+interface ToastOptions {
+  title: string;
+  description?: string;
+  // Allow 'destructive' as input, map it to 'error' for sonner
+  variant?: "success" | "error" | "info" | "warning" | "destructive";
+  // Add other sonner options here if needed (e.g., duration, action)
+}
 
 interface ToastContextType {
-  showToast: (message: string, type?: ToastType, description?: string) => void;
+  // Update showToast to accept the options object
+  showToast: (options: ToastOptions) => void;
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
@@ -14,25 +22,26 @@ interface ToastProviderProps {
 }
 
 export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
-  const showToast = (
-    message: string,
-    type: ToastType = "info",
-    description?: string
-  ) => {
-    const options = description ? { description } : {};
-    switch (type) {
+  // Update showToast implementation to use the options object
+  const showToast = (options: ToastOptions) => {
+    // Map 'destructive' variant to 'error' for sonner function calls
+    const { title, description, variant: inputVariant = "info" } = options;
+    const sonnerOptions = description ? { description } : {};
+    const variant = inputVariant === "destructive" ? "error" : inputVariant; // Map destructive to error
+
+    switch (variant) {
       case "success":
-        sonnerToast.success(message, options);
+        sonnerToast.success(title, sonnerOptions);
         break;
-      case "error":
-        sonnerToast.error(message, options);
+      case "error": // Handles both 'error' and 'destructive' inputs
+        sonnerToast.error(title, sonnerOptions);
         break;
       case "warning":
-        sonnerToast.warning(message, options);
+        sonnerToast.warning(title, sonnerOptions);
         break;
       case "info":
       default:
-        sonnerToast.info(message, options);
+        sonnerToast.info(title, sonnerOptions);
         break;
     }
   };

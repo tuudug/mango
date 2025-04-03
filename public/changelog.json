@@ -1,5 +1,14 @@
 [
   {
+    "version": "0.1.10",
+    "date": "2025-04-03",
+    "data": [
+      "Added Finance Data Source!",
+      "Added Expenses Report Widget!",
+      "Added Daily Allowance Widget!"
+    ]
+  },
+  {
     "version": "0.1.9",
     "date": "2025-04-03",
     "data": [

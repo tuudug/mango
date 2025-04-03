@@ -1,69 +1,73 @@
-# Current Progress: Google Token Handling (As of 2025-04-03 ~3:30 PM)
+# Current Progress: Finance Data Source & Widgets (As of 2025-04-03 ~9:24 PM)
 
-## Goal: Fix Google Calendar/Health Token Decryption & Implement Refresh Logic
+## Goal: Implement Manual Finance Tracking
 
-The immediate focus is to resolve errors related to decrypting stored Google API credentials (access and refresh tokens) in the backend and implement the necessary logic to automatically refresh expired access tokens using the stored refresh tokens. This is crucial for ensuring continuous data synchronization for Google Calendar and Google Health integrations.
+Added a new data source for manual finance tracking, including settings management and initial widgets for daily allowance and weekly expense reporting.
 
-## Current Issues:
+## Implementation Progress:
 
-- **Decryption Errors:** The backend API (`/api`) is logging errors when attempting to decrypt stored Google credentials from the `data_source_connections` table, specifically within the `getCalendarEvents.ts` and `getHealthEntries.ts` route handlers. The errors indicate potential issues with the encryption key or data integrity:
-  ```
-  [1] Decryption failed: Error: Unsupported state or unable to authenticate data
-  [1] Failed to decrypt credentials for connection ...: Error: Decryption failed. Data may be tampered or key is incorrect.
-  [1] Decryption failed: Error: Unsupported state or unable to authenticate data
-  [1] Failed to decrypt Google Health credentials for conn ...: Error: Decryption failed. Data may be tampered or key is incorrect.
-  ```
-- **Lack of Refresh Logic:** The backend currently lacks the mechanism to detect expired access tokens and use the refresh token to obtain new ones.
+1.  **Database Schema (Supabase):**
+    - Created `manual_finance_settings` table (stores `user_id`, `currency`, `daily_allowance_goal`, `salary_schedule`, `current_balance`). Includes RLS policies and `updated_at` trigger.
+    - Created `manual_finance_entries` table (stores `user_id`, `entry_date`, `amount`, `description`). Includes RLS policies.
+2.  **Backend API (`/api`):**
+    - Added new finance router (`/api/finance`).
+    - Implemented handlers for:
+      - `GET /settings`: Fetch user finance settings.
+      - `PUT /settings`: Upsert user finance settings (currency, goal, schedule).
+      - `GET /entries/today`: Fetch today's expense entries.
+      - `POST /entries`: Add a new expense entry (supports optional `entry_date`).
+      - `DELETE /entries/:id`: Delete a specific expense entry.
+      - `GET /entries/weekly`: Fetch aggregated daily expenses for a given week range.
+    - Added `cors` middleware to `server.ts` for cross-origin requests (essential for production).
+    - Fixed `passport` default import in `server.ts`.
+3.  **Frontend (`/src`):**
+    - **Finance Context (`FinanceDataSource.tsx`):** Created context to manage finance state (settings, today's expenses, weekly expenses), fetch data from the API, calculate remaining daily allowance, and provide functions (`addExpense`, `deleteExpense`, `updateSettings`, week navigation).
+    - **Finance Settings Panel (`FinanceSettingsPanel.tsx`):** Created panel (accessible via Left Sidebar) to view/edit currency and daily goal, and view/delete today's expense entries.
+    - **Left Sidebar (`LeftSidebar.tsx`):** Added "Finance Settings" button and logic to toggle the panel. Updated `showToast` calls to use new object signature.
+    - **Currency Helpers (`lib/currencies.ts`):** Created constants file for currency codes/symbols and formatting functions.
+    - **Expense Entry Modal (`ExpenseEntryModal.tsx`):** Created modal (triggered from Daily Allowance widget) to record new expenses, including an optional date input.
+    - **Daily Allowance Widget (`DailyAllowanceWidget.tsx`):** Created widget displaying remaining daily allowance using an animated counter and circular progress bar. Removed initial loading state.
+    - **Expenses Report Widget (`ExpensesReportWidget.tsx`):** Created widget displaying a weekly bar chart of expenses using `recharts`. Includes navigation controls, goal reference line, and highlighting for today's date on the X-axis.
+    - **Widget Registration:** Added `DailyAllowance` and `ExpensesReport` to `dashboardConfig.ts` (types, layouts, metadata) and `WidgetToolbox.tsx` (under new "Finance" category). Registered components in `DashboardGridItem.tsx`.
+    - **Provider Setup (`main.tsx`):** Wrapped app with `FinanceProvider`.
+    - **Toast Context (`ToastContext.tsx`):** Updated `showToast` signature to accept an options object, aligning with `sonner` library usage.
+    - **Dashboard Grid Item (`DashboardGridItem.tsx`):**
+      - Added display of widget coordinates (x, y, w, h) next to the title in development mode.
+      - Added error handling to display an error message and a delete button (in edit mode) for widgets with unknown types found in the layout data.
+      - Corrected mapping keys for `Daily Allowance` and `Expenses Report`.
 
-## Previous Work (Dashboard Caching & Refactor - Completed 2025-04-03 ~3:28 PM)
+## Previous Work (Google Token Handling - Resolved 2025-04-03 ~7:43 PM)
 
-### Goal: Implement Local Caching, Refactor Dashboard Component, Improve Panel UX
+- **Goal:** Fix Google Calendar/Health Token Decryption & Verify Refresh Logic.
+- **Issue:** Decryption errors (`Unsupported state or unable to authenticate data`) were occurring when fetching Google data.
+- **Resolution:** Identified and corrected an issue with the `API_ENCRYPTION_KEY` environment variable (likely a duplicate or incorrect value). After fixing the key, decryption succeeded.
+- **Refresh Logic:** Confirmed that the existing refresh logic using `google-auth-library` (`oauth2Client.on('tokens', ...)` event) was likely functional but appeared broken due to the decryption failures. No code changes were needed for the refresh mechanism itself after the key was fixed.
 
-Work involved implementing local storage caching for dashboard layouts, refactoring the large `Dashboard.tsx` component, and refining panel interaction UX.
+## Previous Work (Dashboard Loading/Fetching Optimizations - Completed 2025-04-03 ~7:16 PM)
 
-### Architecture Decisions:
+- **Goal:** Reduce dashboard loading flashes by fetching updates in the background.
+- **Implementation:**
+  - Modified `useDashboardLayout` hook to perform background fetches on window focus or when closing the toolbox.
+  - Implemented `deepCompareLayouts` utility to compare fetched layout with current state.
+  - UI state (`items`) is now only updated if the fetched layout differs from the current one.
+  - Added logic to show cached layout immediately on initial load while fetching updates in the background.
+  - Removed the main loading overlay, adding a specific loader only for switching between desktop/mobile edit previews.
 
-- **Backend API:** Node.js/Express backend service (`/api`). (No change)
-- **Database:** Supabase (PostgreSQL).
-  - `user_dashboard_layouts` table structure unchanged.
-  - `manual_todo_items` table structure unchanged.
-- **Authentication:** Frontend Supabase Auth, Backend JWT verification. (No change)
-- **Google OAuth:** Passport.js handles Google OAuth flow. (No change)
-- **Data Flow:**
-  - Frontend contexts fetch from backend API. (No change)
-  - Dashboard layouts fetched from/saved to `/api/dashboards/:name` endpoints. (No change)
-  - **Added Local Storage Caching:** Dashboard layouts ('default', 'mobile') and last sync time are now cached in `localStorage`.
-- **RLS Handling:** Backend middleware uses request-scoped Supabase client. (No change)
-- **Task Breakdown:** Google Gemini API integration unchanged.
-- **Notifications:** `sonner` library integration unchanged.
-- **API Dev Environment (Windows):** Setup unchanged.
+## Previous Work (Dark Mode Enforcement - Completed 2025-04-03 ~5:18 PM)
 
-### Implementation Progress:
-
-1.  **PWA Update Button (`src/components/DashboardHeader.tsx`):** (Previous work - No change)
-2.  **Supabase Setup:** (Previous work - No change)
-3.  **Backend API (`/api`):** (Previous work - No change)
-4.  **Frontend (`/src`):**
-    - **Implemented Dashboard Caching (`src/components/Dashboard.tsx`, `src/components/dashboard/utils.ts`, `useDashboardLayout` hook):** Implemented caching logic using localStorage, including staleness checks and fetch-on-demand rules.
-    - **Refactored `Dashboard.tsx`:** Extracted types, constants, utils, layout logic (hook), grid rendering, and edit indicator into separate modules within `src/components/dashboard/`. Simplified main component.
-    - **Refactored `LeftSidebar.tsx`:** Moved panel state management and rendering into the sidebar component.
-    - **Improved Panel UX:** Added overlay, responsive max-widths, and edit mode interaction feedback (shake + toast).
-    - **CSS Updates (`src/index.css`):** Added `.indicator-shake` class and animation.
-    - **Bug Fixes:** Addressed issues related to dashboard fetching when opening panels and returning to desktop view after mobile edit. Fixed indicator shake positioning.
-5.  **Testing:**
-    - Previous functionalities confirmed working.
-    - Caching, refactoring, and UX improvements manually tested and confirmed working as intended.
+- **Goal:** Force dark mode application-wide, ignoring device preferences.
+- **Issue:** Some components retained light mode styles despite `ThemeProvider` forcing the `dark` class.
+- **Resolution:** Removed conflicting `@media (prefers-color-scheme: light)` block and set `color-scheme: dark;` explicitly in `src/index.css`.
 
 ## Remaining TODOs / Next Steps (Backburner):
 
 - **Backend:**
-  - **Investigate and fix Google credential decryption errors.**
-  - **Implement token refresh logic for Google Calendar & Google Health tokens.**
   - Implement disconnect logic/route for **Google Health**.
   - Refine data merging logic (e.g., summing vs. overwriting) for Health steps.
   - Add support for other health data types (sleep, weight, etc.) from Google Health.
   - Add support for external Todo providers (e.g., Google Tasks).
   - **Implement `GET /api/dashboards` endpoint to list user's dashboard names.**
+  - Add validation for `salary_schedule` structure in `upsertFinanceSettings`.
 - **Frontend:**
   - Refine loading/error states for non-calendar/health/todo widgets.
   - Add UI for managing other health data types (sleep, weight).
@@ -75,3 +79,6 @@ Work involved implementing local storage caching for dashboard layouts, refactor
   - **Implement UI for creating/managing multiple named dashboards.**
   - **Add resize listener to potentially reload layout if screen size changes significantly.**
   - **Add user feedback (e.g., toasts) for layout save/load errors.**
+  - Implement UI for editing `salary_schedule` in `FinanceSettingsPanel`.
+  - Enhance `useAnimatedCounter` for a true slot-machine effect (optional).
+  - Improve robustness of `CustomXAxisTick` highlighting for `ExpensesReportWidget` if needed.

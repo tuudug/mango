@@ -4,6 +4,7 @@ import {
   Bot,
   CalendarDays,
   HeartPulse,
+  Landmark, // Import finance icon
   ListTodo,
   Milestone,
   Pencil,
@@ -18,6 +19,7 @@ import { PathsPage } from "./PathsPage";
 import { CalendarDataSource } from "./datasources/CalendarDataSource";
 import { HealthDataSource } from "./datasources/HealthDataSource";
 import { TodosDataSource } from "./datasources/TodosDataSource";
+import { FinanceSettingsPanel } from "./finance/FinanceSettingsPanel"; // Import finance panel
 // Import the changelog data
 import changelogData from "../../public/changelog.json";
 // Import types and constants needed for PathsPage
@@ -54,6 +56,8 @@ export function LeftSidebar({
     useState(false);
   const [isHealthDataSourceOpen, setIsHealthDataSourceOpen] = useState(false);
   const [isTodosDataSourceOpen, setIsTodosDataSourceOpen] = useState(false);
+  const [isFinanceSettingsPanelOpen, setIsFinanceSettingsPanelOpen] =
+    useState(false); // State for finance panel
 
   // State for changelog modal
   const [isChangelogOpen, setIsChangelogOpen] = useState(false);
@@ -124,13 +128,14 @@ export function LeftSidebar({
     setIsCalendarDataSourceOpen(false);
     setIsHealthDataSourceOpen(false);
     setIsTodosDataSourceOpen(false);
+    setIsFinanceSettingsPanelOpen(false); // Close finance panel too
   };
 
   // --- Revised Individual Toggle Handlers ---
   const handleToggleGameMaster = () => {
     if (isToolboxOpen) {
       triggerShakeIndicator();
-      showToast("Please exit edit mode first.", "info"); // Use showToast
+      showToast({ title: "Please exit edit mode first.", variant: "info" });
       return;
     }
     if (!isGameMasterPanelOpen) {
@@ -144,7 +149,7 @@ export function LeftSidebar({
   const handleToggleUserProfile = () => {
     if (isToolboxOpen) {
       triggerShakeIndicator();
-      showToast("Please exit edit mode first.", "info"); // Use showToast
+      showToast({ title: "Please exit edit mode first.", variant: "info" });
       return;
     }
     if (!isUserProfilePanelOpen) {
@@ -158,7 +163,7 @@ export function LeftSidebar({
   const handleTogglePaths = () => {
     if (isToolboxOpen) {
       triggerShakeIndicator();
-      showToast("Please exit edit mode first.", "info"); // Use showToast
+      showToast({ title: "Please exit edit mode first.", variant: "info" });
       return;
     }
     if (!isPathsPageOpen) {
@@ -172,7 +177,7 @@ export function LeftSidebar({
   const handleToggleCalendar = () => {
     if (isToolboxOpen) {
       triggerShakeIndicator();
-      showToast("Please exit edit mode first.", "info"); // Use showToast
+      showToast({ title: "Please exit edit mode first.", variant: "info" });
       return;
     }
     if (!isCalendarDataSourceOpen) {
@@ -186,7 +191,7 @@ export function LeftSidebar({
   const handleToggleHealth = () => {
     if (isToolboxOpen) {
       triggerShakeIndicator();
-      showToast("Please exit edit mode first.", "info"); // Use showToast
+      showToast({ title: "Please exit edit mode first.", variant: "info" });
       return;
     }
     if (!isHealthDataSourceOpen) {
@@ -200,7 +205,7 @@ export function LeftSidebar({
   const handleToggleTodos = () => {
     if (isToolboxOpen) {
       triggerShakeIndicator();
-      showToast("Please exit edit mode first.", "info"); // Use showToast
+      showToast({ title: "Please exit edit mode first.", variant: "info" });
       return;
     }
     if (!isTodosDataSourceOpen) {
@@ -208,6 +213,21 @@ export function LeftSidebar({
       setIsTodosDataSourceOpen(true);
     } else {
       setIsTodosDataSourceOpen(false);
+    }
+  };
+
+  // Handler for Finance Settings Panel
+  const handleToggleFinance = () => {
+    if (isToolboxOpen) {
+      triggerShakeIndicator();
+      showToast({ title: "Please exit edit mode first.", variant: "info" });
+      return;
+    }
+    if (!isFinanceSettingsPanelOpen) {
+      closeAllPanels();
+      setIsFinanceSettingsPanelOpen(true);
+    } else {
+      setIsFinanceSettingsPanelOpen(false);
     }
   };
 
@@ -226,7 +246,8 @@ export function LeftSidebar({
     isPathsPageOpen ||
     isCalendarDataSourceOpen ||
     isHealthDataSourceOpen ||
-    isTodosDataSourceOpen;
+    isTodosDataSourceOpen ||
+    isFinanceSettingsPanelOpen; // Include finance panel
 
   return (
     <>
@@ -297,6 +318,19 @@ export function LeftSidebar({
           <span className="mb-1 text-[10px] font-medium text-gray-500">
             DATA
           </span>
+          {/* Finance Button */}
+          <Button
+            variant={isFinanceSettingsPanelOpen ? "secondary" : "ghost"}
+            size="icon"
+            className={`h-10 w-10 rounded-lg ${
+              isFinanceSettingsPanelOpen ? "text-indigo-400" : "text-gray-400"
+            }`}
+            onClick={handleToggleFinance}
+            title="Finance Settings"
+          >
+            <Landmark size={20} />
+            <span className="sr-only">Finance Settings</span>
+          </Button>
           <Button
             variant={isCalendarDataSourceOpen ? "secondary" : "ghost"}
             size="icon"
@@ -367,6 +401,7 @@ export function LeftSidebar({
       />
 
       {/* Render Panels Conditionally with updated styles */}
+      {/* ... (GameMaster, UserProfile, Paths panels remain the same) ... */}
       <div
         className={cn(
           "absolute top-0 left-16 bottom-0 transition-transform duration-300 ease-in-out z-20",
@@ -401,6 +436,7 @@ export function LeftSidebar({
           nextUnlockXP={nextUnlockXP}
         />
       </div>
+      {/* Data Source Panels */}
       <div
         className={cn(
           "absolute top-0 left-16 bottom-0 transition-transform duration-300 ease-in-out z-20",
@@ -427,6 +463,17 @@ export function LeftSidebar({
         )}
       >
         <TodosDataSource />
+      </div>
+      {/* Finance Settings Panel */}
+      <div
+        className={cn(
+          "absolute top-0 left-16 bottom-0 transition-transform duration-300 ease-in-out z-20",
+          "max-w-sm w-full bg-gray-800 shadow-lg", // Use max-w-sm
+          isFinanceSettingsPanelOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
+        <FinanceSettingsPanel />
+        {/* Add onClose prop if needed later */}
       </div>
 
       {/* Render the changelog modal */}

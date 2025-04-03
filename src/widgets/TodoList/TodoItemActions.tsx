@@ -1,13 +1,3 @@
-import React from "react";
-import {
-  Trash,
-  Pencil,
-  GripVertical,
-  PlusCircle,
-  Sparkles,
-  ArrowUpCircle,
-  ArrowDownCircle,
-} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -17,6 +7,15 @@ import {
 } from "@/components/ui/tooltip"; // Import Tooltip components
 import { DraggableAttributes } from "@dnd-kit/core";
 import { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
+import {
+  ArrowDownCircle,
+  ArrowUpCircle,
+  GripVertical,
+  PlusCircle,
+  Sparkles,
+  Trash,
+} from "lucide-react";
+import React from "react";
 
 interface TodoItemActionsProps {
   todoId: string;
@@ -42,7 +41,7 @@ export const TodoItemActions: React.FC<TodoItemActionsProps> = ({
   isLoading,
   isToggling,
   canHaveChildren,
-  onEditClick,
+  onEditClick: _onEditClick,
   onDelete,
   onAddSubClick,
   onBreakdownClick,

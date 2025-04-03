@@ -1,124 +1,93 @@
-import express, { Express, Request, Response, NextFunction } from "express"; // Add NextFunction
+import express, { Express, Request, Response, NextFunction } from "express";
+import cors from "cors";
 import dotenv from "dotenv";
-import session from "express-session";
 import passport from "passport";
-// We will create this file next
-import configurePassport from "./config/passport";
+import session from "express-session";
+import setupPassport from "./config/passport"; // Correct: Use default import
+import { ensureAuthenticated } from "./middleware/auth"; // Import auth middleware
+
+// Import route handlers
 import authRoutes from "./routes/auth";
+import dashboardRoutes from "./routes/dashboards";
+import todoRoutes from "./routes/todos";
 import calendarRoutes from "./routes/calendar";
 import healthRoutes from "./routes/health";
-import todosRoutes from "./routes/todos"; // Import the todos routes
-import dashboardRoutes from "./routes/dashboards"; // Import the dashboard routes
+import financeRoutes from "./routes/finance"; // Import new finance routes
 
-dotenv.config();
+dotenv.config(); // Load environment variables from .env file
 
 const app: Express = express();
-// Use the PORT environment variable provided by the platform (e.g., DigitalOcean)
-// Defaulting locally might still be useful, but prioritize process.env.PORT
-const port = process.env.PORT || 3001; // Keep default for local dev if needed
+const port = process.env.PORT || 3001;
+
+// --- Middleware ---
+// Enable CORS for all origins (adjust for production)
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL || "http://localhost:5173", // Allow frontend origin
+    credentials: true, // Allow cookies/auth headers
+  })
+);
+
+// Parse JSON request bodies
+app.use(express.json());
+
+// Session middleware (required for Passport session)
+// Ensure SECRET is set in your environment variables
 const sessionSecret = process.env.SESSION_SECRET;
-
-if (!process.env.PORT) {
-  console.warn(
-    "PORT environment variable not set. Defaulting to 3001 for local development."
-  );
-}
-
 if (!sessionSecret) {
-  console.error("Error: SESSION_SECRET is not defined in .env file.");
-  process.exit(1);
+  console.error("FATAL ERROR: SESSION_SECRET environment variable is not set.");
+  process.exit(1); // Exit if secret is not set
 }
-
-// Session middleware configuration
 app.use(
   session({
     secret: sessionSecret,
     resave: false,
-    saveUninitialized: false, // Don't save sessions until something is stored
+    saveUninitialized: false,
     cookie: {
       secure: process.env.NODE_ENV === "production", // Use secure cookies in production
-      maxAge: 1000 * 60 * 60 * 24, // Session duration: 1 day
       httpOnly: true, // Prevent client-side JS access
-      sameSite: "lax", // Good default for session cookies, helps prevent CSRF
+      maxAge: 24 * 60 * 60 * 1000, // Example: 1 day session duration
     },
-    // Consider adding a persistent session store (e.g., connect-pg-simple) for production scalability
   })
 );
 
-// Initialize Passport and restore authentication state, if any, from the session.
+// Initialize Passport and restore authentication state, if any, from the session
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Configure Passport strategies
-configurePassport(passport);
+// Setup Passport strategies (Google, etc.)
+setupPassport(passport); // Call the imported default function
 
-// Trust the first proxy hop (e.g., DigitalOcean App Platform's load balancer/proxy)
-// This is crucial for secure cookies and accurate IP address info behind a proxy.
-// Place this BEFORE any routes that rely on session or req.ip/req.protocol.
-app.set("trust proxy", 1);
+// --- Routes ---
+// Public routes (like auth callbacks)
+app.use("/api/auth", authRoutes);
 
-app.use(express.json());
+// Protected routes (apply authentication middleware)
+// Note: ensureAuthenticated is now applied within each specific router
+// app.use(ensureAuthenticated); // Remove global application here
 
-// Initialize Passport and restore authentication state, if any, from the session.
-// NOTE: These lines seem duplicated, removing the second set.
-// app.use(passport.initialize());
-// app.use(passport.session());
+app.use("/api/dashboards", dashboardRoutes); // Already uses ensureAuthenticated internally
+app.use("/api/todos", todoRoutes); // Already uses ensureAuthenticated internally
+app.use("/api/calendar", calendarRoutes); // Already uses ensureAuthenticated internally
+app.use("/api/health", healthRoutes); // Already uses ensureAuthenticated internally
+app.use("/api/finance", financeRoutes); // Add finance routes (uses ensureAuthenticated internally)
 
-// Simple root route for testing
+// Simple root route
 app.get("/api", (req: Request, res: Response) => {
   res.send("Mango API is running!");
 });
 
-// Mount authentication routes
-app.use("/api/auth", authRoutes);
-
-// Mount calendar routes
-app.use("/api/calendar", calendarRoutes);
-
-// Mount health routes
-app.use("/api/health", healthRoutes);
-
-// Mount todos routes
-app.use("/api/todos", todosRoutes);
-
-// Mount dashboard routes
-app.use("/api/dashboards", dashboardRoutes); // Add this line
-
 // --- Global Error Handler ---
-// This middleware MUST be defined AFTER all other app.use() and routes calls
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-app.use((err: unknown, req: Request, res: Response, next: NextFunction) => {
-  // Type checking for unknown error type
-  let httpError: HttpError;
-  if (err instanceof Error) {
-    httpError = err as HttpError; // Cast to HttpError after checking it's an Error
-    console.error("[Global Error Handler]:", httpError.message);
-    console.error(httpError.stack); // Log the stack trace for debugging
-  } else {
-    // Handle cases where the thrown value is not an Error object
-    console.error("[Global Error Handler]: Received non-Error value:", err);
-    // Create a default Error object
-    httpError = new Error("An unexpected error occurred.") as HttpError;
-    httpError.status = 500;
-  }
-
-  // Determine status code - default to 500 if not set
-  const statusCode = httpError.statusCode || httpError.status || 500;
-
-  // Send a generic error response
-  res.status(statusCode).json({
-    message: httpError.message || "An unexpected error occurred on the server.",
-    // Optionally include stack in development
-    stack: process.env.NODE_ENV === "development" ? httpError.stack : undefined,
-  });
+app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+  console.error("Global Error Handler:", err.stack || err);
+  // Check for specific Supabase errors if needed, otherwise send generic error
+  // Example: Check for specific error codes or messages
+  // if (err.code === 'SOME_SUPABASE_CODE') { ... }
+  res.status(500).json({ message: "Internal Server Error" });
 });
 
-// --- Custom Error Interface (Placed after the middleware for clarity) ---
-interface HttpError extends Error {
-  status?: number;
-  statusCode?: number;
-}
-
+// --- Start Server ---
 app.listen(port, () => {
-  console.log(`[server]: API Server is running at http://localhost:${port}`);
+  console.log(`[server]: Server is running at http://localhost:${port}`);
 });
