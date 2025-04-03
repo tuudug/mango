@@ -52,7 +52,7 @@ These components handle the interaction and persistence of core application data
   - [x] Concept: User selects one linear path at a time; XP contributes to path progress. Switching paths resets progress towards the _next_ item on the previous path.
   - [x] UI Mockup: Implemented as a sliding panel (`PathsPage.tsx`) showing defined paths, active path indication (star icon), progress bar for active path, unlock status (lock/check icon), XP costs, and path switching confirmation.
   - [ ] Path Definition: Finalize items, order, XP costs, level requirements per path.
-  - [ ] Implementation: Logic for path selection, progress tracking, unlocking items (state managed in `Dashboard.tsx`, saved to localStorage).
+  - [x] Implementation: Logic for path selection, progress tracking, unlocking items (state managed in `Dashboard.tsx`, saved to localStorage - _Path state only_).
   - [ ] XP Gain Mechanism: Define how users earn XP (e.g., completing quests, using widgets).
 - [ ] Widgets unlocked/customized through app usage (via Paths / Shop).
 - [ ] **Shop:**
@@ -65,7 +65,15 @@ These components handle the interaction and persistence of core application data
 
 - [x] Central hub for progress and planning (`Dashboard.tsx`).
 - [x] Add/Move/Resize widgets (`react-grid-layout` integration).
-- [x] Layout persistence (`localStorage` - layout only, no widget data).
+- [x] **Layout persistence (Database):**
+  - [x] Backend API (`/api/dashboards`) created to GET/PUT layouts.
+  - [x] Supabase table (`user_dashboard_layouts`) created.
+  - [x] Frontend (`Dashboard.tsx`) fetches/saves layouts via API, replacing localStorage.
+- [x] **Mobile Layout Support:**
+  - [x] Separate 'mobile' layout fetched/saved via API.
+  - [x] Automatic loading of 'mobile' or 'default' layout based on screen width.
+  - [x] Mobile Edit Mode UI implemented (toggle in edit bar, narrow preview, filtered toolbox).
+- [ ] **Multiple Named Dashboards:** (Future - requires UI for management)
 - [x] **Refined Widget List & Categories (Used for Paths):**
   - **Productivity:**
     - [x] To-do List (`TodoListWidget.tsx` -> `TodoList/index.tsx`) - **Enhanced with Edit, Reorder (DnD/Buttons), Sub-items, AI Breakdown (w/ Context)**
@@ -125,10 +133,12 @@ These components handle the interaction and persistence of core application data
 - [ ] Minimal user input focus.
 - [x] Intuitive interface (Implemented Left sidebar, sliding panels for Toolbox, GM, Profile, Paths).
 - [x] Dashboard customization implemented.
+- [x] **Panel Behavior:** Panels (except Toolbox) now slide over the dashboard content.
 - [ ] Emphasis on Positive Reinforcement (Guiding principle).
-- **[x] PWA Update Notifications:** Implemented prompt for app updates.
+- **[x] PWA Update Notifications:** Implemented prompt for app updates & fixed update flow.
 - **[x] Toast Notifications:** Added system for user feedback.
 - **[x] Collapse on Drag:** Todo list items collapse during drag to improve DnD experience.
+- **[x] Dashboard Loading:** Improved loading state to avoid full-screen flash.
 
 ## LLM Prompting Considerations
 

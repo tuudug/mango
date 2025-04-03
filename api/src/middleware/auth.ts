@@ -1,9 +1,14 @@
 import { Request, Response, NextFunction } from "express";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, SupabaseClient } from "@supabase/supabase-js"; // Import SupabaseClient
 import { supabaseAdmin } from "../supabaseClient"; // Use admin client for verification
 
 // Define and export an interface that extends Express.Request
-export type AuthenticatedRequest = Request;
+// and includes our custom properties. Make them optional as they
+// are only added *after* successful authentication within the middleware.
+export interface AuthenticatedRequest extends Request {
+  userId?: string;
+  supabase?: SupabaseClient;
+}
 
 /**
  * Middleware to verify Supabase JWT from Authorization header.
@@ -11,7 +16,7 @@ export type AuthenticatedRequest = Request;
  * to the request object upon successful verification.
  */
 export const ensureAuthenticated = (
-  req: AuthenticatedRequest,
+  req: AuthenticatedRequest, // Use the extended interface type here
   res: Response,
   next: NextFunction
 ): void => {
@@ -60,7 +65,7 @@ export const ensureAuthenticated = (
       console.log(
         `Middleware Auth: Authenticated API request for user ID: ${user.id}`
       );
-      next();
+      next(); // Proceed only after attaching properties
     })
     .catch((err) => {
       console.error(

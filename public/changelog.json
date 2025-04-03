@@ -1,6 +1,14 @@
 
 [
   {
+    "version": "0.1.5",
+    "date": "2025-04-03",
+    "data": [
+      "Dashboard layout now saves to the cloud!",
+      "Mobile dashboard layout support."
+    ]
+  },
+  {
     "version": "0.1.4",
     "date": "2025-04-03",
     "data": [

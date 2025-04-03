@@ -8,6 +8,7 @@ import authRoutes from "./routes/auth";
 import calendarRoutes from "./routes/calendar";
 import healthRoutes from "./routes/health";
 import todosRoutes from "./routes/todos"; // Import the todos routes
+import dashboardRoutes from "./routes/dashboards"; // Import the dashboard routes
 
 dotenv.config();
 
@@ -59,8 +60,9 @@ app.set("trust proxy", 1);
 app.use(express.json());
 
 // Initialize Passport and restore authentication state, if any, from the session.
-app.use(passport.initialize());
-app.use(passport.session());
+// NOTE: These lines seem duplicated, removing the second set.
+// app.use(passport.initialize());
+// app.use(passport.session());
 
 // Simple root route for testing
 app.get("/api", (req: Request, res: Response) => {
@@ -78,6 +80,9 @@ app.use("/api/health", healthRoutes);
 
 // Mount todos routes
 app.use("/api/todos", todosRoutes);
+
+// Mount dashboard routes
+app.use("/api/dashboards", dashboardRoutes); // Add this line
 
 // --- Global Error Handler ---
 // This middleware MUST be defined AFTER all other app.use() and routes calls

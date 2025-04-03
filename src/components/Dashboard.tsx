@@ -33,14 +33,17 @@ import { CalendarDataSource } from "./datasources/CalendarDataSource";
 import { HealthDataSource } from "./datasources/HealthDataSource";
 import { TodosDataSource } from "./datasources/TodosDataSource";
 import { Button } from "./ui/button"; // Import Button
-import { X } from "lucide-react"; // Import X icon
+import { Smartphone, Monitor, X, Loader2 } from "lucide-react"; // Import Loader2
+import { useAuth } from "@/contexts/AuthContext"; // Import useAuth
+import { useDebouncedCallback } from "use-debounce"; // Import debounce
+import { cn } from "@/lib/utils"; // Import cn for conditional classes
 
 // Create responsive grid layout
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
-// --- LocalStorage Persistence ---
-const LAYOUT_STORAGE_KEY = "dashboardLayout";
-const PATH_STATE_STORAGE_KEY = "dashboardPathState";
+// --- Remove LocalStorage Persistence ---
+// const LAYOUT_STORAGE_KEY = "dashboardLayout"; // REMOVED
+const PATH_STATE_STORAGE_KEY = "dashboardPathState"; // Keep path state for now
 
 interface SavedPathState {
   activePathName: string | null;
@@ -48,73 +51,24 @@ interface SavedPathState {
   currentPathProgressXP: number;
 }
 
-// Function to load layout from localStorage
-const loadLayoutFromLocalStorage = (): GridItem[] => {
-  try {
-    const savedLayout = localStorage.getItem(LAYOUT_STORAGE_KEY);
-    if (savedLayout) {
-      const parsedLayout: Omit<GridItem, "minW" | "minH">[] =
-        JSON.parse(savedLayout);
-      if (Array.isArray(parsedLayout)) {
-        return parsedLayout.map((item) => {
-          const defaults =
-            item.type && defaultWidgetLayouts[item.type]
-              ? defaultWidgetLayouts[item.type]
-              : { w: 6, h: 4, minW: 2, minH: 2 };
-          return {
-            ...item,
-            minW: defaults.minW,
-            minH: defaults.minH,
-          };
-        });
-      }
-    }
-  } catch (error) {
-    console.error("Error loading dashboard layout from localStorage:", error);
-  }
-  return [
-    {
-      id: nanoid(),
-      type: "Placeholder",
-      x: 3,
-      y: 0,
-      ...(defaultWidgetLayouts["Placeholder"] || {
-        w: 12,
-        h: 7,
-        minW: 8,
-        minH: 5,
-      }),
-    },
-  ];
-};
+// REMOVED loadLayoutFromLocalStorage function
 
-// Function to save layout to localStorage
-const saveLayoutToLocalStorage = (items: GridItem[]) => {
-  try {
-    const itemsToSave = items.map(({ ...rest }) => rest);
-    localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(itemsToSave));
-  } catch (error) {
-    console.error("Error saving dashboard layout to localStorage:", error);
-  }
-};
+// REMOVED saveLayoutToLocalStorage function
 
-// Function to load path state from localStorage
+// Function to load path state from localStorage (Keep for now)
 const loadPathStateFromLocalStorage = (): SavedPathState => {
   try {
     const savedState = localStorage.getItem(PATH_STATE_STORAGE_KEY);
     if (savedState) {
       const parsedState = JSON.parse(savedState);
-      // Add basic validation if needed
       return parsedState;
     }
   } catch (error) {
     console.error("Error loading path state from localStorage:", error);
   }
-  // Return default path state
   return {
-    activePathName: null, // Start with no active path
+    activePathName: null,
     unlockedItems: {
-      // Default unlocked items (cost 0)
       "To-Do List": true,
       "Steps Tracker": true,
       Journal: true,
@@ -123,7 +77,7 @@ const loadPathStateFromLocalStorage = (): SavedPathState => {
   };
 };
 
-// Function to save path state to localStorage
+// Function to save path state to localStorage (Keep for now)
 const savePathStateToLocalStorage = (state: SavedPathState) => {
   try {
     localStorage.setItem(PATH_STATE_STORAGE_KEY, JSON.stringify(state));
@@ -134,7 +88,6 @@ const savePathStateToLocalStorage = (state: SavedPathState) => {
 // --- End LocalStorage ---
 
 // Placeholder: Define paths data structure here or import it
-// This should match the structure used in PathsPage.tsx for calculating next unlock
 const pathsData = [
   /* Assuming pathsData is defined similarly to PathsPage */
   {
@@ -174,22 +127,56 @@ const pathsData = [
   },
 ];
 
+// Default layout if none is found in DB
+const getDefaultLayout = (): GridItem[] => [
+  {
+    id: nanoid(),
+    type: "Placeholder",
+    x: 3,
+    y: 0,
+    ...(defaultWidgetLayouts["Placeholder"] || {
+      w: 12,
+      h: 7,
+      minW: 8,
+      minH: 5,
+    }),
+  },
+];
+
+// Define standard breakpoints and cols for desktop/responsive view
+const standardBreakpoints = { lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 };
+const standardCols = { lg: 24, md: 20, sm: 12, xs: 8, xxs: 4 };
+
+// Define fixed breakpoints and cols for mobile edit view
+const mobileBreakpoints = { mobile: 376 }; // Single breakpoint name
+const mobileCols = { mobile: 4 }; // Force 4 columns for this breakpoint
+
 export function Dashboard() {
+  const { user, session } = useAuth(); // Get user and session
+  const token = session?.access_token; // Get token from session
+
   // State
   const [isToolboxOpen, setIsToolboxOpen] = useState(false);
   const [isGameMasterPanelOpen, setIsGameMasterPanelOpen] = useState(false);
   const [isUserProfilePanelOpen, setIsUserProfilePanelOpen] = useState(false);
   const [isPathsPageOpen, setIsPathsPageOpen] = useState(false);
-  // Add state for data source panels
   const [isCalendarDataSourceOpen, setIsCalendarDataSourceOpen] =
     useState(false);
   const [isHealthDataSourceOpen, setIsHealthDataSourceOpen] = useState(false);
   const [isTodosDataSourceOpen, setIsTodosDataSourceOpen] = useState(false);
-  const [items, setItems] = useState<GridItem[]>(loadLayoutFromLocalStorage);
+  // Initialize items as empty array, will be loaded from API
+  const [items, setItems] = useState<GridItem[]>([]);
+  const [isLoadingLayout, setIsLoadingLayout] = useState(true); // Loading state
+  // State to track which dashboard is currently being viewed/saved in view mode
+  const [currentViewDashboardName, setCurrentViewDashboardName] =
+    useState<string>("default");
+  // State to track which dashboard layout is being actively edited
+  const [editTargetDashboard, setEditTargetDashboard] =
+    useState<string>("default");
   const [activeWidget, setActiveWidget] = useState<WidgetType | null>(null);
   const gridContainerRef = useRef<HTMLDivElement>(null);
 
-  // Path State
+  // Path State (Keep using localStorage for now)
   const [pathState, setPathState] = useState<SavedPathState>(
     loadPathStateFromLocalStorage
   );
@@ -204,7 +191,7 @@ export function Dashboard() {
     const nextItem = activePath.items.find(
       (item) => !unlockedItems[item.label]
     );
-    return nextItem ? nextItem.xpCost : 0; // Return 0 if path is complete
+    return nextItem ? nextItem.xpCost : 0;
   }, [activePathName, unlockedItems]);
 
   // Effect to save path state whenever it changes
@@ -212,24 +199,196 @@ export function Dashboard() {
     savePathStateToLocalStorage(pathState);
   }, [pathState]);
 
-  // Toggle Toolbox (Edit Mode) & SAVE layout on close
+  // --- API Interaction ---
+
+  // Debounced function to save layout to the server
+  const saveLayoutToServer = useDebouncedCallback(
+    async (layoutToSave: GridItem[], dashboardName: string) => {
+      if (!token || !user || !dashboardName) return; // Need auth and name
+      console.log(`Debounced save triggered for dashboard: ${dashboardName}`);
+      try {
+        // Filter out minW/minH before saving if they exist
+        const itemsToSave = layoutToSave.map(({ minW, minH, ...rest }) => rest);
+
+        const response = await fetch(`/api/dashboards/${dashboardName}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ layout: itemsToSave }), // Send filtered layout data
+        });
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error(
+            `Error saving layout for ${dashboardName}:`,
+            response.status,
+            errorData
+          );
+          // TODO: Add user feedback (e.g., toast notification)
+        } else {
+          console.log(`Layout for ${dashboardName} saved successfully.`);
+        }
+      } catch (error) {
+        console.error(
+          `Network error saving layout for ${dashboardName}:`,
+          error
+        );
+        // TODO: Add user feedback
+      }
+    },
+    1000 // Debounce time in ms (e.g., 1 second)
+  );
+
+  // Function to fetch layout (used on mount and when switching edit target)
+  const fetchLayout = useCallback(
+    async (dashboardName: string) => {
+      if (!token || !user) return null; // Return null if not authenticated
+      console.log(`Fetching layout for: ${dashboardName}`);
+      try {
+        const response = await fetch(`/api/dashboards/${dashboardName}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (!response.ok) {
+          if (response.status === 404 || response.status === 401) {
+            console.warn(
+              `Layout fetch for ${dashboardName} failed (${response.status}), returning null.`
+            );
+            return null; // Return null if not found or unauthorized
+          } else {
+            throw new Error(
+              `API error: ${response.status} ${response.statusText}`
+            );
+          }
+        }
+        const data = await response.json();
+        if (data.layout && Array.isArray(data.layout)) {
+          // Ensure minW/minH are added back from defaults
+          const loadedItems = data.layout.map(
+            (item: Omit<GridItem, "minW" | "minH">) => {
+              const itemType = item.type as WidgetType;
+              const defaults = defaultWidgetLayouts[itemType]
+                ? defaultWidgetLayouts[itemType]
+                : { w: 6, h: 4, minW: 2, minH: 2 };
+              return {
+                ...item,
+                minW: defaults.minW,
+                minH: defaults.minH,
+              };
+            }
+          );
+          console.log(`Layout for ${dashboardName} fetched successfully.`);
+          return loadedItems;
+        } else {
+          console.log(
+            `No layout data found for ${dashboardName}, returning null.`
+          );
+          return null; // Return null if layout is empty/invalid
+        }
+      } catch (error) {
+        console.error(`Error fetching layout for ${dashboardName}:`, error);
+        // TODO: Add user feedback
+        return null; // Return null on error
+      }
+    },
+    [token, user] // Dependencies for fetchLayout
+  );
+
+  // Effect to load initial layout on mount based on screen width
+  useEffect(() => {
+    if (!token || !user) {
+      console.log("User not authenticated, skipping initial layout load.");
+      setItems(getDefaultLayout());
+      setIsLoadingLayout(false);
+      return;
+    }
+
+    const loadInitialLayout = async () => {
+      setIsLoadingLayout(true);
+      const isMobile = window.innerWidth < 768;
+      const initialDashboardName = isMobile ? "mobile" : "default";
+      setCurrentViewDashboardName(initialDashboardName);
+      setEditTargetDashboard(initialDashboardName); // Start editing the view target
+
+      const layoutData = await fetchLayout(initialDashboardName);
+      setItems(layoutData || getDefaultLayout());
+      setIsLoadingLayout(false);
+    };
+
+    loadInitialLayout();
+    // TODO: Add resize listener?
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, user]); // Only depends on auth state
+
+  // Effect to load layout when editTargetDashboard changes while toolbox is open
+  useEffect(() => {
+    if (isToolboxOpen && token && user) {
+      const loadEditTargetLayout = async () => {
+        setIsLoadingLayout(true); // Show loading when switching edit targets
+        console.log(`Switching edit target to: ${editTargetDashboard}`);
+        const layoutData = await fetchLayout(editTargetDashboard);
+        setItems(layoutData || getDefaultLayout());
+        setIsLoadingLayout(false);
+      };
+      loadEditTargetLayout();
+    }
+    // Don't run this when toolbox closes, only when target changes *while* open
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editTargetDashboard, isToolboxOpen, fetchLayout]); // Rerun if target or toolbox state changes
+
+  // --- End API Interaction ---
+
+  // Toggle Toolbox (Edit Mode)
   const toggleToolbox = () => {
     setIsToolboxOpen((prev) => {
       const nextIsOpen = !prev;
-      if (!nextIsOpen) {
-        saveLayoutToLocalStorage(items);
-      }
       if (nextIsOpen) {
+        // When opening toolbox, set edit target to the currently viewed dashboard
+        setEditTargetDashboard(currentViewDashboardName);
+        // Close other panels
         setIsGameMasterPanelOpen(false);
         setIsUserProfilePanelOpen(false);
         setIsPathsPageOpen(false);
-        // Close data source panels when toolbox opens
         setIsCalendarDataSourceOpen(false);
         setIsHealthDataSourceOpen(false);
         setIsTodosDataSourceOpen(false);
+      } else {
+        // When closing toolbox, determine the correct layout to view based on screen size
+        const isMobile = window.innerWidth < 768;
+        const viewTarget = isMobile ? "mobile" : "default";
+
+        // If the currently viewed dashboard isn't the correct one for the screen size,
+        // OR if we were editing a different dashboard than the one we should be viewing,
+        // reload the correct layout for viewing.
+        if (
+          currentViewDashboardName !== viewTarget ||
+          editTargetDashboard !== viewTarget
+        ) {
+          console.log(`Exiting edit mode. Loading view target: ${viewTarget}`);
+          setIsLoadingLayout(true); // Show loading while switching back
+          fetchLayout(viewTarget).then((layoutData) => {
+            setItems(layoutData || getDefaultLayout());
+            setCurrentViewDashboardName(viewTarget); // Update the current view
+            setEditTargetDashboard(viewTarget); // Reset edit target as well
+            setIsLoadingLayout(false);
+          });
+        } else {
+          // Reset edit target even if no reload needed
+          setEditTargetDashboard(viewTarget);
+        }
       }
       return nextIsOpen;
     });
+  };
+
+  // Function to toggle between editing 'default' and 'mobile' layouts
+  const toggleEditTarget = () => {
+    setEditTargetDashboard((prev) =>
+      prev === "default" ? "mobile" : "default"
+    );
+    // Layout loading is handled by the useEffect watching editTargetDashboard
   };
 
   // Toggle Game Master Panel
@@ -240,7 +399,6 @@ export function Dashboard() {
         setIsToolboxOpen(false);
         setIsUserProfilePanelOpen(false);
         setIsPathsPageOpen(false);
-        // Close data source panels when GM panel opens
         setIsCalendarDataSourceOpen(false);
         setIsHealthDataSourceOpen(false);
         setIsTodosDataSourceOpen(false);
@@ -257,7 +415,6 @@ export function Dashboard() {
         setIsToolboxOpen(false);
         setIsGameMasterPanelOpen(false);
         setIsPathsPageOpen(false);
-        // Close data source panels when profile opens
         setIsCalendarDataSourceOpen(false);
         setIsHealthDataSourceOpen(false);
         setIsTodosDataSourceOpen(false);
@@ -274,7 +431,6 @@ export function Dashboard() {
         setIsToolboxOpen(false);
         setIsGameMasterPanelOpen(false);
         setIsUserProfilePanelOpen(false);
-        // Close data source panels when paths page opens
         setIsCalendarDataSourceOpen(false);
         setIsHealthDataSourceOpen(false);
         setIsTodosDataSourceOpen(false);
@@ -292,7 +448,7 @@ export function Dashboard() {
         setIsGameMasterPanelOpen(false);
         setIsUserProfilePanelOpen(false);
         setIsPathsPageOpen(false);
-        setIsHealthDataSourceOpen(false); // Close other data sources
+        setIsHealthDataSourceOpen(false);
         setIsTodosDataSourceOpen(false);
       }
       return nextIsOpen;
@@ -308,7 +464,7 @@ export function Dashboard() {
         setIsGameMasterPanelOpen(false);
         setIsUserProfilePanelOpen(false);
         setIsPathsPageOpen(false);
-        setIsCalendarDataSourceOpen(false); // Close other data sources
+        setIsCalendarDataSourceOpen(false);
         setIsTodosDataSourceOpen(false);
       }
       return nextIsOpen;
@@ -324,7 +480,7 @@ export function Dashboard() {
         setIsGameMasterPanelOpen(false);
         setIsUserProfilePanelOpen(false);
         setIsPathsPageOpen(false);
-        setIsCalendarDataSourceOpen(false); // Close other data sources
+        setIsCalendarDataSourceOpen(false);
         setIsHealthDataSourceOpen(false);
       }
       return nextIsOpen;
@@ -336,10 +492,8 @@ export function Dashboard() {
     setPathState((prev) => ({
       ...prev,
       activePathName: pathName,
-      currentPathProgressXP: 0, // Reset progress on switch
+      currentPathProgressXP: 0,
     }));
-    // Optionally close the panel after selection
-    // setIsPathsPageOpen(false);
   };
 
   // Handle drag start from toolbox
@@ -370,48 +524,53 @@ export function Dashboard() {
       let gridX = 0;
       let gridY = Infinity;
 
+      // Use correct cols based on edit mode
+      const cols = editTargetDashboard === "mobile" ? 4 : 24; // Use 4 for mobile edit
+
       if (
         gridContainerRef.current &&
         event.activatorEvent instanceof PointerEvent
       ) {
         const gridRect = gridContainerRef.current.getBoundingClientRect();
-        const sidebarWidth = 64; // w-16
+        const sidebarWidth = 64;
         const relativeX =
           event.activatorEvent.clientX - gridRect.left - sidebarWidth;
         const relativeY = event.activatorEvent.clientY - gridRect.top;
 
-        const cols = 24;
         const rowHeight = 30;
         const margin: [number, number] = [10, 10];
         const containerPadding: [number, number] = [15, 15];
 
-        // Adjust for panel width if open (assuming all panels slide from left)
-        // Adjust panelWidth calculation to include data source panels
-        const panelWidth = isToolboxOpen
-          ? 256 // w-64
-          : isGameMasterPanelOpen || isUserProfilePanelOpen
-          ? 288 // w-72
-          : isPathsPageOpen ||
-            isCalendarDataSourceOpen ||
-            isHealthDataSourceOpen ||
-            isTodosDataSourceOpen
-          ? 320 // w-80 (assuming same width for paths and data sources)
-          : 0;
+        const panelWidth = isToolboxOpen ? 256 : 0;
         const adjustedX = relativeX - containerPadding[0] - panelWidth;
         const adjustedY = relativeY - containerPadding[1];
 
+        // Adjust gridWidth calculation if in mobile edit mode (fixed width)
         const gridWidth =
-          gridRect.width - sidebarWidth - containerPadding[0] * 2 - panelWidth;
+          editTargetDashboard === "mobile"
+            ? 320 // Example fixed width for mobile edit view
+            : gridRect.width -
+              sidebarWidth -
+              containerPadding[0] * 2 -
+              panelWidth;
+
         const approxCellWidth = gridWidth / cols;
         const approxCellHeight = rowHeight + margin[1];
 
         gridX = Math.max(
           0,
           Math.min(
-            cols - (defaultLayout?.w || 6), // Use default width or fallback
+            cols - (defaultLayout?.w || 6),
             Math.floor(adjustedX / approxCellWidth)
           )
         );
+        // Ensure dropped item fits within mobile width if applicable
+        if (editTargetDashboard === "mobile" && defaultLayout?.w > cols) {
+          console.warn(`Widget ${widgetType} is too wide for mobile layout.`);
+          // Optionally prevent drop or adjust width? For now, let it drop.
+          // gridX = 0; // Force to left edge
+        }
+
         gridY = Math.max(0, Math.floor(adjustedY / approxCellHeight));
       }
 
@@ -420,16 +579,19 @@ export function Dashboard() {
         type: widgetType,
         x: gridX,
         y: gridY,
-        ...(defaultLayout || { w: 6, h: 4, minW: 2, minH: 2 }), // Use default layout or fallback
+        ...(defaultLayout || { w: 6, h: 4, minW: 2, minH: 2 }),
       };
-      setItems([...filteredItems, newItem]);
+      const newItems = [...filteredItems, newItem];
+      setItems(newItems);
+      // Save when adding item in edit mode
+      saveLayoutToServer(newItems, editTargetDashboard);
     }
   };
 
   // Handle layout changes from react-grid-layout
-  const onLayoutChange = useCallback((layout: Layout[]) => {
-    setItems((prevItems) =>
-      prevItems.map((item) => {
+  const onLayoutChange = useCallback(
+    (layout: Layout[]) => {
+      const newItems = items.map((item) => {
         const layoutItem = layout.find((l) => l.i === item.id);
         return layoutItem
           ? {
@@ -440,50 +602,72 @@ export function Dashboard() {
               h: layoutItem.h,
             }
           : item;
-      })
-    );
-  }, []);
+      });
+      if (JSON.stringify(items) !== JSON.stringify(newItems)) {
+        setItems(newItems);
+        // Save to the correct dashboard based on mode
+        const targetDashboard = isToolboxOpen
+          ? editTargetDashboard
+          : currentViewDashboardName;
+        saveLayoutToServer(newItems, targetDashboard);
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      items,
+      saveLayoutToServer,
+      isToolboxOpen,
+      editTargetDashboard,
+      currentViewDashboardName,
+    ]
+  );
 
   // Handle resize events from react-grid-layout
   const handleResize = useCallback(
-    (_layout: Layout[], _oldItem: Layout, newItem: Layout) => {
-      setItems((prevItems) =>
-        prevItems.map((item) => {
-          if (item.id === newItem.i) {
-            return { ...item, w: newItem.w, h: newItem.h };
-          }
-          return item;
-        })
-      );
+    (layout: Layout[], _oldItem: Layout, newItemLayout: Layout) => {
+      const newItems = items.map((item) => {
+        if (item.id === newItemLayout.i) {
+          return { ...item, w: newItemLayout.w, h: newItemLayout.h };
+        }
+        return item;
+      });
+      if (JSON.stringify(items) !== JSON.stringify(newItems)) {
+        setItems(newItems);
+        // Save to the correct dashboard based on mode
+        const targetDashboard = isToolboxOpen
+          ? editTargetDashboard
+          : currentViewDashboardName;
+        saveLayoutToServer(newItems, targetDashboard);
+      }
     },
-    []
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      items,
+      saveLayoutToServer,
+      isToolboxOpen,
+      editTargetDashboard,
+      currentViewDashboardName,
+    ]
   );
 
   // Function to delete a widget
   const handleDeleteWidget = (idToDelete: string) => {
-    setItems((prevItems) => {
-      const newItems = prevItems.filter((item) => item.id !== idToDelete);
-      if (newItems.length === 0) {
-        return [
-          {
-            id: nanoid(),
-            type: "Placeholder",
-            x: 3,
-            y: 0,
-            ...(defaultWidgetLayouts["Placeholder"] || {
-              w: 12,
-              h: 7,
-              minW: 8,
-              minH: 5,
-            }), // Fallback
-          },
-        ];
-      }
-      return newItems;
-    });
+    const newItems = items.filter((item) => item.id !== idToDelete);
+    const targetDashboard = isToolboxOpen
+      ? editTargetDashboard
+      : currentViewDashboardName;
+
+    if (newItems.length === 0) {
+      const placeholderItems = getDefaultLayout();
+      setItems(placeholderItems);
+      saveLayoutToServer(placeholderItems, targetDashboard);
+    } else {
+      setItems(newItems);
+      saveLayoutToServer(newItems, targetDashboard);
+    }
   };
 
-  // Generate layout for grid
+  // Generate layout for grid (used by RGL)
   const generateLayout = (): Layout[] => {
     return items.map((item) => ({
       i: item.id,
@@ -493,7 +677,7 @@ export function Dashboard() {
       h: item.h,
       minW: item.minW,
       minH: item.minH,
-      isDraggable: isToolboxOpen, // Drag/Resize only when toolbox is open
+      isDraggable: isToolboxOpen,
       isResizable: isToolboxOpen,
     }));
   };
@@ -505,20 +689,110 @@ export function Dashboard() {
     })
   );
 
-  // Calculate left padding for main content based on open panels
-  const mainContentPaddingLeft = isToolboxOpen
-    ? "pl-64" // Toolbox width w-64
-    : isGameMasterPanelOpen
-    ? "pl-72" // GM Panel width w-72
-    : isUserProfilePanelOpen
-    ? "pl-72" // Profile Panel width w-72
-    : isPathsPageOpen
-    ? "pl-96" // Paths page width w-96
-    : isCalendarDataSourceOpen ||
-      isHealthDataSourceOpen ||
-      isTodosDataSourceOpen
-    ? "pl-80" // Data Source Panel width w-80 (320px)
-    : "pl-0";
+  // --- Panel Behavior & Styling ---
+  // Only toolbox pushes content
+  const mainContentPaddingLeft = isToolboxOpen ? "pl-64" : "pl-0";
+  // Mobile edit mode styling
+  const isMobileEditMode = isToolboxOpen && editTargetDashboard === "mobile";
+  const mobileEditWrapperClasses = isMobileEditMode // Renamed class variable
+    ? "w-[375px] max-w-[375px] border-2 border-dashed border-blue-500 dark:border-blue-400 mx-auto" // Apply width and border to wrapper
+    : "";
+
+  // --- Grid Configuration ---
+  // Determine grid props based on mode
+  const currentGridCols = isMobileEditMode ? mobileCols : standardCols;
+  const currentGridBreakpoints = isMobileEditMode
+    ? mobileBreakpoints
+    : standardBreakpoints;
+
+  // Don't render the main dashboard structure until auth state is resolved
+  if (useAuth().isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-50 dark:bg-gray-950">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+      </div>
+    );
+  }
+
+  // Common props for both grid layouts
+  const commonGridLayoutProps = {
+    className: "layout",
+    layouts: { lg: generateLayout() }, // RGL uses 'lg' layout if only one breakpoint defined
+    rowHeight: 30,
+    margin: [10, 10] as [number, number],
+    containerPadding: [15, 15] as [number, number],
+    isDroppable: false,
+    onLayoutChange: onLayoutChange,
+    onResizeStop: handleResize,
+    style: { minHeight: "100%" },
+    isDraggable: isToolboxOpen,
+    isResizable: isToolboxOpen,
+    compactType: null,
+    preventCollision: true,
+    draggableCancel: ".widget-controls-cancel-drag",
+  };
+
+  // Render the appropriate grid based on edit mode
+  const renderGrid = () => {
+    if (isMobileEditMode) {
+      // Mobile Edit Grid
+      return (
+        <div className={cn("h-full", mobileEditWrapperClasses)}>
+          <SortableContext
+            items={items.map((item) => item.id)}
+            strategy={rectSortingStrategy}
+          >
+            <ResponsiveGridLayout
+              {...commonGridLayoutProps}
+              breakpoints={mobileBreakpoints} // Use mobile breakpoints
+              cols={mobileCols} // Use mobile cols
+              // WidthProvider should get width from parent div
+            >
+              {items.map((item) => (
+                <div
+                  key={item.id}
+                  data-grid={generateLayout().find((l) => l.i === item.id)}
+                >
+                  <DashboardGridItem
+                    item={item}
+                    isEditing={isToolboxOpen}
+                    handleDeleteWidget={handleDeleteWidget}
+                  />
+                </div>
+              ))}
+            </ResponsiveGridLayout>
+          </SortableContext>
+        </div>
+      );
+    } else {
+      // Standard Desktop/Responsive Grid
+      return (
+        <SortableContext
+          items={items.map((item) => item.id)}
+          strategy={rectSortingStrategy}
+        >
+          <ResponsiveGridLayout
+            {...commonGridLayoutProps}
+            breakpoints={standardBreakpoints} // Use standard breakpoints
+            cols={standardCols} // Use standard cols
+          >
+            {items.map((item) => (
+              <div
+                key={item.id}
+                data-grid={generateLayout().find((l) => l.i === item.id)}
+              >
+                <DashboardGridItem
+                  item={item}
+                  isEditing={isToolboxOpen}
+                  handleDeleteWidget={handleDeleteWidget}
+                />
+              </div>
+            ))}
+          </ResponsiveGridLayout>
+        </SortableContext>
+      );
+    }
+  };
 
   return (
     <DndContext
@@ -527,16 +801,13 @@ export function Dashboard() {
       onDragEnd={handleDragEnd}
       modifiers={[restrictToWindowEdges]}
     >
-      {/* Main container with fixed sidebar width offset */}
+      {/* Main container */}
       <div className="flex h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 pl-16">
-        {" "}
-        {/* pl-16 for fixed sidebar */}
         <LeftSidebar
           isToolboxOpen={isToolboxOpen}
           isGameMasterPanelOpen={isGameMasterPanelOpen}
           isUserProfilePanelOpen={isUserProfilePanelOpen}
           isPathsPageOpen={isPathsPageOpen}
-          // Pass data source states and toggles
           isCalendarDataSourceOpen={isCalendarDataSourceOpen}
           isHealthDataSourceOpen={isHealthDataSourceOpen}
           isTodosDataSourceOpen={isTodosDataSourceOpen}
@@ -549,78 +820,43 @@ export function Dashboard() {
           toggleTodosDataSource={toggleTodosDataSource}
         />
         <div className="flex flex-col flex-1 overflow-hidden">
-          {" "}
-          {/* Container for header + main content */}
-          <DashboardHeader /> {/* No props needed */}
+          <DashboardHeader />
           <div className="flex-1 relative overflow-hidden w-full">
-            {" "}
-            {/* Container for grid + sliding panels */}
             {/* Dashboard Grid Area */}
             <Droppable id="dashboard-grid">
               <main
                 ref={gridContainerRef}
-                // Dynamic padding based on which panel is open
-                // Added absolute inset-0 to ensure it fills the parent relative container
-                className={`absolute inset-0 bg-gray-100 dark:bg-gray-950 overflow-auto transition-all duration-300 ease-in-out ${mainContentPaddingLeft}`}
+                className={cn(
+                  `absolute inset-0 bg-gray-100 dark:bg-gray-950 overflow-auto transition-padding duration-300 ease-in-out`,
+                  mainContentPaddingLeft,
+                  // Apply centering ONLY in mobile edit mode
+                  isMobileEditMode && "flex justify-center items-start pt-4" // Center content vertically and add padding
+                )}
               >
-                <SortableContext
-                  items={items.map((item) => item.id)}
-                  strategy={rectSortingStrategy}
-                >
-                  <ResponsiveGridLayout
-                    className="layout"
-                    layouts={{ lg: generateLayout() }}
-                    breakpoints={{
-                      lg: 1200,
-                      md: 996,
-                      sm: 768,
-                      xs: 480,
-                      xxs: 0,
-                    }}
-                    cols={{ lg: 24, md: 20, sm: 12, xs: 8, xxs: 4 }}
-                    rowHeight={30}
-                    margin={[10, 10]}
-                    containerPadding={[15, 15]}
-                    isDroppable={false} // dnd-kit handles dropping
-                    onLayoutChange={onLayoutChange}
-                    onResize={handleResize}
-                    style={{ minHeight: "100%" }}
-                    isDraggable={isToolboxOpen}
-                    isResizable={isToolboxOpen}
-                    compactType={null}
-                    preventCollision={true}
-                    draggableCancel=".widget-controls-cancel-drag"
-                  >
-                    {items.map((item) => (
-                      <div
-                        key={item.id}
-                        data-grid={generateLayout().find(
-                          (l) => l.i === item.id
-                        )}
-                      >
-                        {/* Pass handleDeleteWidget and isEditing state */}
-                        <DashboardGridItem
-                          item={item}
-                          isEditing={isToolboxOpen} // Pass toolbox state as editing flag
-                          handleDeleteWidget={handleDeleteWidget}
-                        />
-                      </div>
-                    ))}
-                  </ResponsiveGridLayout>
-                </SortableContext>
+                {/* Show loading indicator inside main area */}
+                {isLoadingLayout ? (
+                  <div className="flex h-full items-center justify-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+                  </div>
+                ) : (
+                  renderGrid() // Render the appropriate grid
+                )}
               </main>
             </Droppable>
-            {/* Sliding Panels Container (relative to the inner flex container) */}
-            {/* Render WidgetToolbox with conditional transform */}
+            {/* Sliding Panels Container */}
+            {/* Toolbox */}
             <div
               className={`absolute top-0 left-0 bottom-0 transition-transform duration-300 ease-in-out z-20 ${
                 isToolboxOpen ? "translate-x-0" : "-translate-x-full"
               }`}
             >
-              {/* Pass toggleToolbox as onClose prop */}
-              <WidgetToolbox onClose={toggleToolbox} />
+              {/* Pass editTargetDashboard to Toolbox */}
+              <WidgetToolbox
+                onClose={toggleToolbox}
+                editTargetDashboard={editTargetDashboard}
+              />
             </div>
-            {/* Render GameMasterPanel with conditional transform */}
+            {/* Other Panels (Now overlay) */}
             <div
               className={`absolute top-0 left-0 bottom-0 transition-transform duration-300 ease-in-out z-20 ${
                 isGameMasterPanelOpen ? "translate-x-0" : "-translate-x-full"
@@ -628,7 +864,6 @@ export function Dashboard() {
             >
               <GameMasterPanel onClose={toggleGameMasterPanel} />
             </div>
-            {/* Render UserProfilePanel with conditional transform */}
             <div
               className={`absolute top-0 left-0 bottom-0 transition-transform duration-300 ease-in-out z-20 ${
                 isUserProfilePanelOpen ? "translate-x-0" : "-translate-x-full"
@@ -636,13 +871,11 @@ export function Dashboard() {
             >
               <UserProfilePanel onClose={toggleUserProfilePanel} />
             </div>
-            {/* Render PathsPage with conditional transform */}
             <div
               className={`absolute top-0 left-0 bottom-0 transition-transform duration-300 ease-in-out z-20 ${
                 isPathsPageOpen ? "translate-x-0" : "-translate-x-full"
               }`}
             >
-              {/* Pass path state and handler */}
               <PathsPage
                 onClose={togglePathsPage}
                 activePathName={activePathName}
@@ -652,28 +885,22 @@ export function Dashboard() {
                 nextUnlockXP={nextUnlockXP}
               />
             </div>
-            {/* Render CalendarDataSource with conditional transform */}
             <div
               className={`absolute top-0 left-0 bottom-0 transition-transform duration-300 ease-in-out z-20 w-80 ${
-                // Added w-80
                 isCalendarDataSourceOpen ? "translate-x-0" : "-translate-x-full"
               }`}
             >
               <CalendarDataSource />
             </div>
-            {/* Render HealthDataSource with conditional transform */}
             <div
               className={`absolute top-0 left-0 bottom-0 transition-transform duration-300 ease-in-out z-20 w-80 ${
-                // Added w-80
                 isHealthDataSourceOpen ? "translate-x-0" : "-translate-x-full"
               }`}
             >
               <HealthDataSource />
             </div>
-            {/* Render TodosDataSource with conditional transform */}
             <div
               className={`absolute top-0 left-0 bottom-0 transition-transform duration-300 ease-in-out z-20 w-80 ${
-                // Added w-80
                 isTodosDataSourceOpen ? "translate-x-0" : "-translate-x-full"
               }`}
             >
@@ -688,17 +915,39 @@ export function Dashboard() {
         {/* Floating Edit Mode Indicator */}
         <div
           className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-gray-800 dark:bg-gray-700 text-white px-4 py-2 rounded-full shadow-lg flex items-center space-x-3 transition-transform duration-300 ease-in-out ${
-            isToolboxOpen ? "translate-y-0" : "translate-y-20" // Slide up/down
+            isToolboxOpen ? "translate-y-0" : "translate-y-20"
           }`}
         >
-          <span>You are in edit mode</span>
+          {/* Edit Target Toggle Button */}
           <Button
             variant="ghost"
-            size="icon" // Use icon size
-            className="text-gray-300 hover:bg-gray-700 dark:hover:bg-gray-600 hover:text-white rounded-full h-6 w-6" // Adjusted styling
-            onClick={toggleToolbox} // Use the existing toggle function
+            size="icon"
+            className="text-gray-300 hover:bg-gray-700 dark:hover:bg-gray-600 hover:text-white rounded-full h-6 w-6"
+            onClick={toggleEditTarget}
+            title={`Switch to editing ${
+              editTargetDashboard === "default" ? "Mobile" : "Desktop"
+            } layout`}
           >
-            <X className="h-4 w-4" /> {/* Use X icon */}
+            {editTargetDashboard === "default" ? (
+              <Smartphone className="h-4 w-4" />
+            ) : (
+              <Monitor className="h-4 w-4" />
+            )}
+          </Button>
+          {/* Indicator Text */}
+          <span>
+            Editing {editTargetDashboard === "default" ? "Desktop" : "Mobile"}{" "}
+            Layout
+          </span>
+          {/* Close Edit Mode Button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-gray-300 hover:bg-gray-700 dark:hover:bg-gray-600 hover:text-white rounded-full h-6 w-6"
+            onClick={toggleToolbox}
+            title="Exit Edit Mode"
+          >
+            <X className="h-4 w-4" />
           </Button>
         </div>
       </div>

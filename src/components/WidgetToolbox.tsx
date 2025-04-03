@@ -1,10 +1,11 @@
 import React from "react";
 import { Draggable } from "./Draggable";
-import { WidgetGroup } from "@/lib/dashboardConfig";
 import {
+  WidgetGroup,
   availableWidgets,
   widgetMetadata,
   WidgetType,
+  defaultWidgetLayouts, // Import default layouts for minW check
 } from "@/lib/dashboardConfig";
 import {
   X,
@@ -12,7 +13,7 @@ import {
   ListChecks,
   CalendarDays,
   AlertTriangle,
-} from "lucide-react"; // Removed Layers, Added AlertTriangle
+} from "lucide-react";
 import { Button } from "./ui/button";
 import {
   Tooltip,
@@ -24,6 +25,7 @@ import {
 // Define props interface
 interface WidgetToolboxProps {
   onClose: () => void;
+  editTargetDashboard: string; // Add the new prop
 }
 
 // Helper function to group widgets
@@ -122,8 +124,20 @@ const dataSourceInfoMap: Partial<
   },
 };
 
-export function WidgetToolbox({ onClose }: WidgetToolboxProps) {
-  const groupedWidgets = groupWidgets(availableWidgets);
+export function WidgetToolbox({
+  onClose,
+  editTargetDashboard, // Destructure the prop
+}: WidgetToolboxProps) {
+  // Filter available widgets based on the edit target
+  const filteredAvailableWidgets =
+    editTargetDashboard === "mobile"
+      ? availableWidgets.filter((widgetType) => {
+          const minW = defaultWidgetLayouts[widgetType]?.minW ?? 0;
+          return minW <= 4; // Only include if minW is 4 or less
+        })
+      : availableWidgets; // Show all for default/desktop
+
+  const groupedWidgets = groupWidgets(filteredAvailableWidgets);
   const groupOrder: WidgetGroup[] = [
     "Tracking",
     "Productivity",
@@ -218,14 +232,14 @@ export function WidgetToolbox({ onClose }: WidgetToolboxProps) {
             })}
           </div>
 
-          {/* Warning card about client-side storage */}
+          {/* Warning card about client-side storage - TODO: Remove or update this card */}
           <div className="mt-6 p-3 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded-lg">
             <div className="flex items-start gap-2">
               <AlertTriangle className="w-5 h-5 text-yellow-500 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
               <p className="text-xs text-yellow-700 dark:text-yellow-300">
-                Currently, dashboard layouts are saved client-side only! Your
-                widget data (todos, events, etc.) is saved to the server, but
-                widget positions and sizes are not synced.
+                {/* Update this message */}
+                Widget positions are now saved to your account and synced across
+                devices.
               </p>
             </div>
           </div>
