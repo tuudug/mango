@@ -27,7 +27,7 @@ function MainContent() {
   }
 
   return (
-    <div className="flex flex-col justify-center items-center h-screen bg-gray-100 dark:bg-gray-900">
+    <div className="flex flex-col justify-center items-center h-screen bg-gray-900">
       {showLogin ? <LoginForm /> : <SignupForm />}
       <Button
         variant="link"

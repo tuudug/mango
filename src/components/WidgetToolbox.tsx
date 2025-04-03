@@ -67,60 +67,59 @@ const dataSourceInfoMap: Partial<
   "Steps Tracker": {
     icon: HeartPulse,
     tooltip: "Consumes Health Data Source",
-    color: "text-red-500 dark:text-red-400",
+    color: "text-red-400",
   },
   "To-do List": {
     icon: ListChecks,
     tooltip: "Consumes Todos Data Source",
-    color: "text-green-500 dark:text-green-400",
+    color: "text-green-400",
   },
   "Month Calendar": {
     icon: CalendarDays,
     tooltip: "Consumes Calendar Data Source",
-    color: "text-blue-500 dark:text-blue-400",
+    color: "text-blue-400",
   },
   "Daily Calendar": {
     icon: CalendarDays,
     tooltip: "Consumes Calendar Data Source",
-    color: "text-blue-500 dark:text-blue-400",
+    color: "text-blue-400",
   },
   "Daily Summary": [
     {
       icon: CalendarDays,
       tooltip: "Calendar Data",
-      color: "text-blue-500 dark:text-blue-400",
+      color: "text-blue-400",
     },
     {
       icon: ListChecks,
       tooltip: "Todos Data",
-      color: "text-green-500 dark:text-green-400",
+      color: "text-green-400",
     },
     {
       icon: HeartPulse,
       tooltip: "Health Data",
-      color: "text-red-500 dark:text-red-400",
+      color: "text-red-400",
     },
   ],
   "Goal Tracker": {
-    // Added WIP indicator
     icon: AlertTriangle,
     tooltip: "Work in progress",
-    color: "text-yellow-500 dark:text-yellow-400",
+    color: "text-yellow-400",
   },
   "Habit Graph": {
     icon: AlertTriangle,
     tooltip: "Work in progress",
-    color: "text-yellow-500 dark:text-yellow-400",
+    color: "text-yellow-400",
   },
   "Sleep/Step": {
     icon: AlertTriangle,
     tooltip: "Work in progress",
-    color: "text-yellow-500 dark:text-yellow-400",
+    color: "text-yellow-400",
   },
   Journal: {
     icon: AlertTriangle,
     tooltip: "Data saved locally only",
-    color: "text-yellow-500 dark:text-yellow-400",
+    color: "text-yellow-400",
   },
 };
 
@@ -146,11 +145,11 @@ export function WidgetToolbox({
   ];
 
   return (
-    <aside className="h-full w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shadow-lg overflow-y-auto">
+    <aside className="h-full w-64 bg-gray-800 border-r border-gray-700 shadow-lg overflow-y-auto">
       <TooltipProvider delayDuration={200}>
         <div className="p-4">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
+            <h2 className="text-lg font-semibold text-gray-100">
               Widget Toolbox
             </h2>
             <Button
@@ -168,7 +167,7 @@ export function WidgetToolbox({
               if (!widgetsInGroup || widgetsInGroup.length === 0) return null;
               return (
                 <div key={groupName}>
-                  <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">
+                  <h3 className="text-sm font-medium text-gray-400 mb-2 uppercase tracking-wider">
                     {groupName}
                   </h3>
                   <div className="space-y-2">
@@ -181,7 +180,7 @@ export function WidgetToolbox({
                           data={{ type: "toolbox-item", widgetType }}
                         >
                           <div
-                            className={`flex items-center gap-2 p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-700 cursor-grab hover:bg-gray-100 dark:hover:bg-gray-600 hover:border-blue-300 dark:hover:border-blue-500 transition-all duration-200 shadow-sm`}
+                            className={`flex items-center gap-2 p-3 border border-gray-700 rounded-lg bg-gray-700 cursor-grab hover:bg-gray-600 hover:border-blue-500 transition-all duration-200 shadow-sm`}
                           >
                             {/* Widget Icon and Name */}
                             <div className="flex items-center gap-2 flex-grow">
@@ -196,7 +195,7 @@ export function WidgetToolbox({
                                   )}`,
                                 }
                               )}
-                              <span className="font-medium text-sm text-gray-800 dark:text-gray-100">
+                              <span className="font-medium text-sm text-gray-100">
                                 {widgetType}
                               </span>
                             </div>
@@ -207,7 +206,7 @@ export function WidgetToolbox({
                                   (info, index) => (
                                     <Tooltip key={index}>
                                       <TooltipTrigger asChild>
-                                        <div className="p-0.5 rounded bg-gray-100 dark:bg-gray-600 border border-gray-200 dark:border-gray-500 flex items-center justify-center">
+                                        <div className="p-0.5 rounded bg-gray-600 border border-gray-500 flex items-center justify-center">
                                           {React.createElement(info.icon, {
                                             className: `w-3 h-3 ${info.color}`,
                                           })}
@@ -232,12 +231,11 @@ export function WidgetToolbox({
             })}
           </div>
 
-          {/* Warning card about client-side storage - TODO: Remove or update this card */}
-          <div className="mt-6 p-3 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+          {/* Warning card about client-side storage */}
+          <div className="mt-6 p-3 bg-yellow-900/30 border border-yellow-800 rounded-lg">
             <div className="flex items-start gap-2">
-              <AlertTriangle className="w-5 h-5 text-yellow-500 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
-              <p className="text-xs text-yellow-700 dark:text-yellow-300">
-                {/* Update this message */}
+              <AlertTriangle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-yellow-300">
                 Widget positions are now saved to your account and synced across
                 devices.
               </p>

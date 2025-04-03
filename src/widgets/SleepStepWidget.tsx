@@ -53,39 +53,24 @@ export const SleepStepWidget: React.FC<SleepStepWidgetProps> = ({ id }) => {
   };
 
   return (
-    // Added dark mode classes
-    <div className="p-2 h-full w-full flex flex-col text-sm text-gray-700 dark:text-gray-300">
+    <div className="p-2 h-full w-full flex flex-col text-sm text-gray-300">
       <div className="flex justify-between items-center mb-2">
-        <h3 className="font-semibold text-gray-800 dark:text-gray-100 text-base">
-          Sleep & Steps
-        </h3>
-        <div className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 px-1.5 py-0.5 rounded">
+        <h3 className="font-semibold text-gray-100 text-base">Sleep & Steps</h3>
+        <div className="text-xs bg-gray-700 text-gray-400 px-1.5 py-0.5 rounded">
           Weekly Data
         </div>
       </div>
       {/* Summary */}
       <div className="grid grid-cols-2 gap-1.5 mb-2">
-        <div className="bg-indigo-50 dark:bg-indigo-900/30 rounded p-1.5">
-          {" "}
-          {/* Dark mode summary bg */}
-          <div className="text-xs text-gray-500 dark:text-gray-400">
-            Avg. Sleep
-          </div>
-          <div className="font-bold text-indigo-700 dark:text-indigo-300 text-base">
-            {" "}
-            {/* Dark mode summary text */}
+        <div className="bg-indigo-900/30 rounded p-1.5">
+          <div className="text-xs text-gray-400">Avg. Sleep</div>
+          <div className="font-bold text-indigo-300 text-base">
             {avgSleep.toFixed(1)}h
           </div>
         </div>
-        <div className="bg-green-50 dark:bg-green-900/30 rounded p-1.5">
-          {" "}
-          {/* Dark mode summary bg */}
-          <div className="text-xs text-gray-500 dark:text-gray-400">
-            Avg. Steps
-          </div>
-          <div className="font-bold text-green-700 dark:text-green-300 text-base">
-            {" "}
-            {/* Dark mode summary text */}
+        <div className="bg-green-900/30 rounded p-1.5">
+          <div className="text-xs text-gray-400">Avg. Steps</div>
+          <div className="font-bold text-green-300 text-base">
             {Math.round(avgSteps).toLocaleString()}
           </div>
         </div>
@@ -100,10 +85,10 @@ export const SleepStepWidget: React.FC<SleepStepWidgetProps> = ({ id }) => {
             {/* Sleep bar */}
             <div className="w-full mb-0.5 flex justify-center">
               <div
-                className="w-2.5 bg-indigo-400 dark:bg-indigo-500 rounded-t transition-all duration-300" // Dark mode bar color
+                className="w-2.5 bg-indigo-500 rounded-t transition-all duration-300"
                 style={{
                   height: `${getSleepBarHeight(day.sleep)}%`,
-                  minHeight: "3px" /* Smaller min height */,
+                  minHeight: "3px",
                 }}
                 title={`${day.sleep}h sleep`}
               ></div>
@@ -111,34 +96,27 @@ export const SleepStepWidget: React.FC<SleepStepWidgetProps> = ({ id }) => {
             {/* Steps bar */}
             <div className="w-full mb-0.5 flex justify-center">
               <div
-                className="w-2.5 bg-green-400 dark:bg-green-500 rounded-t transition-all duration-300" // Dark mode bar color
+                className="w-2.5 bg-green-500 rounded-t transition-all duration-300"
                 style={{
                   height: `${getStepBarHeight(day.steps)}%`,
-                  minHeight: "3px" /* Smaller min height */,
+                  minHeight: "3px",
                 }}
                 title={`${day.steps} steps`}
               ></div>
             </div>
             {/* Day label */}
-            <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-              {day.day}
-            </div>{" "}
-            {/* Dark mode label */}
+            <div className="text-xs text-gray-400 mt-0.5">{day.day}</div>
           </div>
         ))}
       </div>
       {/* Legend */}
-      <div className="mt-2 flex justify-between text-xs text-gray-500 dark:text-gray-400">
-        {" "}
-        {/* Dark mode legend text */}
+      <div className="mt-2 flex justify-between text-xs text-gray-400">
         <div className="flex items-center">
-          <div className="w-2 h-2 bg-indigo-400 dark:bg-indigo-500 rounded mr-1"></div>{" "}
-          {/* Dark mode dot */}
+          <div className="w-2 h-2 bg-indigo-500 rounded mr-1"></div>
           <span>Sleep</span>
         </div>
         <div className="flex items-center">
-          <div className="w-2 h-2 bg-green-400 dark:bg-green-500 rounded mr-1"></div>{" "}
-          {/* Dark mode dot */}
+          <div className="w-2 h-2 bg-green-500 rounded mr-1"></div>
           <span>Steps</span>
         </div>
         <button
@@ -148,9 +126,7 @@ export const SleepStepWidget: React.FC<SleepStepWidgetProps> = ({ id }) => {
           Refresh
         </button>
       </div>
-      <div className="mt-1 text-xs text-gray-400 dark:text-gray-500 text-right">
-        {" "}
-        {/* Dark mode widget ID text */}
+      <div className="mt-1 text-xs text-gray-500 text-right">
         Widget ID: {id.slice(0, 8)}
       </div>
     </div>

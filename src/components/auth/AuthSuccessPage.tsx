@@ -19,12 +19,12 @@ const AuthSuccessPage: React.FC = () => {
   }, [navigate, confirmGoogleConnection]); // Update dependency
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
-      <div className="p-8 bg-white dark:bg-gray-800 rounded shadow-md text-center">
-        <h2 className="text-2xl font-semibold text-green-600 dark:text-green-400 mb-4">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900">
+      <div className="p-8 bg-gray-800 rounded shadow-md text-center">
+        <h2 className="text-2xl font-semibold text-green-400 mb-4">
           Authentication Successful!
         </h2>
-        <p className="text-gray-700 dark:text-gray-300">
+        <p className="text-gray-300">
           Your account has been connected successfully. Redirecting...
         </p>
         {/* Optional: Add a loading spinner */}

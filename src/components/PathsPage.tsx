@@ -178,12 +178,12 @@ export function PathsPage({
   return (
     <>
       {/* Remove fixed width w-96, add w-full */}
-      <aside className="h-full w-full bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 shadow-lg flex flex-col">
+      <aside className="h-full w-full bg-gray-800 border-l border-gray-700 shadow-lg flex flex-col">
         {/* Header */}
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center flex-shrink-0">
+        <div className="p-4 border-b border-gray-700 flex justify-between items-center flex-shrink-0">
           <div className="flex items-center gap-2">
-            <Milestone className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
-            <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
+            <Milestone className="w-5 h-5 text-indigo-400" />
+            <h2 className="text-lg font-semibold text-gray-100">
               Progression Paths
             </h2>
           </div>
@@ -203,14 +203,14 @@ export function PathsPage({
                     About Progression Paths
                   </DialogTitle>
                 </DialogHeader>
-                <div className="py-4 space-y-4 text-sm text-gray-600 dark:text-gray-300">
+                <div className="py-4 space-y-4 text-sm text-gray-300">
                   <div className="flex items-start gap-3">
                     <Star
                       className="w-4 h-4 text-yellow-500 flex-shrink-0 mt-0.5"
                       fill="currentColor"
                     />
                     <p>
-                      <span className="font-semibold text-gray-800 dark:text-gray-100">
+                      <span className="font-semibold text-gray-100">
                         Active Path:
                       </span>{" "}
                       Only one path can be active at a time. Your earned XP will
@@ -220,7 +220,7 @@ export function PathsPage({
                   <div className="flex items-start gap-3">
                     <TrendingUp className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
                     <p>
-                      <span className="font-semibold text-gray-800 dark:text-gray-100">
+                      <span className="font-semibold text-gray-100">
                         Earning XP:
                       </span>{" "}
                       All the XP you earn will count towards your selected paths
@@ -230,7 +230,7 @@ export function PathsPage({
                   <div className="flex items-start gap-3">
                     <Gift className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
                     <p>
-                      <span className="font-semibold text-gray-800 dark:text-gray-100">
+                      <span className="font-semibold text-gray-100">
                         Unlocking Items:
                       </span>{" "}
                       When you reach the required XP for the next item on your
@@ -240,11 +240,11 @@ export function PathsPage({
                   <div className="flex items-start gap-3">
                     <Repeat className="w-4 h-4 text-orange-500 flex-shrink-0 mt-0.5" />
                     <p>
-                      <span className="font-semibold text-gray-800 dark:text-gray-100">
+                      <span className="font-semibold text-gray-100">
                         Switching Paths:
                       </span>{" "}
                       You can switch your active path anytime.{" "}
-                      <span className="font-medium text-orange-600 dark:text-orange-400">
+                      <span className="font-medium text-orange-400">
                         Warning:
                       </span>{" "}
                       Switching resets your XP progress towards the{" "}
@@ -290,24 +290,20 @@ export function PathsPage({
                 key={path.name}
                 className={`p-3 rounded-lg border ${
                   isActive
-                    ? "border-indigo-500 dark:border-indigo-400 bg-indigo-50 dark:bg-indigo-900/30"
-                    : "bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600"
+                    ? "border-indigo-400 bg-indigo-900/30"
+                    : "bg-gray-700/50 border-gray-600"
                 }`}
               >
                 <div className="flex items-center justify-between gap-2 mb-3">
                   <div className="flex items-center gap-2">
                     <path.icon
                       className={`w-4 h-4 flex-shrink-0 ${
-                        isActive
-                          ? "text-indigo-600 dark:text-indigo-400"
-                          : "text-gray-500 dark:text-gray-400"
+                        isActive ? "text-indigo-400" : "text-gray-400"
                       }`}
                     />
                     <h3
                       className={`text-base font-semibold ${
-                        isActive
-                          ? "text-gray-900 dark:text-gray-100"
-                          : "text-gray-700 dark:text-gray-300"
+                        isActive ? "text-gray-100" : "text-gray-300"
                       }`}
                     >
                       {path.name}
@@ -323,7 +319,7 @@ export function PathsPage({
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => handleSelectPathClick(path.name)} // Updated onClick
+                      onClick={() => handleSelectPathClick(path.name)}
                     >
                       Select Path
                     </Button>
@@ -334,20 +330,19 @@ export function PathsPage({
                 {isActive && nextUnlockXP > 0 && (
                   <div className="mb-3 px-1">
                     <Progress value={progressPercent} className="h-1.5" />
-                    <p className="text-[10px] text-right text-gray-500 dark:text-gray-400 mt-0.5">
+                    <p className="text-[10px] text-right text-gray-400 mt-0.5">
                       {currentPathProgressXP.toLocaleString()} /{" "}
                       {nextUnlockXP.toLocaleString()} XP to next unlock
                     </p>
                   </div>
                 )}
-                {isActive &&
-                  nextUnlockXP <= 0 && ( // Path completed
-                    <p className="text-xs text-center text-green-600 dark:text-green-400 mb-3">
-                      Path Completed!
-                    </p>
-                  )}
+                {isActive && nextUnlockXP <= 0 && (
+                  <p className="text-xs text-center text-green-400 mb-3">
+                    Path Completed!
+                  </p>
+                )}
 
-                <ol className="relative border-l border-gray-300 dark:border-gray-600 ml-2 space-y-3">
+                <ol className="relative border-l border-gray-600 ml-2 space-y-3">
                   {path.items.map((item, index) => {
                     const isItemUnlocked =
                       unlockedItems[item.label] || item.xpCost === 0;
@@ -355,19 +350,13 @@ export function PathsPage({
                       <li key={index} className="ml-5">
                         <span
                           className={`absolute flex items-center justify-center w-4 h-4 rounded-full -left-2 ring-4 ${
-                            isActive
-                              ? "ring-indigo-50 dark:ring-indigo-900/30"
-                              : "ring-gray-50 dark:ring-gray-700/30"
-                          } ${
-                            isItemUnlocked
-                              ? "bg-green-200 dark:bg-green-900"
-                              : "bg-gray-200 dark:bg-gray-700"
-                          }`}
+                            isActive ? "ring-indigo-900/30" : "ring-gray-700/30"
+                          } ${isItemUnlocked ? "bg-green-900" : "bg-gray-700"}`}
                         >
                           {isItemUnlocked ? (
-                            <Check className="w-2.5 h-2.5 text-green-600 dark:text-green-400" />
+                            <Check className="w-2.5 h-2.5 text-green-400" />
                           ) : (
-                            <Lock className="w-2.5 h-2.5 text-gray-500 dark:text-gray-400" />
+                            <Lock className="w-2.5 h-2.5 text-gray-400" />
                           )}
                         </span>
                         <div
@@ -377,21 +366,17 @@ export function PathsPage({
                         >
                           <item.icon
                             className={`w-3.5 h-3.5 flex-shrink-0 ${
-                              isItemUnlocked
-                                ? "text-gray-700 dark:text-gray-300"
-                                : "text-gray-500 dark:text-gray-400"
+                              isItemUnlocked ? "text-gray-300" : "text-gray-400"
                             }`}
                           />
                           <span
                             className={`text-xs font-medium ${
-                              isItemUnlocked
-                                ? "text-gray-800 dark:text-gray-200"
-                                : "text-gray-500 dark:text-gray-400"
+                              isItemUnlocked ? "text-gray-200" : "text-gray-400"
                             }`}
                           >
                             {item.label}{" "}
                             {item.isUpgrade ? (
-                              <span className="text-[9px] text-indigo-500 dark:text-indigo-400">
+                              <span className="text-[9px] text-indigo-400">
                                 (Upgrade)
                               </span>
                             ) : (
@@ -400,7 +385,7 @@ export function PathsPage({
                           </span>
                         </div>
                         {!isItemUnlocked && (
-                          <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 ml-1">
+                          <p className="text-[10px] text-gray-500 mt-0.5 ml-1">
                             {item.xpCost.toLocaleString()} XP
                           </p>
                         )}

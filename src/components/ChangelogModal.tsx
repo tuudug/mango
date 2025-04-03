@@ -90,7 +90,7 @@ export function ChangelogModal({ isOpen, onOpenChange }: ChangelogModalProps) {
                       ({entry.date})
                     </span>
                   </h3>
-                  <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700 dark:text-gray-300">
+                  <ul className="list-disc pl-5 space-y-1 text-sm text-gray-300">
                     {entry.data.map((item, index) => (
                       <li key={index}>{item}</li>
                     ))}

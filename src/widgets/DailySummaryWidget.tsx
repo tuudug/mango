@@ -59,15 +59,15 @@ export function DailySummaryWidget() {
 
   return (
     <div className="p-3 h-full w-full flex flex-col text-sm">
-      <h3 className="text-base font-semibold mb-3 text-gray-800 dark:text-gray-100">
-        Today&#39;s Summary {/* Fixed quote again */}
+      <h3 className="text-base font-semibold mb-3 text-gray-100">
+        Today&#39;s Summary
       </h3>
 
       {/* Sections Container */}
       <div className="flex-1 space-y-4 overflow-y-auto pr-1">
         {/* Calendar Section */}
         <section>
-          <h4 className="text-xs font-medium uppercase text-gray-500 dark:text-gray-400 mb-1.5 flex items-center gap-1.5">
+          <h4 className="text-xs font-medium uppercase text-gray-400 mb-1.5 flex items-center gap-1.5">
             <CalendarDays size={14} /> Upcoming Events
           </h4>
           {isLoading && upcomingEvents.length === 0 ? (
@@ -76,12 +76,10 @@ export function DailySummaryWidget() {
             <ul className="space-y-1">
               {upcomingEvents.map((event) => (
                 <li key={event.id} className="flex items-center gap-2 text-xs">
-                  <span className="font-mono w-12 text-right text-gray-500 dark:text-gray-400 flex-shrink-0">
+                  <span className="font-mono w-12 text-right text-gray-400 flex-shrink-0">
                     {event.isAllDay ? "All-day" : event.startTime ?? ""}
                   </span>
-                  <span className="truncate text-gray-700 dark:text-gray-300">
-                    {event.title}
-                  </span>
+                  <span className="truncate text-gray-300">{event.title}</span>
                 </li>
               ))}
             </ul>
@@ -94,7 +92,7 @@ export function DailySummaryWidget() {
 
         {/* Todos Section */}
         <section>
-          <h4 className="text-xs font-medium uppercase text-gray-500 dark:text-gray-400 mb-1.5 flex items-center gap-1.5">
+          <h4 className="text-xs font-medium uppercase text-gray-400 mb-1.5 flex items-center gap-1.5">
             <CheckSquare size={14} /> Pending Tasks
           </h4>
           {isLoading && incompleteTodos.length === 0 ? (
@@ -114,7 +112,7 @@ export function DailySummaryWidget() {
                   />
                   <Label
                     htmlFor={`summary-todo-${todo.id}`}
-                    className="truncate text-gray-700 dark:text-gray-300 cursor-pointer group-hover:text-blue-600 dark:group-hover:text-blue-400"
+                    className="truncate text-gray-300 cursor-pointer group-hover:text-blue-400"
                   >
                     {todo.title}
                   </Label>
@@ -128,14 +126,14 @@ export function DailySummaryWidget() {
 
         {/* Steps Section */}
         <section>
-          <h4 className="text-xs font-medium uppercase text-gray-500 dark:text-gray-400 mb-1.5 flex items-center gap-1.5">
+          <h4 className="text-xs font-medium uppercase text-gray-400 mb-1.5 flex items-center gap-1.5">
             <Footprints size={14} /> Steps
           </h4>
           {isLoading && todaysSteps === 0 ? (
             <p className="text-xs text-gray-400 italic">Loading...</p>
           ) : (
             <div className="space-y-1">
-              <p className="text-xs text-gray-600 dark:text-gray-300">
+              <p className="text-xs text-gray-300">
                 {todaysSteps.toLocaleString()} / {STEP_GOAL.toLocaleString()}{" "}
                 steps
               </p>

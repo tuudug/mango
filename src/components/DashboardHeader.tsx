@@ -107,13 +107,11 @@ export function DashboardHeader() {
   }
 
   return (
-    <header className="pr-4 py-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm flex justify-between items-center z-10">
+    <header className="pr-4 py-4 bg-gray-800 border-b border-gray-700 shadow-sm flex justify-between items-center z-10">
       {/* Left side: Title and Version */}
       <div className="flex items-baseline gap-2">
-        <h1 className="pl-6 text-2xl font-bold text-gray-800 dark:text-gray-100">
-          Mango
-        </h1>
-        <span className="text-xs font-mono text-gray-400 dark:text-gray-500">
+        <h1 className="pl-6 text-2xl font-bold text-gray-100">Mango</h1>
+        <span className="text-xs font-mono text-gray-500">
           v{latestVersion}
         </span>
       </div>
@@ -128,7 +126,7 @@ export function DashboardHeader() {
                 onClick={handleUpdate}
                 disabled={isDisabled}
                 className={`relative ${pulseAnimation} ${
-                  isDisabled && !isChecking && !isUpdating // Adjust disabled style condition
+                  isDisabled && !isChecking && !isUpdating
                     ? "opacity-50 cursor-not-allowed"
                     : ""
                 }`}
@@ -136,7 +134,7 @@ export function DashboardHeader() {
               >
                 {buttonIcon}
                 {showIndicator && (
-                  <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white dark:ring-gray-800" />
+                  <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-gray-800" />
                 )}
               </Button>
             </TooltipTrigger>

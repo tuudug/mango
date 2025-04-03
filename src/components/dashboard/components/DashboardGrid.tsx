@@ -78,7 +78,7 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({
   if (isMobileEditMode) {
     // Mobile Edit Grid - Render inside the styled wrapper
     const mobileEditWrapperClasses =
-      "w-[375px] max-w-[375px] border-2 border-dashed border-blue-500 dark:border-blue-400 mx-auto h-full"; // Ensure h-full
+      "w-[375px] max-w-[375px] border-2 border-dashed border-blue-400 mx-auto h-full"; // Ensure h-full
 
     return (
       <div className={cn(mobileEditWrapperClasses)}>

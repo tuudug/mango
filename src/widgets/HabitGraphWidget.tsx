@@ -138,29 +138,23 @@ export const HabitGraphWidget: React.FC<HabitGraphWidgetProps> = ({
   const last7Days = getLast7Days();
 
   return (
-    // Added dark mode classes
-    <div className="p-2 h-full w-full flex flex-col text-sm text-gray-700 dark:text-gray-300">
+    <div className="p-2 h-full w-full flex flex-col text-sm text-gray-300">
       <div className="flex justify-between items-center mb-2">
-        <h3 className="font-semibold text-gray-800 dark:text-gray-100 text-base">
-          Habit Tracker
-        </h3>
-        <div className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">
+        <h3 className="font-semibold text-gray-100 text-base">Habit Tracker</h3>
+        <div className="text-xs text-gray-400 bg-gray-700 px-1.5 py-0.5 rounded">
           Last 7 Days
         </div>
       </div>
       {/* Habit selector */}
       <div className="flex mb-2 space-x-1.5 overflow-x-auto pb-1">
-        {" "}
-        {/* Reduced margin/spacing/padding */}
         {habits.map((habit) => (
           <button
             key={habit.id}
             onClick={() => setSelectedHabitId(habit.id)}
-            // Dark mode for habit selector buttons
             className={`px-3 py-1.5 text-xs rounded-full whitespace-nowrap transition-colors ${
               selectedHabitId === habit.id
-                ? "bg-green-500 dark:bg-green-600 text-white"
-                : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                ? "bg-green-600 text-white"
+                : "bg-gray-700 text-gray-300 hover:bg-gray-600"
             }`}
           >
             {habit.name}
@@ -170,39 +164,32 @@ export const HabitGraphWidget: React.FC<HabitGraphWidgetProps> = ({
       {/* Calendar view */}
       {selectedHabit && (
         <div className="mb-2">
-          {" "}
-          {/* Reduced margin */}
           <div className="flex justify-between items-center mb-1.5">
-            {" "}
-            {/* Reduced margin */}
-            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-200">
+            <h4 className="text-sm font-medium text-gray-200">
               {selectedHabit.name}
             </h4>
-            <span className="text-xs text-gray-500 dark:text-gray-400">
+            <span className="text-xs text-gray-400">
               {calculateCompletionRate(selectedHabit)}% completed
             </span>
           </div>
           <div className="grid grid-cols-7 gap-0.5">
-            {" "}
-            {/* Reduced gap */}
             {last7Days.map((date) => (
               <div key={date} className="flex flex-col items-center">
-                <div className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">
+                <div className="text-xs text-gray-400 mb-0.5">
                   {getDayName(date)}
                 </div>
                 <button
                   onClick={() => toggleHabitCompletion(selectedHabit.id, date)}
-                  // Dark mode for calendar day buttons
                   className={`w-6 h-6 rounded-full flex items-center justify-center transition-all ${
                     selectedHabit.completedDays[date]
-                      ? "bg-green-500 dark:bg-green-600 text-white"
-                      : "bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600"
+                      ? "bg-green-600 text-white"
+                      : "bg-gray-700 text-gray-500 hover:bg-gray-600"
                   }`}
                 >
                   {selectedHabit.completedDays[date] ? (
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
-                      className="h-3.5 w-3.5" /* Smaller icon */
+                      className="h-3.5 w-3.5"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -222,24 +209,19 @@ export const HabitGraphWidget: React.FC<HabitGraphWidgetProps> = ({
         </div>
       )}
       {/* Add new habit */}
-      <div className="mt-auto pt-2 border-t border-gray-200">
-        {" "}
-        {/* Added border */}
+      <div className="mt-auto pt-2 border-t border-gray-700">
         <div className="flex mb-1.5">
-          {" "}
-          {/* Reduced margin */}
           <input
             type="text"
             value={newHabitName}
             onChange={(e) => setNewHabitName(e.target.value)}
             onKeyPress={(e) => e.key === "Enter" && addHabit()}
             placeholder="New habit..."
-            // Dark mode for input
-            className="flex-1 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-l-md focus:outline-none focus:ring-1 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
+            className="flex-1 px-2 py-1 text-sm border border-gray-600 rounded-l-md focus:outline-none focus:ring-1 focus:ring-green-500 focus:border-green-500 bg-gray-800 text-gray-100 placeholder-gray-500"
           />
           <button
             onClick={addHabit}
-            className="px-2 py-1 bg-green-500 dark:bg-green-600 text-white text-sm rounded-r-md hover:bg-green-600 dark:hover:bg-green-700 transition-colors" // Dark mode button
+            className="px-2 py-1 bg-green-600 text-white text-sm rounded-r-md hover:bg-green-700 transition-colors"
           >
             Add
           </button>
@@ -247,13 +229,13 @@ export const HabitGraphWidget: React.FC<HabitGraphWidgetProps> = ({
         {selectedHabit && (
           <button
             onClick={() => deleteHabit(selectedHabit.id)}
-            className="text-xs text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors" // Dark mode delete text
+            className="text-xs text-red-400 hover:text-red-300 transition-colors"
           >
             Delete &ldquo;{selectedHabit.name}&rdquo;
           </button>
         )}
       </div>
-      <div className="mt-2 text-xs text-gray-400 dark:text-gray-500 text-right">
+      <div className="mt-2 text-xs text-gray-500 text-right">
         {/* Widget ID: {id.slice(0, 8)} */}{" "}
         {/* Commented out as id is unused */}
       </div>

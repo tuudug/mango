@@ -93,20 +93,17 @@ export const MonthCalendarWidget: React.FC<MonthCalendarWidgetProps> = ({
   };
 
   return (
-    // Added dark mode classes
-    <div className="p-2 h-full w-full flex flex-col text-sm text-gray-700 dark:text-gray-300">
+    <div className="p-2 h-full w-full flex flex-col text-sm text-gray-300">
       <div className="flex justify-between items-center mb-2"></div>
       {/* Month navigation */}
       <div className="flex justify-between items-center mb-2">
-        {" "}
-        {/* Reduced margin */}
         <button
           onClick={prevMonth}
-          className="p-0.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" // Dark mode hover
+          className="p-0.5 rounded-full hover:bg-gray-700 transition-colors"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            className="h-4 w-4 text-gray-600 dark:text-gray-400" // Dark mode icon color
+            className="h-4 w-4 text-gray-400"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -119,18 +116,16 @@ export const MonthCalendarWidget: React.FC<MonthCalendarWidgetProps> = ({
             />
           </svg>
         </button>
-        <span className="font-medium text-sm text-gray-800 dark:text-gray-100">
-          {" "}
-          {/* Dark mode text */}
+        <span className="font-medium text-sm text-gray-100">
           {month} {year}
         </span>
         <button
           onClick={nextMonth}
-          className="p-0.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" // Dark mode hover
+          className="p-0.5 rounded-full hover:bg-gray-700 transition-colors"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            className="h-4 w-4 text-gray-600 dark:text-gray-400" // Dark mode icon color
+            className="h-4 w-4 text-gray-400"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -148,7 +143,7 @@ export const MonthCalendarWidget: React.FC<MonthCalendarWidgetProps> = ({
       {/* Loading Bar - Always rendered, animation controlled by isLoading */}
       <LoadingBar
         isLoading={isLoading}
-        colorClassName="bg-red-500" // Month widget color
+        colorClassName="bg-red-500"
         className="mb-1 flex-shrink-0"
       />
 
@@ -158,7 +153,7 @@ export const MonthCalendarWidget: React.FC<MonthCalendarWidgetProps> = ({
         {dayNames.map((day) => (
           <div
             key={day}
-            className="text-center text-[10px] font-medium text-gray-500 dark:text-gray-400 mb-0.5" // Reduced font size
+            className="text-center text-[10px] font-medium text-gray-400 mb-0.5"
           >
             {day}
           </div>
@@ -168,20 +163,19 @@ export const MonthCalendarWidget: React.FC<MonthCalendarWidgetProps> = ({
           <div
             key={`day-${index}`}
             className={`relative min-h-[20px] flex flex-col items-center justify-center text-[10px] ${
-              // Fixed minimum height and reduced font
               day === null ? "invisible" : ""
             }
               ${
                 isToday(day as number)
-                  ? "bg-blue-500 dark:bg-blue-600 text-white font-bold"
-                  : "hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+                  ? "bg-blue-600 text-white font-bold"
+                  : "hover:bg-gray-700 text-gray-300"
               }
             `}
           >
             {day}
             {/* Event dot - made smaller */}
             {day !== null && hasEvent(day) && (
-              <div className="absolute bottom-0 w-0.5 h-0.5 rounded-full bg-red-500 dark:bg-red-400"></div>
+              <div className="absolute bottom-0 w-0.5 h-0.5 rounded-full bg-red-400"></div>
             )}
           </div>
         ))}
@@ -189,10 +183,8 @@ export const MonthCalendarWidget: React.FC<MonthCalendarWidgetProps> = ({
 
       {/* Error State - Overlay */}
       {error && !isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-gray-800/50 p-2">
-          <p className="text-xs text-red-600 dark:text-red-400 text-center">
-            Error: {error}
-          </p>
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-800/50 p-2">
+          <p className="text-xs text-red-400 text-center">Error: {error}</p>
         </div>
       )}
     </div>

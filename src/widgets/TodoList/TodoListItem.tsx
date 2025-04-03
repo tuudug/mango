@@ -122,9 +122,9 @@ export const TodoListItem: React.FC<TodoListItemProps> = ({
 
   const levelBorderClass =
     level === 1
-      ? "border-l-2 border-l-slate-300 dark:border-l-slate-600"
+      ? "border-l-2 border-l-slate-600"
       : level === 2
-      ? "border-l-2 border-l-slate-400 dark:border-l-slate-500"
+      ? "border-l-2 border-l-slate-500"
       : "";
 
   return (
@@ -133,7 +133,7 @@ export const TodoListItem: React.FC<TodoListItemProps> = ({
         <div
           style={contentStyle}
           className={cn(
-            "flex items-center py-1 pr-1.5 pl-1 border border-gray-200 dark:border-gray-700 rounded-md group transition-colors bg-white dark:bg-gray-800",
+            "flex items-center py-1 pr-1.5 pl-1 border border-gray-700 rounded-md group transition-colors bg-gray-800",
             levelBorderClass,
             isDragging && "shadow-lg",
             todo.isNew && "animate-fade-in-down"
@@ -144,7 +144,7 @@ export const TodoListItem: React.FC<TodoListItemProps> = ({
               onClick={handleToggleExpand}
               disabled={isEditing}
               className={cn(
-                "flex-shrink-0 p-1 mr-1 rounded text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed",
+                "flex-shrink-0 p-1 mr-1 rounded text-gray-500 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed",
                 "bg-transparent border-none focus:outline-none focus:ring-0 w-6 h-6 flex items-center justify-center"
               )}
               aria-label={isExpanded ? "Collapse" : "Expand"}
@@ -165,7 +165,7 @@ export const TodoListItem: React.FC<TodoListItemProps> = ({
             checked={todo.is_completed}
             onChange={() => toggleTodo(todo.id)}
             disabled={isLoading || isToggling || isEditing}
-            className="h-3.5 w-3.5 text-blue-600 dark:text-blue-500 rounded border-gray-300 dark:border-gray-600 focus:ring-blue-500 dark:focus:ring-blue-600 bg-white dark:bg-gray-700 mr-2 flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="h-3.5 w-3.5 text-blue-500 rounded border-gray-600 focus:ring-blue-600 bg-gray-700 mr-2 flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
           />
 
           {isEditing ? (
@@ -181,8 +181,8 @@ export const TodoListItem: React.FC<TodoListItemProps> = ({
               className={cn(
                 "flex-1 text-sm cursor-text",
                 todo.is_completed
-                  ? "line-through text-gray-400 dark:text-gray-500"
-                  : "text-gray-700 dark:text-gray-300"
+                  ? "line-through text-gray-500"
+                  : "text-gray-300"
               )}
             >
               {todo.title}

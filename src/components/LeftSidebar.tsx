@@ -231,7 +231,7 @@ export function LeftSidebar({
   return (
     <>
       {/* Sidebar Buttons (Structure remains the same) */}
-      <aside className="fixed left-0 top-0 bottom-0 z-30 flex h-screen w-16 flex-col items-center border-r border-gray-200 bg-white py-4 dark:border-gray-700 dark:bg-gray-800">
+      <aside className="fixed left-0 top-0 bottom-0 z-30 flex h-screen w-16 flex-col items-center border-r border-gray-700 bg-gray-800 py-4">
         {/* Logo Button */}
         <button
           onClick={handleLogoClick}
@@ -255,9 +255,7 @@ export function LeftSidebar({
             variant={isToolboxOpen ? "secondary" : "ghost"}
             size="icon"
             className={`h-10 w-10 rounded-lg ${
-              isToolboxOpen
-                ? "text-indigo-600 dark:text-indigo-400"
-                : "text-gray-500 dark:text-gray-400"
+              isToolboxOpen ? "text-indigo-400" : "text-gray-400"
             }`}
             onClick={handleToggleToolbox}
             title="Toggle Edit Mode / Toolbox"
@@ -271,9 +269,7 @@ export function LeftSidebar({
             variant={isGameMasterPanelOpen ? "secondary" : "ghost"}
             size="icon"
             className={`h-10 w-10 rounded-lg ${
-              isGameMasterPanelOpen
-                ? "text-indigo-600 dark:text-indigo-400"
-                : "text-gray-500 dark:text-gray-400"
+              isGameMasterPanelOpen ? "text-indigo-400" : "text-gray-400"
             }`}
             onClick={handleToggleGameMaster}
             title="Toggle Game Master Panel"
@@ -287,9 +283,7 @@ export function LeftSidebar({
             variant={isPathsPageOpen ? "secondary" : "ghost"}
             size="icon"
             className={`h-10 w-10 rounded-lg ${
-              isPathsPageOpen
-                ? "text-indigo-600 dark:text-indigo-400"
-                : "text-gray-500 dark:text-gray-400"
+              isPathsPageOpen ? "text-indigo-400" : "text-gray-400"
             }`}
             onClick={handleTogglePaths}
             title="Paths"
@@ -299,17 +293,15 @@ export function LeftSidebar({
           </Button>
         </nav>
         {/* Data Sources Section */}
-        <nav className="mt-6 flex flex-col items-center gap-3 border-t border-gray-200 pt-4 dark:border-gray-700">
-          <span className="mb-1 text-[10px] font-medium text-gray-400 dark:text-gray-500">
+        <nav className="mt-6 flex flex-col items-center gap-3 border-t border-gray-700 pt-4">
+          <span className="mb-1 text-[10px] font-medium text-gray-500">
             DATA
           </span>
           <Button
             variant={isCalendarDataSourceOpen ? "secondary" : "ghost"}
             size="icon"
             className={`h-10 w-10 rounded-lg ${
-              isCalendarDataSourceOpen
-                ? "text-indigo-600 dark:text-indigo-400"
-                : "text-gray-500 dark:text-gray-400"
+              isCalendarDataSourceOpen ? "text-indigo-400" : "text-gray-400"
             }`}
             onClick={handleToggleCalendar}
             title="Calendar Data Source"
@@ -321,9 +313,7 @@ export function LeftSidebar({
             variant={isHealthDataSourceOpen ? "secondary" : "ghost"}
             size="icon"
             className={`h-10 w-10 rounded-lg ${
-              isHealthDataSourceOpen
-                ? "text-indigo-600 dark:text-indigo-400"
-                : "text-gray-500 dark:text-gray-400"
+              isHealthDataSourceOpen ? "text-indigo-400" : "text-gray-400"
             }`}
             onClick={handleToggleHealth}
             title="Health Data Source"
@@ -335,9 +325,7 @@ export function LeftSidebar({
             variant={isTodosDataSourceOpen ? "secondary" : "ghost"}
             size="icon"
             className={`h-10 w-10 rounded-lg ${
-              isTodosDataSourceOpen
-                ? "text-indigo-600 dark:text-indigo-400"
-                : "text-gray-500 dark:text-gray-400"
+              isTodosDataSourceOpen ? "text-indigo-400" : "text-gray-400"
             }`}
             onClick={handleToggleTodos}
             title="Todos Data Source"
@@ -347,14 +335,12 @@ export function LeftSidebar({
           </Button>
         </nav>
         {/* User Profile Section */}
-        <div className="mt-auto flex w-full flex-col items-center gap-1 border-t border-gray-200 pt-3 pb-2 dark:border-gray-700">
+        <div className="mt-auto flex w-full flex-col items-center gap-1 border-t border-gray-700 pt-3 pb-2">
           <Button
             variant={isUserProfilePanelOpen ? "secondary" : "ghost"}
             size="icon"
-            className={`h-9 w-9 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 ${
-              isUserProfilePanelOpen
-                ? "text-indigo-600 dark:text-indigo-400"
-                : "text-gray-500 dark:text-gray-400"
+            className={`h-9 w-9 rounded-full hover:bg-gray-700 ${
+              isUserProfilePanelOpen ? "text-indigo-400" : "text-gray-400"
             }`}
             onClick={handleToggleUserProfile}
             title="User Profile"
@@ -363,12 +349,8 @@ export function LeftSidebar({
             <span className="sr-only">User Profile</span>
           </Button>
           {/* TODO: Get level/points dynamically */}
-          <span className="text-[10px] font-medium text-gray-600 dark:text-gray-300">
-            Level 1
-          </span>
-          <span className="text-[10px] text-gray-500 dark:text-gray-400">
-            150 pts
-          </span>
+          <span className="text-[10px] font-medium text-gray-300">Level 1</span>
+          <span className="text-[10px] text-gray-400">150 pts</span>
         </div>
       </aside>
 
@@ -388,7 +370,7 @@ export function LeftSidebar({
       <div
         className={cn(
           "absolute top-0 left-16 bottom-0 transition-transform duration-300 ease-in-out z-20",
-          "max-w-md w-full bg-white dark:bg-gray-800 shadow-lg", // Add background, max-width, shadow
+          "max-w-md w-full bg-gray-800 shadow-lg", // Add background, max-width, shadow
           isGameMasterPanelOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
@@ -397,7 +379,7 @@ export function LeftSidebar({
       <div
         className={cn(
           "absolute top-0 left-16 bottom-0 transition-transform duration-300 ease-in-out z-20",
-          "max-w-md w-full bg-white dark:bg-gray-800 shadow-lg", // Add background, max-width, shadow
+          "max-w-md w-full bg-gray-800 shadow-lg", // Add background, max-width, shadow
           isUserProfilePanelOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
@@ -406,7 +388,7 @@ export function LeftSidebar({
       <div
         className={cn(
           "absolute top-0 left-16 bottom-0 transition-transform duration-300 ease-in-out z-20",
-          "max-w-md w-full bg-white dark:bg-gray-800 shadow-lg", // Add background, max-width, shadow
+          "max-w-md w-full bg-gray-800 shadow-lg", // Add background, max-width, shadow
           isPathsPageOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
@@ -422,7 +404,7 @@ export function LeftSidebar({
       <div
         className={cn(
           "absolute top-0 left-16 bottom-0 transition-transform duration-300 ease-in-out z-20",
-          "max-w-sm w-full bg-white dark:bg-gray-800 shadow-lg", // Use max-w-sm for data sources
+          "max-w-sm w-full bg-gray-800 shadow-lg", // Use max-w-sm for data sources
           isCalendarDataSourceOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
@@ -431,7 +413,7 @@ export function LeftSidebar({
       <div
         className={cn(
           "absolute top-0 left-16 bottom-0 transition-transform duration-300 ease-in-out z-20",
-          "max-w-sm w-full bg-white dark:bg-gray-800 shadow-lg", // Use max-w-sm
+          "max-w-sm w-full bg-gray-800 shadow-lg", // Use max-w-sm
           isHealthDataSourceOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
@@ -440,7 +422,7 @@ export function LeftSidebar({
       <div
         className={cn(
           "absolute top-0 left-16 bottom-0 transition-transform duration-300 ease-in-out z-20",
-          "max-w-sm w-full bg-white dark:bg-gray-800 shadow-lg", // Use max-w-sm
+          "max-w-sm w-full bg-gray-800 shadow-lg", // Use max-w-sm
           isTodosDataSourceOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >

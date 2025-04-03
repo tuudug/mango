@@ -80,55 +80,55 @@ export const widgetMetadata: Record<
   "Steps Tracker": {
     // Renamed
     icon: Footprints, // Changed icon
-    colorAccentClass: "border-l-blue-500 dark:border-l-blue-400",
+    colorAccentClass: "border-l-blue-400",
     group: "Tracking",
   },
   "Habit Graph": {
     icon: CalendarCheck,
-    colorAccentClass: "border-l-green-500 dark:border-l-green-400",
+    colorAccentClass: "border-l-green-400",
     group: "Tracking",
   },
   "Sleep/Step": {
     icon: BedDouble,
-    colorAccentClass: "border-l-indigo-500 dark:border-l-indigo-400",
+    colorAccentClass: "border-l-indigo-400",
     group: "Tracking",
   },
   "Goal Tracker": {
     icon: Target,
-    colorAccentClass: "border-l-purple-500 dark:border-l-purple-400",
+    colorAccentClass: "border-l-purple-400",
     group: "Tracking",
   },
   "To-do List": {
     icon: CheckSquare,
-    colorAccentClass: "border-l-yellow-500 dark:border-l-yellow-400",
+    colorAccentClass: "border-l-yellow-400",
     group: "Productivity",
   },
   Journal: {
     icon: BookOpenText,
-    colorAccentClass: "border-l-pink-500 dark:border-l-pink-400",
+    colorAccentClass: "border-l-pink-400",
     group: "Productivity",
   },
   "Month Calendar": {
     // Renamed
     icon: CalendarDays,
-    colorAccentClass: "border-l-red-500 dark:border-l-red-400",
+    colorAccentClass: "border-l-red-400",
     group: "Calendar",
   },
   "Daily Calendar": {
     // New
     icon: CalendarClock,
-    colorAccentClass: "border-l-orange-500 dark:border-l-orange-400",
+    colorAccentClass: "border-l-orange-400",
     group: "Calendar",
   },
   "Daily Summary": {
     // New Widget Metadata
     icon: LayoutDashboard,
-    colorAccentClass: "border-l-teal-500 dark:border-l-teal-400",
+    colorAccentClass: "border-l-teal-400",
     group: "Productivity", // Or maybe 'Other'? Let's try Productivity
   },
   Placeholder: {
     icon: HelpCircle,
-    colorAccentClass: "border-l-gray-300 dark:border-l-gray-700",
+    colorAccentClass: "border-l-gray-700",
     group: "Other",
   },
 };

@@ -76,10 +76,10 @@ export function HealthDataSource({ onClose }: HealthDataSourceProps) {
 
   return (
     // Use Card as the main container, match panel background, remove rounding
-    <Card className="h-full flex flex-col shadow-lg border-l bg-white dark:bg-gray-800 rounded-none">
-      <CardHeader className="flex flex-row items-center justify-between p-4 border-b flex-shrink-0 dark:border-gray-700">
+    <Card className="h-full flex flex-col shadow-lg border-l bg-gray-800 rounded-none">
+      <CardHeader className="flex flex-row items-center justify-between p-4 border-b flex-shrink-0 border-gray-700">
         <div className="flex items-center gap-2">
-          <HeartPulse className="w-5 h-5 text-red-500 dark:text-red-400" />
+          <HeartPulse className="w-5 h-5 text-red-400" />
           {/* Use CardTitle */}
           <CardTitle className="text-lg font-semibold">Health Data</CardTitle>
         </div>
@@ -98,11 +98,11 @@ export function HealthDataSource({ onClose }: HealthDataSourceProps) {
 
       <CardContent className="flex-1 p-4 overflow-y-auto space-y-6">
         {/* Google Health Connection Section */}
-        <div className="space-y-2 border-b pb-4 dark:border-gray-700">
+        <div className="space-y-2 border-b pb-4 border-gray-700">
           <h3 className="text-base font-medium">Google Health</h3>
           {isGoogleHealthConnected ? (
             <div className="flex items-center justify-between gap-2">
-              <p className="text-sm text-green-600 dark:text-green-400 flex items-center gap-1">
+              <p className="text-sm text-green-400 flex items-center gap-1">
                 <Link size={14} /> Connected
               </p>
               <Button
@@ -116,7 +116,7 @@ export function HealthDataSource({ onClose }: HealthDataSourceProps) {
             </div>
           ) : (
             <div className="flex items-center justify-between gap-2">
-              <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1">
+              <p className="text-sm text-gray-400 flex items-center gap-1">
                 <Unlink size={14} /> Not Connected
               </p>
               <Button
@@ -164,11 +164,7 @@ export function HealthDataSource({ onClose }: HealthDataSourceProps) {
         </form>
 
         {/* Display Error if any */}
-        {error && (
-          <p className="text-sm text-red-600 dark:text-red-400">
-            Error: {error}
-          </p>
-        )}
+        {error && <p className="text-sm text-red-400">Error: {error}</p>}
 
         {/* Recorded Step Data List */}
         <div className="space-y-3">
@@ -177,7 +173,7 @@ export function HealthDataSource({ onClose }: HealthDataSourceProps) {
             <p className="text-sm text-gray-500">Loading data...</p>
           )}
           {!isLoading && healthData.length === 0 && !error && (
-            <p className="text-sm text-gray-500 dark:text-gray-400 italic">
+            <p className="text-sm text-gray-400 italic">
               No step data found. Add an entry above.
             </p>
           )}
@@ -190,7 +186,7 @@ export function HealthDataSource({ onClose }: HealthDataSourceProps) {
                 .map((entry) => (
                   <li
                     key={entry.id} // Use entry ID from backend
-                    className="flex justify-between items-center p-2.5 bg-gray-50 dark:bg-gray-700/50 rounded border border-gray-200 dark:border-gray-700 shadow-sm gap-2" // Added gap
+                    className="flex justify-between items-center p-2.5 bg-gray-700/50 rounded border border-gray-700 shadow-sm gap-2" // Added gap
                   >
                     <span className="text-sm flex items-center gap-1.5 flex-grow">
                       {" "}
@@ -218,7 +214,7 @@ export function HealthDataSource({ onClose }: HealthDataSourceProps) {
                       <Button
                         variant="ghost" // Use ghost for less emphasis
                         size="icon"
-                        className="h-6 w-6 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/50 flex-shrink-0" // Make smaller, red on hover
+                        className="h-6 w-6 text-red-600 hover:bg-red-900/50 flex-shrink-0" // Make smaller, red on hover
                         onClick={() => handleDeleteEntry(entry.id)}
                         disabled={isLoading} // Disable while loading/saving
                         aria-label="Delete manual entry"
@@ -233,29 +229,23 @@ export function HealthDataSource({ onClose }: HealthDataSourceProps) {
         </div>
 
         {/* Sync Status Footer */}
-        <div className="mt-auto pt-2 border-t dark:border-gray-700 text-center">
+        <div className="mt-auto pt-2 border-t border-gray-700 text-center">
           {lastFetchTime ? (
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Last synced: {timeAgo}
-            </p>
+            <p className="text-xs text-gray-400">Last synced: {timeAgo}</p>
           ) : isLoading ? (
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Syncing...
-            </p>
+            <p className="text-xs text-gray-400">Syncing...</p>
           ) : (
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Not synced yet.
-            </p>
+            <p className="text-xs text-gray-400">Not synced yet.</p>
           )}
           {/* Optionally add a manual refresh button */}
           {/* <Button variant="link" size="sm" onClick={fetchHealthDataIfNeeded} disabled={isLoading}>Refresh</Button> */}
         </div>
 
         {/* Warning card about client-side storage */}
-        <div className="mt-6 p-3 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+        <div className="mt-6 p-3 bg-yellow-900/30 border border-yellow-800 rounded-lg">
           <div className="flex items-start gap-2">
-            <AlertTriangle className="w-5 h-5 text-yellow-500 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-yellow-700 dark:text-yellow-300">
+            <AlertTriangle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-yellow-300">
               The Google OAuth app is currently in test mode. To connect with
               Google Health, your email address needs to be manually added to
               the allowed test users. Please contact me to have your email added

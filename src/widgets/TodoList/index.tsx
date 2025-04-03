@@ -220,16 +220,16 @@ export const TodoListWidget: React.FC<TodoListWidgetProps> = ({ id: _id }) => {
     totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
   return (
-    <div className="p-2 h-full w-full flex flex-col text-sm text-gray-700 dark:text-gray-300">
+    <div className="p-2 h-full w-full flex flex-col text-sm text-gray-300">
       {/* Header Area */}
       <div className="flex-shrink-0 mb-2">
         <LoadingBar isLoading={isLoading} colorClassName="bg-yellow-500" />
       </div>
 
       {/* Progress bar */}
-      <div className="relative w-full h-4 bg-gray-200 dark:bg-gray-700 rounded-full mb-2 overflow-hidden flex-shrink-0">
+      <div className="relative w-full h-4 bg-gray-700 rounded-full mb-2 overflow-hidden flex-shrink-0">
         <div
-          className="absolute top-0 left-0 h-full bg-green-500 dark:bg-green-600 rounded-full transition-all duration-500 ease-in-out"
+          className="absolute top-0 left-0 h-full bg-green-600 rounded-full transition-all duration-500 ease-in-out"
           style={{ width: `${percentComplete}%` }}
         ></div>
         <div className="absolute inset-0 flex items-center justify-center">
@@ -260,8 +260,8 @@ export const TodoListWidget: React.FC<TodoListWidgetProps> = ({ id: _id }) => {
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
-          onDragStart={handleDragStart} // Updated handler
-          onDragEnd={handleDragEnd} // Updated handler
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
           modifiers={[restrictToVerticalAxis]}
         >
           <SortableContext
@@ -276,14 +276,13 @@ export const TodoListWidget: React.FC<TodoListWidgetProps> = ({ id: _id }) => {
                   level={0}
                   isToggling={togglingTodoId === todo.id}
                   isLoading={isLoading}
-                  isExpanded={isItemExpanded(todo.id)} // Uses updated logic
+                  isExpanded={isItemExpanded(todo.id)}
                   onToggleExpand={toggleItemExpansion}
                   onEditSave={editTodo}
                   onAddSubItem={handleAddSubItem}
                   onBreakdown={handleBreakdown}
-                  isItemExpanded={isItemExpanded} // Pass down check function
-                  isDraggingTopLevel={isDraggingTopLevel} // Pass down drag state
-                  // onMoveUp/Down removed as they are handled via context in TodoListItem
+                  isItemExpanded={isItemExpanded}
+                  isDraggingTopLevel={isDraggingTopLevel}
                 />
               ))}
             </ul>
@@ -292,17 +291,15 @@ export const TodoListWidget: React.FC<TodoListWidgetProps> = ({ id: _id }) => {
 
         {/* Error State Overlay */}
         {error && !isLoading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-gray-800/50 p-2">
-            <p className="text-xs text-red-600 dark:text-red-400 text-center">
-              Error: {error}
-            </p>
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-800/50 p-2">
+            <p className="text-xs text-red-400 text-center">Error: {error}</p>
           </div>
         )}
       </div>
 
       {/* No Todos Message */}
       {!isLoading && !error && nestedTodos.length === 0 && (
-        <div className="flex-1 flex items-center justify-center text-gray-400 dark:text-gray-500 text-sm italic">
+        <div className="flex-1 flex items-center justify-center text-gray-500 text-sm italic">
           No tasks yet. Add one above!
         </div>
       )}

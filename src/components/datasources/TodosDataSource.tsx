@@ -83,12 +83,12 @@ export function TodosDataSource({ onClose }: TodosDataSourceProps) {
 
   return (
     // Use Card as the main container, match panel background, remove rounding
-    <Card className="h-full flex flex-col shadow-lg border-l bg-white dark:bg-gray-800 rounded-none">
-      <CardHeader className="flex flex-row items-center justify-between p-4 border-b flex-shrink-0 dark:border-gray-700">
+    <Card className="h-full flex flex-col shadow-lg border-l bg-gray-800 rounded-none">
+      <CardHeader className="flex flex-row items-center justify-between p-4 border-b flex-shrink-0 border-gray-700">
         {" "}
         {/* Added dark border */}
         <div className="flex items-center gap-2">
-          <ListChecks className="w-5 h-5 text-green-500 dark:text-green-400" />
+          <ListChecks className="w-5 h-5 text-green-400" />
           {/* Use CardTitle */}
           <CardTitle className="text-lg font-semibold">Todos Data</CardTitle>
         </div>
@@ -129,11 +129,7 @@ export function TodosDataSource({ onClose }: TodosDataSourceProps) {
         </form>
 
         {/* Display Error if any */}
-        {error && (
-          <p className="text-sm text-red-600 dark:text-red-400">
-            Error: {error}
-          </p>
-        )}
+        {error && <p className="text-sm text-red-400">Error: {error}</p>}
 
         {/* Existing Todos List */}
         <div className="space-y-3">
@@ -142,7 +138,7 @@ export function TodosDataSource({ onClose }: TodosDataSourceProps) {
             <p className="text-sm text-gray-500">Loading todos...</p>
           )}
           {!isLoading && todos.length === 0 && !error && (
-            <p className="text-sm text-gray-500 dark:text-gray-400 italic">
+            <p className="text-sm text-gray-400 italic">
               No todos found. Add one above.
             </p>
           )}
@@ -151,7 +147,7 @@ export function TodosDataSource({ onClose }: TodosDataSourceProps) {
               {todos.map((todo) => (
                 <li
                   key={todo.id} // Use ID from backend
-                  className="flex items-center justify-between p-2.5 bg-gray-50 dark:bg-gray-700/50 rounded border border-gray-200 dark:border-gray-700 shadow-sm gap-2" // Added gap
+                  className="flex items-center justify-between p-2.5 bg-gray-700/50 rounded border border-gray-700 shadow-sm gap-2" // Added gap
                 >
                   {/* Checkbox and Label */}
                   <div className="flex items-center space-x-3 flex-grow mr-2">
@@ -169,7 +165,7 @@ export function TodosDataSource({ onClose }: TodosDataSourceProps) {
                       htmlFor={`todo-${todo.id}`}
                       className={`text-sm flex-grow ${
                         todo.is_completed // Use is_completed
-                          ? "line-through text-gray-500 dark:text-gray-400"
+                          ? "line-through text-gray-400"
                           : ""
                       }`}
                     >
@@ -182,7 +178,7 @@ export function TodosDataSource({ onClose }: TodosDataSourceProps) {
                   <Button
                     variant="ghost" // Changed to ghost
                     size="icon"
-                    className="h-6 w-6 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/50 flex-shrink-0" // Smaller icon button
+                    className="h-6 w-6 text-red-600 hover:bg-red-900/50 flex-shrink-0" // Smaller icon button
                     onClick={() => handleDeleteTodo(todo.id)} // Use handler
                     disabled={isLoading}
                     aria-label="Delete todo"
@@ -196,19 +192,15 @@ export function TodosDataSource({ onClose }: TodosDataSourceProps) {
         </div>
 
         {/* Sync Status Footer */}
-        <div className="mt-auto pt-2 border-t dark:border-gray-700 text-center">
+        <div className="mt-auto pt-2 border-t border-gray-700 text-center">
           {isLoading ? (
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Syncing...
-            </p>
+            <p className="text-xs text-gray-400">Syncing...</p>
           ) : lastFetchTime && nextSyncCountdown ? (
-            <p className="text-xs text-gray-500 dark:text-gray-400">
+            <p className="text-xs text-gray-400">
               Next sync in: {nextSyncCountdown}
             </p>
           ) : (
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Not synced yet.
-            </p>
+            <p className="text-xs text-gray-400">Not synced yet.</p>
           )}
           {/* Optional Refresh Button */}
           {/* <Button variant="link" size="sm" onClick={fetchTodosIfNeeded} disabled={isLoading}>Refresh</Button> */}

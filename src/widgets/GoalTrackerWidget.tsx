@@ -92,66 +92,54 @@ export const GoalTrackerWidget: React.FC<GoalTrackerWidgetProps> = ({ id }) => {
   };
 
   return (
-    // Added dark mode classes
-    <div className="p-2 h-full w-full flex flex-col text-sm text-gray-700 dark:text-gray-300">
+    <div className="p-2 h-full w-full flex flex-col text-sm text-gray-300">
       <div className="flex justify-between items-center mb-2">
-        <h3 className="font-semibold text-gray-800 dark:text-gray-100 text-base">
-          Goal Tracker
-        </h3>
+        <h3 className="font-semibold text-gray-100 text-base">Goal Tracker</h3>
         <button
           onClick={resetGoals}
-          className="text-xs text-blue-500 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors px-1.5 py-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700" // Dark mode button
+          className="text-xs text-blue-400 hover:text-blue-300 transition-colors px-1.5 py-0.5 rounded hover:bg-gray-700"
         >
           Randomize
         </button>
       </div>
       {/* Goals list */}
       <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-        {" "}
-        {/* Reduced spacing, added padding */}
         {goals.map((goal) => {
           const progress = calculateProgress(goal.current, goal.target);
           return (
             <div key={goal.id} className="space-y-0.5">
               <div className="flex justify-between items-center">
-                <div className="text-sm font-medium text-gray-800 dark:text-gray-100">
+                <div className="text-sm font-medium text-gray-100">
                   {goal.name}
-                </div>{" "}
-                {/* Dark mode text */}
-                <div className="text-xs text-gray-500 dark:text-gray-400">
+                </div>
+                <div className="text-xs text-gray-400">
                   {goal.current} / {goal.target} {goal.unit}
                 </div>
               </div>
               {/* Progress bar */}
-              <div className="relative h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                {" "}
-                {/* Dark mode bg */}
+              <div className="relative h-3 bg-gray-700 rounded-full overflow-hidden">
                 <div
                   className={`absolute top-0 left-0 h-full ${goal.color} transition-all duration-500 ease-out`}
                   style={{ width: `${progress}%` }}
                 ></div>
                 <div className="absolute inset-0 flex items-center justify-center">
                   <span className="text-[10px] font-bold text-white drop-shadow-sm">
-                    {" "}
-                    {/* Smaller text */}
                     {progress}%
                   </span>
                 </div>
               </div>
               {/* Controls */}
               <div className="flex justify-end space-x-1.5">
-                {" "}
-                {/* Reduced spacing */}
                 <button
                   onClick={() => decrementProgress(goal.id)}
-                  className="text-xs px-1.5 py-0.5 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 rounded transition-colors text-gray-700 dark:text-gray-200 disabled:opacity-50" // Dark mode controls
+                  className="text-xs px-1.5 py-0.5 bg-gray-600 hover:bg-gray-500 rounded transition-colors text-gray-200 disabled:opacity-50"
                   disabled={goal.current <= 0}
                 >
                   -
                 </button>
                 <button
                   onClick={() => incrementProgress(goal.id)}
-                  className="text-xs px-1.5 py-0.5 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 rounded transition-colors text-gray-700 dark:text-gray-200 disabled:opacity-50" // Dark mode controls
+                  className="text-xs px-1.5 py-0.5 bg-gray-600 hover:bg-gray-500 rounded transition-colors text-gray-200 disabled:opacity-50"
                   disabled={goal.current >= goal.target}
                 >
                   +
@@ -162,12 +150,8 @@ export const GoalTrackerWidget: React.FC<GoalTrackerWidgetProps> = ({ id }) => {
         })}
       </div>
       {/* Summary */}
-      <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-        {" "}
-        {/* Dark mode border */}
-        <div className="text-xs text-gray-500 dark:text-gray-400 flex justify-between">
-          {" "}
-          {/* Dark mode text */}
+      <div className="mt-2 pt-2 border-t border-gray-700">
+        <div className="text-xs text-gray-400 flex justify-between">
           <span>
             {
               goals.filter(
@@ -189,9 +173,7 @@ export const GoalTrackerWidget: React.FC<GoalTrackerWidgetProps> = ({ id }) => {
           </span>
         </div>
       </div>
-      <div className="mt-1 text-xs text-gray-400 dark:text-gray-500 text-right">
-        {" "}
-        {/* Dark mode widget ID text */}
+      <div className="mt-1 text-xs text-gray-500 text-right">
         Widget ID: {id.slice(0, 8)}
       </div>
     </div>

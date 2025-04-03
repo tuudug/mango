@@ -15,7 +15,7 @@ export const LoadingBar: React.FC<LoadingBarProps> = ({
   return (
     <div
       className={cn(
-        "relative h-0.5 w-full overflow-hidden bg-gray-200 dark:bg-gray-700", // Container bar
+        "relative h-0.5 w-full overflow-hidden bg-gray-700", // Container bar
         className
       )}
       {...props}

@@ -310,7 +310,7 @@ export function Dashboard() {
   // --- Render Logic ---
   if (isAuthLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-gray-50 dark:bg-gray-950">
+      <div className="flex h-screen items-center justify-center bg-gray-950">
         <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
       </div>
     );
@@ -323,7 +323,7 @@ export function Dashboard() {
       onDragEnd={handleDragEnd}
       modifiers={[restrictToWindowEdges]}
     >
-      <div className="flex h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 pl-16">
+      <div className="flex h-screen bg-gray-950 text-gray-100 pl-16">
         {/* Left Sidebar - Pass shake trigger */}
         <LeftSidebar
           isToolboxOpen={isToolboxOpen}
@@ -341,7 +341,7 @@ export function Dashboard() {
               <main
                 ref={gridContainerRef}
                 className={cn(
-                  `absolute inset-0 bg-gray-100 dark:bg-gray-950 overflow-auto transition-padding duration-300 ease-in-out`,
+                  `absolute inset-0 bg-gray-950 overflow-auto transition-padding duration-300 ease-in-out`,
                   mainContentPaddingLeft,
                   isMobileEditMode && "flex justify-center items-start pt-4"
                 )}

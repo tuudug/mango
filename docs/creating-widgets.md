@@ -68,7 +68,7 @@ export function MyNewWidget({ id, w, h }: MyNewWidgetProps) {
 - **Define Metadata (Icon & Color):** Add an entry for your widget in the `widgetMetadata` object.
 
   - Choose an appropriate icon from `lucide-react` and import it at the top of the file.
-  - Define the `colorAccentClass` using Tailwind CSS classes for the left border color (e.g., `border-l-cyan-500 dark:border-l-cyan-400`).
+  - Define the `colorAccentClass` using Tailwind CSS classes for the left border color (e.g., `border-l-cyan-400`).
 
   ```typescript
   import {
@@ -83,7 +83,7 @@ export function MyNewWidget({ id, w, h }: MyNewWidgetProps) {
     // ... other metadata
     "My New Widget": {
       icon: Sparkles, // <-- Use imported icon
-      colorAccentClass: "border-l-cyan-500 dark:border-l-cyan-400", // <-- Define accent color
+      colorAccentClass: "border-l-cyan-400", // <-- Define accent color
     },
   };
   ```

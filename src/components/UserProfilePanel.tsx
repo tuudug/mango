@@ -16,14 +16,12 @@ export function UserProfilePanel({ onClose }: UserProfilePanelProps) {
   const points = 150;
 
   return (
-    <aside className="h-full w-72 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 shadow-lg flex flex-col">
+    <aside className="h-full w-72 bg-gray-800 border-l border-gray-700 shadow-lg flex flex-col">
       {/* Header */}
-      <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center flex-shrink-0">
+      <div className="p-4 border-b border-gray-700 flex justify-between items-center flex-shrink-0">
         <div className="flex items-center gap-2">
-          <User className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-          <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
-            User Profile
-          </h2>
+          <User className="w-5 h-5 text-gray-400" />
+          <h2 className="text-lg font-semibold text-gray-100">User Profile</h2>
         </div>
         <Button
           variant="ghost"
@@ -43,10 +41,8 @@ export function UserProfilePanel({ onClose }: UserProfilePanelProps) {
           <div className="h-16 w-16 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center">
             <span className="text-4xl">🥭</span>
           </div>
-          <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100">
-            {username}
-          </h3>
-          <div className="flex gap-4 text-sm text-gray-600 dark:text-gray-400">
+          <h3 className="text-xl font-semibold text-gray-100">{username}</h3>
+          <div className="flex gap-4 text-sm text-gray-400">
             <span>Level: {level}</span>
             <span>{points} pts</span>
           </div>
@@ -59,8 +55,8 @@ export function UserProfilePanel({ onClose }: UserProfilePanelProps) {
           </Button>
           <Button
             variant="ghost"
-            className="w-full justify-start gap-2 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30"
-            onClick={signOut} // Add onClick handler
+            className="w-full justify-start gap-2 text-red-400 hover:text-red-300 hover:bg-red-900/30"
+            onClick={signOut}
           >
             <LogOut size={16} /> Log Out
           </Button>

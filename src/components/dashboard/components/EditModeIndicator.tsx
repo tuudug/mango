@@ -47,15 +47,15 @@ export const EditModeIndicator: React.FC<EditModeIndicatorProps> = ({
       {/* Inner div handles appearance and shake animation */}
       <div
         className={cn(
-          "bg-gray-800 dark:bg-gray-700 text-white px-4 py-2 rounded-full shadow-lg flex items-center space-x-3",
-          isShaking && "indicator-shake" // Apply shake to inner div
+          "bg-gray-700 text-white px-4 py-2 rounded-full shadow-lg flex items-center space-x-3",
+          isShaking && "indicator-shake"
         )}
       >
         {/* Edit Target Toggle Button */}
         <Button
           variant="ghost"
           size="icon"
-          className="text-gray-300 hover:bg-gray-700 dark:hover:bg-gray-600 hover:text-white rounded-full h-6 w-6"
+          className="text-gray-300 hover:bg-gray-600 rounded-full h-6 w-6"
           onClick={toggleEditTarget}
           title={`Switch to editing ${
             editTargetDashboard === "default" ? "Mobile" : "Desktop"
@@ -76,7 +76,7 @@ export const EditModeIndicator: React.FC<EditModeIndicatorProps> = ({
         <Button
           variant="ghost"
           size="icon"
-          className="text-gray-300 hover:bg-gray-700 dark:hover:bg-gray-600 hover:text-white rounded-full h-6 w-6"
+          className="text-gray-300 hover:bg-gray-600 hover:text-white rounded-full h-6 w-6"
           onClick={toggleToolbox}
           title="Exit Edit Mode"
         >

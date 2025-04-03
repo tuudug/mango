@@ -131,9 +131,9 @@ export function DailyCalendarWidget({ id: _id }: DailyCalendarWidgetProps) {
     const displayTime = event.isAllDay ? "All-day" : event.startTime ?? ""; // Show start time if not all-day, else empty string
 
     return (
-      <li className="flex items-center gap-2 py-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700">
+      <li className="flex items-center gap-2 py-0.5 rounded hover:bg-gray-100">
         {/* Time */}
-        <span className="text-xs font-mono w-14 text-right text-gray-500 dark:text-gray-400 flex-shrink-0">
+        <span className="text-xs font-mono w-14 text-right text-gray-500 flex-shrink-0">
           {displayTime}
         </span>
         {/* Color Dot */}
@@ -143,7 +143,7 @@ export function DailyCalendarWidget({ id: _id }: DailyCalendarWidgetProps) {
           )}`}
         ></div>
         {/* Title */}
-        <span className="flex-1 text-sm truncate text-gray-800 dark:text-gray-200">
+        <span className="flex-1 text-sm truncate text-gray-800">
           {event.title}
         </span>
       </li>
@@ -151,9 +151,9 @@ export function DailyCalendarWidget({ id: _id }: DailyCalendarWidgetProps) {
   };
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="p-2 h-full w-full flex flex-col text-sm text-gray-300">
       {/* Header - Add Navigation */}
-      <div className="p-2 border-b border-gray-200 dark:border-gray-700 flex-shrink-0 flex items-center justify-between gap-1">
+      <div className="p-2 border-b border-gray-700 flex-shrink-0 flex items-center justify-between gap-1">
         {/* Previous Day Button */}
         <Button
           variant="ghost"
@@ -168,14 +168,14 @@ export function DailyCalendarWidget({ id: _id }: DailyCalendarWidgetProps) {
 
         {/* Date Display & Today Button */}
         <div className="flex items-center justify-center flex-grow gap-2">
-          <p className="text-xs font-medium text-gray-700 dark:text-gray-300 text-center">
+          <p className="text-xs font-medium text-gray-300 text-center">
             {formattedDisplayedDate}
           </p>
           {!isToday(displayedDate) && (
             <Button
-              variant="outline" // Changed variant
-              size="sm" // Use small size
-              className="h-5 px-1.5 text-xs" // Adjusted height, padding, text size
+              variant="outline"
+              size="sm"
+              className="h-5 px-1.5 text-xs"
               onClick={handleGoToToday}
             >
               Today
@@ -199,7 +199,7 @@ export function DailyCalendarWidget({ id: _id }: DailyCalendarWidgetProps) {
       {/* Loading Bar - Always rendered, animation controlled by isLoading */}
       <LoadingBar
         isLoading={isLoading}
-        colorClassName="bg-orange-500" // Daily widget color
+        colorClassName="bg-orange-500"
         className="flex-shrink-0"
       />
 
@@ -208,46 +208,35 @@ export function DailyCalendarWidget({ id: _id }: DailyCalendarWidgetProps) {
         {/* Render All-day events - Add horizontal padding here */}
         {allDayEvents.length > 0 && (
           <ul className="space-y-1 px-2">
-            {" "}
-            {/* Added px-2 */}
             {allDayEvents.map((event) => (
-              // eslint-disable-next-line react/prop-types
               <EventItem key={`allday-${event.id}`} event={event} />
             ))}
           </ul>
         )}
         {/* Separator - Now spans full width */}
         {allDayEvents.length > 0 && timedEvents.length > 0 && (
-          <hr className="border-gray-200 dark:border-gray-700 my-2" />
+          <hr className="border-gray-700 my-2" />
         )}
         {/* Render Timed events - Add horizontal padding here */}
         {timedEvents.length > 0 && (
           <ul className="space-y-1 px-2">
-            {" "}
-            {/* Added px-2 */}
             {timedEvents.map((event) => (
-              // eslint-disable-next-line react/prop-types
               <EventItem key={`timed-${event.id}`} event={event} />
             ))}
           </ul>
         )}
         {/* Message if no events */}
-        {!isLoading &&
-          !error &&
-          displayedEvents.length === 0 && ( // Check displayedEvents length only if not loading/error
-            <p className="text-center text-sm text-gray-500 dark:text-gray-400 pt-4 px-2">
-              No events scheduled for this day.
-            </p>
-          )}
+        {!isLoading && !error && displayedEvents.length === 0 && (
+          <p className="text-center text-sm text-gray-400 pt-4 px-2">
+            No events scheduled for this day.
+          </p>
+        )}
         {/* Error State - Overlay */}
         {error && !isLoading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-gray-800/50 p-2">
-            <p className="text-xs text-red-600 dark:text-red-400 text-center">
-              Error: {error}
-            </p>
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-800/50 p-2">
+            <p className="text-xs text-red-400 text-center">Error: {error}</p>
           </div>
         )}
-        {/* Removed old loading overlay */}
       </div>
     </div>
   );

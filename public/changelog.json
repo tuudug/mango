@@ -1,5 +1,12 @@
 [
   {
+    "version": "0.1.7",
+    "date": "2025-04-03",
+    "data": [
+      "Improved designs by deleting dark mode tailwind classes."
+    ]
+  },
+  {
     "version": "0.1.6",
     "date": "2025-04-03",
     "data": [

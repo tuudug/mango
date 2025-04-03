@@ -80,10 +80,10 @@ export function CalendarDataSource({ onClose }: CalendarDataSourceProps) {
 
   return (
     // Use Card as the main container, match panel background, remove rounding
-    <Card className="h-full flex flex-col shadow-lg border-l bg-white dark:bg-gray-800 rounded-none">
-      <CardHeader className="flex flex-row items-center justify-between p-4 border-b flex-shrink-0 dark:border-gray-700">
+    <Card className="h-full flex flex-col shadow-lg border-l bg-gray-800 rounded-none">
+      <CardHeader className="flex flex-row items-center justify-between p-4 border-b flex-shrink-0 border-gray-700">
         <div className="flex items-center gap-2">
-          <CalendarDays className="w-5 h-5 text-blue-500 dark:text-blue-400" />
+          <CalendarDays className="w-5 h-5 text-blue-400" />
           {/* Use CardTitle for consistency */}
           <CardTitle className="text-lg font-semibold">Calendar Data</CardTitle>
         </div>
@@ -102,11 +102,11 @@ export function CalendarDataSource({ onClose }: CalendarDataSourceProps) {
 
       <CardContent className="flex-1 p-4 overflow-y-auto space-y-6">
         {/* Google Calendar Connection Section */}
-        <div className="space-y-2 border-b pb-4 dark:border-gray-700">
+        <div className="space-y-2 border-b pb-4 border-gray-700">
           <h3 className="text-base font-medium">Google Calendar</h3>
           {isGoogleConnected ? (
             <div className="flex items-center justify-between gap-2">
-              <p className="text-sm text-green-600 dark:text-green-400 flex items-center gap-1">
+              <p className="text-sm text-green-400 flex items-center gap-1">
                 <Link size={14} /> Connected
               </p>
               <Button
@@ -120,7 +120,7 @@ export function CalendarDataSource({ onClose }: CalendarDataSourceProps) {
             </div>
           ) : (
             <div className="flex items-center justify-between gap-2">
-              <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1">
+              <p className="text-sm text-gray-400 flex items-center gap-1">
                 <Unlink size={14} /> Not Connected
               </p>
               <Button
@@ -167,11 +167,7 @@ export function CalendarDataSource({ onClose }: CalendarDataSourceProps) {
         </form>
 
         {/* Display Error if any */}
-        {error && (
-          <p className="text-sm text-red-600 dark:text-red-400">
-            Error: {error}
-          </p>
-        )}
+        {error && <p className="text-sm text-red-400">Error: {error}</p>}
 
         {/* Existing Events List */}
         <div className="space-y-3">
@@ -180,7 +176,7 @@ export function CalendarDataSource({ onClose }: CalendarDataSourceProps) {
             <p className="text-sm text-gray-500">Loading events...</p>
           )}
           {!isLoading && events.length === 0 && !error && (
-            <p className="text-sm text-gray-500 dark:text-gray-400 italic">
+            <p className="text-sm text-gray-400 italic">
               No events found. Add one above or connect Google Calendar.
             </p>
           )}
@@ -191,7 +187,7 @@ export function CalendarDataSource({ onClose }: CalendarDataSourceProps) {
                 .map((event) => (
                   <li
                     key={event.id} // Use event ID from backend/source
-                    className="flex justify-between items-center p-2.5 bg-gray-50 dark:bg-gray-700/50 rounded border border-gray-200 dark:border-gray-700 shadow-sm"
+                    className="flex justify-between items-center p-2.5 bg-gray-700/50 rounded border border-gray-700 shadow-sm"
                   >
                     <span className="text-sm">
                       {/* Indicate source visually using sourceProvider */}
@@ -226,27 +222,23 @@ export function CalendarDataSource({ onClose }: CalendarDataSourceProps) {
         </div>
 
         {/* Sync Status Footer */}
-        <div className="mt-auto pt-2 border-t dark:border-gray-700 text-center">
+        <div className="mt-auto pt-2 border-t border-gray-700 text-center">
           {isLoading ? (
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Syncing...
-            </p>
+            <p className="text-xs text-gray-400">Syncing...</p>
           ) : lastFetchTime && nextSyncCountdown ? (
-            <p className="text-xs text-gray-500 dark:text-gray-400">
+            <p className="text-xs text-gray-400">
               Next sync in: {nextSyncCountdown}
             </p>
           ) : (
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Not synced yet.
-            </p>
+            <p className="text-xs text-gray-400">Not synced yet.</p>
           )}
           {/* Optional Refresh Button */}
           {/* <Button variant="link" size="sm" onClick={fetchEventsIfNeeded} disabled={isLoading}>Refresh</Button> */}
         </div>
-        <div className="mt-6 p-3 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+        <div className="mt-6 p-3 bg-yellow-900/30 border border-yellow-800 rounded-lg">
           <div className="flex items-start gap-2">
-            <AlertTriangle className="w-5 h-5 text-yellow-500 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-yellow-700 dark:text-yellow-300">
+            <AlertTriangle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-yellow-300">
               The Google OAuth app is currently in test mode. To connect with
               Google Calendar, your email address needs to be manually added to
               the allowed test users. Please contact me to have your email added

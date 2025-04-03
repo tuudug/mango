@@ -62,7 +62,7 @@ export const TodoItemActions: React.FC<TodoItemActionsProps> = ({
                   onMoveUp(todoId);
                 }}
                 disabled={isLoading || isToggling}
-                className="h-6 w-6 p-1 text-gray-400 dark:text-gray-500 hover:text-sky-500 dark:hover:text-sky-400 opacity-0 group-hover:enabled:opacity-100 transition-opacity disabled:cursor-not-allowed"
+                className="h-6 w-6 p-1 text-gray-500 hover:text-sky-400 opacity-0 group-hover:enabled:opacity-100 transition-opacity disabled:cursor-not-allowed"
                 title="Move Up"
               >
                 <ArrowUpCircle size={14} />
@@ -75,7 +75,7 @@ export const TodoItemActions: React.FC<TodoItemActionsProps> = ({
                   onMoveDown(todoId);
                 }}
                 disabled={isLoading || isToggling}
-                className="h-6 w-6 p-1 text-gray-400 dark:text-gray-500 hover:text-sky-500 dark:hover:text-sky-400 opacity-0 group-hover:enabled:opacity-100 transition-opacity disabled:cursor-not-allowed"
+                className="h-6 w-6 p-1 text-gray-500 hover:text-sky-400 opacity-0 group-hover:enabled:opacity-100 transition-opacity disabled:cursor-not-allowed"
                 title="Move Down"
               >
                 <ArrowDownCircle size={14} />
@@ -88,7 +88,7 @@ export const TodoItemActions: React.FC<TodoItemActionsProps> = ({
               size="icon"
               onClick={onAddSubClick}
               disabled={isLoading || isToggling}
-              className="h-6 w-6 p-1 text-gray-400 dark:text-gray-500 hover:text-green-500 dark:hover:text-green-400 opacity-0 group-hover:enabled:opacity-100 transition-opacity disabled:cursor-not-allowed"
+              className="h-6 w-6 p-1 text-gray-500 hover:text-green-400 opacity-0 group-hover:enabled:opacity-100 transition-opacity disabled:cursor-not-allowed"
               title="Add sub-item"
             >
               <PlusCircle size={14} />
@@ -100,7 +100,7 @@ export const TodoItemActions: React.FC<TodoItemActionsProps> = ({
               size="icon"
               onClick={onBreakdownClick}
               disabled={isLoading || isToggling}
-              className="h-6 w-6 p-1 text-gray-400 dark:text-gray-500 hover:text-purple-500 dark:hover:text-purple-400 opacity-0 group-hover:enabled:opacity-100 transition-opacity disabled:cursor-not-allowed"
+              className="h-6 w-6 p-1 text-gray-500 hover:text-purple-400 opacity-0 group-hover:enabled:opacity-100 transition-opacity disabled:cursor-not-allowed"
               title="Break down task"
             >
               <Sparkles size={14} />
@@ -114,7 +114,7 @@ export const TodoItemActions: React.FC<TodoItemActionsProps> = ({
               {...dndListeners}
               disabled={isLoading || isToggling}
               aria-label="Drag to reorder"
-              className="h-6 w-6 p-1 cursor-grab touch-none text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 opacity-0 group-hover:enabled:opacity-100 transition-opacity disabled:cursor-not-allowed"
+              className="h-6 w-6 p-1 cursor-grab touch-none text-gray-500 hover:text-gray-300 opacity-0 group-hover:enabled:opacity-100 transition-opacity disabled:cursor-not-allowed"
               title="Drag to reorder"
             >
               <GripVertical size={14} />
@@ -125,7 +125,7 @@ export const TodoItemActions: React.FC<TodoItemActionsProps> = ({
             size="icon"
             onClick={onEditClick}
             disabled={isLoading || isToggling}
-            className="h-6 w-6 p-1 text-gray-400 dark:text-gray-500 hover:text-blue-500 dark:hover:text-blue-400 opacity-0 group-hover:enabled:opacity-100 transition-opacity disabled:cursor-not-allowed"
+            className="h-6 w-6 p-1 text-gray-500 hover:text-blue-400 opacity-0 group-hover:enabled:opacity-100 transition-opacity disabled:cursor-not-allowed"
             title="Edit"
           >
             <Pencil size={14} />
@@ -138,7 +138,7 @@ export const TodoItemActions: React.FC<TodoItemActionsProps> = ({
               onDelete(todoId); // Use todoId passed as prop
             }}
             disabled={isLoading || isToggling}
-            className="h-6 w-6 p-1 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 opacity-0 group-hover:enabled:opacity-100 transition-opacity disabled:cursor-not-allowed"
+            className="h-6 w-6 p-1 text-gray-500 hover:text-red-400 opacity-0 group-hover:enabled:opacity-100 transition-opacity disabled:cursor-not-allowed"
             title="Delete"
           >
             <Trash size={14} />

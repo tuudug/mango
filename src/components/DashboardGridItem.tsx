@@ -68,15 +68,13 @@ export function DashboardGridItem({
     <WidgetErrorBoundary widgetId={item.id}>
       {/* Main widget container - Apply shake class conditionally */}
       <div
-        className={`bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden w-full h-full border border-gray-200 dark:border-gray-700 border-l-4 ${
+        className={`bg-gray-800 rounded-lg shadow-md overflow-hidden w-full h-full border border-gray-700 border-l-4 ${
           metadata.colorAccentClass
-        } flex flex-col ${isEditing ? "widget-shake" : ""}`} // Use gray border + thick colored left border, add shake class
+        } flex flex-col ${isEditing ? "widget-shake" : ""}`}
       >
         {/* Title Bar */}
-        {item.type !== "Placeholder" && ( // No title bar for placeholder
-          <div className="flex items-center justify-between p-1.5 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 cursor-grab">
-            {" "}
-            {/* Make title bar draggable handle */}
+        {item.type !== "Placeholder" && (
+          <div className="flex items-center justify-between p-1.5 border-b border-gray-700 bg-gray-700/50 cursor-grab">
             {/* Left side: Icon + Title */}
             <div className="flex items-center gap-1.5">
               <IconComponent
@@ -84,23 +82,20 @@ export function DashboardGridItem({
                   "border-l-",
                   "text-"
                 )}`}
-              />{" "}
-              {/* Use accent color for icon */}
-              <span className="text-xs font-medium text-gray-700 dark:text-gray-200 select-none">
+              />
+              <span className="text-xs font-medium text-gray-200 select-none">
                 {item.type}
               </span>
             </div>
             {/* Right side: Controls - Conditionally render based on isEditing */}
             {isEditing && (
               <div className="flex items-center gap-1 widget-controls-cancel-drag">
-                {" "}
-                {/* Add cancel class */}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     /* TODO: Add edit logic */ alert(`Edit ${item.type}`);
                   }}
-                  className="p-0.5 text-gray-700 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-400" // Changed text-gray-500 to text-gray-700
+                  className="p-0.5 text-gray-400 hover:text-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-400"
                   title="Edit Widget"
                 >
                   <Pencil size={12} />
@@ -110,7 +105,7 @@ export function DashboardGridItem({
                     e.stopPropagation();
                     handleDeleteWidget(item.id);
                   }}
-                  className="p-0.5 text-gray-700 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 rounded focus:outline-none focus:ring-1 focus:ring-red-400" // Changed text-gray-500 to text-gray-700
+                  className="p-0.5 text-gray-400 hover:text-red-400 rounded focus:outline-none focus:ring-1 focus:ring-red-400"
                   title="Delete Widget"
                 >
                   <X size={14} />
