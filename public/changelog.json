@@ -1,5 +1,12 @@
 [
   {
+    "version": "0.1.8",
+    "date": "2025-04-03",
+    "data": [
+      "index.html now has dark mode set by default."
+    ]
+  },
+  {
     "version": "0.1.7",
     "date": "2025-04-03",
     "data": [
