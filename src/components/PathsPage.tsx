@@ -177,7 +177,8 @@ export function PathsPage({
 
   return (
     <>
-      <aside className="h-full w-96 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 shadow-lg flex flex-col">
+      {/* Remove fixed width w-96, add w-full */}
+      <aside className="h-full w-full bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 shadow-lg flex flex-col">
         {/* Header */}
         <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center flex-shrink-0">
           <div className="flex items-center gap-2">

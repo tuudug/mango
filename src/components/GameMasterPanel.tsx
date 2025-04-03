@@ -25,8 +25,8 @@ export function GameMasterPanel({ onClose }: GameMasterPanelProps) {
   };
 
   return (
-    // Basic styling for the panel
-    <aside className="h-full w-72 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 shadow-lg flex flex-col">
+    // Remove fixed width w-72, add w-full
+    <aside className="h-full w-full bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 shadow-lg flex flex-col">
       {/* Header */}
       <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center flex-shrink-0">
         {" "}

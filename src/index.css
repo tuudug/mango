@@ -2,20 +2,32 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Add iOS-style wiggle animation for widgets in edit mode */
+/* Restore original iOS-style wiggle animation for widgets */
 @keyframes wiggle {
   0% { transform: rotate(0deg); }
-  25% { transform: rotate(-0.3deg); } /* Even smaller rotation */
-  50% { transform: rotate(0.3deg); }  /* Even smaller rotation */
-  75% { transform: rotate(-0.3deg); } /* Even smaller rotation */
+  25% { transform: rotate(-0.3deg); }
+  50% { transform: rotate(0.3deg); }
+  75% { transform: rotate(-0.3deg); }
   100% { transform: rotate(0deg); }
 }
 
+/* Restore original class for widgets */
 .widget-shake {
-  animation: wiggle 0.8s ease-in-out infinite; /* Kept duration, smoother timing */
-  /* Optional: Add a slight visual cue beyond shaking */
-  /* box-shadow: 0 0 5px rgba(81, 203, 238, 0.5); */
+  animation: wiggle 0.8s ease-in-out infinite;
 }
+
+/* Define a NEW gentle horizontal shake for the indicator (relative values only) */
+@keyframes gentle-shake {
+  0%, 100% { transform: translateX(0); } /* Start/end at original position */
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-12px); } /* Shift left */
+  20%, 40%, 60%, 80% { transform: translateX(12px); } /* Shift right */
+}
+
+/* Define a NEW class specifically for the indicator shake */
+.indicator-shake {
+  animation: gentle-shake 1s ease-in-out; /* Runs once */
+}
+
 
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;

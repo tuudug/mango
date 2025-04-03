@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { cn, compareVersions } from "@/lib/utils"; // Import cn and compareVersions
+import { cn, compareVersions } from "@/lib/utils";
 import {
   Bot,
   CalendarDays,
@@ -9,107 +9,248 @@ import {
   Pencil,
   User,
 } from "lucide-react";
-import { useEffect, useState } from "react"; // Import useState and useEffect
+import { useEffect, useState, useMemo } from "react"; // Import useMemo
 import { ChangelogModal } from "./ChangelogModal";
+// Import the panel components that will now be rendered here
+import { GameMasterPanel } from "./GameMasterPanel";
+import { UserProfilePanel } from "./UserProfilePanel";
+import { PathsPage } from "./PathsPage";
+import { CalendarDataSource } from "./datasources/CalendarDataSource";
+import { HealthDataSource } from "./datasources/HealthDataSource";
+import { TodosDataSource } from "./datasources/TodosDataSource";
 // Import the changelog data
 import changelogData from "../../public/changelog.json";
+// Import types and constants needed for PathsPage
+import { pathsData } from "./dashboard/constants";
+import { SavedPathState } from "./dashboard/types";
+import {
+  loadPathStateFromLocalStorage,
+  savePathStateToLocalStorage,
+} from "./dashboard/utils";
+import { useToast } from "@/contexts/ToastContext"; // Import useToast
 
 interface LeftSidebarProps {
   isToolboxOpen: boolean;
-  isGameMasterPanelOpen: boolean;
-  isUserProfilePanelOpen: boolean;
-  isPathsPageOpen: boolean;
-  isCalendarDataSourceOpen: boolean;
-  isHealthDataSourceOpen: boolean;
-  isTodosDataSourceOpen: boolean;
-  toggleToolbox: () => void;
-  toggleGameMasterPanel: () => void;
-  onProfileClick: () => void;
-  togglePathsPage: () => void;
-  toggleCalendarDataSource: () => void;
-  toggleHealthDataSource: () => void;
-  toggleTodosDataSource: () => void;
+  toggleToolbox: (forceState?: boolean) => void;
+  triggerShakeIndicator: () => void; // Add prop to trigger shake
 }
 
-// Removed CURRENT_APP_VERSION constant
 const LOCALSTORAGE_KEY = "mango_last_read_changelog_version";
-
-// Get the latest version from the changelog (first entry)
-// Add a fallback in case the file is empty or malformed
 const latestVersion =
-  changelogData && changelogData.length > 0 ? changelogData[0].version : "0"; // Fallback to "0"
+  changelogData && changelogData.length > 0 ? changelogData[0].version : "0";
 
 export function LeftSidebar({
   isToolboxOpen,
-  isGameMasterPanelOpen,
-  isUserProfilePanelOpen,
-  isPathsPageOpen,
-  isCalendarDataSourceOpen,
-  isHealthDataSourceOpen,
-  isTodosDataSourceOpen,
   toggleToolbox,
-  toggleGameMasterPanel,
-  onProfileClick,
-  togglePathsPage,
-  toggleCalendarDataSource,
-  toggleHealthDataSource,
-  toggleTodosDataSource,
+  triggerShakeIndicator, // Receive prop
 }: LeftSidebarProps) {
-  const [isChangelogOpen, setIsChangelogOpen] = useState(false);
-  const [hasNewChangelog, setHasNewChangelog] = useState(false); // State for notification
+  const { showToast } = useToast(); // Get showToast function
 
-  // Check localStorage on mount
+  // State for panels is now managed internally
+  const [isGameMasterPanelOpen, setIsGameMasterPanelOpen] = useState(false);
+  const [isUserProfilePanelOpen, setIsUserProfilePanelOpen] = useState(false);
+  const [isPathsPageOpen, setIsPathsPageOpen] = useState(false);
+  const [isCalendarDataSourceOpen, setIsCalendarDataSourceOpen] =
+    useState(false);
+  const [isHealthDataSourceOpen, setIsHealthDataSourceOpen] = useState(false);
+  const [isTodosDataSourceOpen, setIsTodosDataSourceOpen] = useState(false);
+
+  // State for changelog modal
+  const [isChangelogOpen, setIsChangelogOpen] = useState(false);
+  const [hasNewChangelog, setHasNewChangelog] = useState(false);
+
+  // Path State
+  const [pathState, setPathState] = useState<SavedPathState>(
+    loadPathStateFromLocalStorage
+  );
+  const { activePathName, unlockedItems, currentPathProgressXP } = pathState;
+
+  // Effect to save path state
+  useEffect(() => {
+    savePathStateToLocalStorage(pathState);
+  }, [pathState]);
+
+  // Calculate next unlock XP
+  const nextUnlockXP = useMemo(() => {
+    if (!activePathName) return 0;
+    const activePath = pathsData.find((p) => p.name === activePathName);
+    if (!activePath) return 0;
+    const nextItem = activePath.items.find(
+      (item) => !unlockedItems[item.label]
+    );
+    return nextItem ? nextItem.xpCost : 0;
+  }, [activePathName, unlockedItems]);
+
+  // Set Active Path
+  const setActivePath = (pathName: string) => {
+    setPathState((prev) => ({
+      ...prev,
+      activePathName: pathName,
+      currentPathProgressXP: 0,
+    }));
+  };
+
+  // Check localStorage for changelog
   useEffect(() => {
     try {
-      const lastReadVersion = localStorage.getItem(LOCALSTORAGE_KEY) || "0"; // Default to "0" if not found
-      // Use compareVersions for accurate comparison
+      const lastReadVersion = localStorage.getItem(LOCALSTORAGE_KEY) || "0";
       if (compareVersions(latestVersion, lastReadVersion) > 0) {
         setHasNewChangelog(true);
       } else {
-        setHasNewChangelog(false); // Ensure it's false if versions match or are older
+        setHasNewChangelog(false);
       }
     } catch (error) {
       console.error("Error reading from localStorage:", error);
       setHasNewChangelog(false);
     }
-  }, []); // Run only once on mount
+  }, []);
 
   const handleLogoClick = () => {
     try {
-      // Save the *actual* latest version when clicked
       localStorage.setItem(LOCALSTORAGE_KEY, latestVersion);
-      setHasNewChangelog(false); // Hide notification once clicked
-      setIsChangelogOpen(true); // Open modal
+      setHasNewChangelog(false);
+      setIsChangelogOpen(true);
     } catch (error) {
       console.error("Error writing to localStorage:", error);
-      // Still open the modal even if saving fails
       setIsChangelogOpen(true);
     }
   };
 
+  // --- Internal Toggle Handlers ---
+  const closeAllPanels = () => {
+    setIsGameMasterPanelOpen(false);
+    setIsUserProfilePanelOpen(false);
+    setIsPathsPageOpen(false);
+    setIsCalendarDataSourceOpen(false);
+    setIsHealthDataSourceOpen(false);
+    setIsTodosDataSourceOpen(false);
+  };
+
+  // --- Revised Individual Toggle Handlers ---
+  const handleToggleGameMaster = () => {
+    if (isToolboxOpen) {
+      triggerShakeIndicator();
+      showToast("Please exit edit mode first.", "info"); // Use showToast
+      return;
+    }
+    if (!isGameMasterPanelOpen) {
+      closeAllPanels();
+      setIsGameMasterPanelOpen(true);
+    } else {
+      setIsGameMasterPanelOpen(false);
+    }
+  };
+
+  const handleToggleUserProfile = () => {
+    if (isToolboxOpen) {
+      triggerShakeIndicator();
+      showToast("Please exit edit mode first.", "info"); // Use showToast
+      return;
+    }
+    if (!isUserProfilePanelOpen) {
+      closeAllPanels();
+      setIsUserProfilePanelOpen(true);
+    } else {
+      setIsUserProfilePanelOpen(false);
+    }
+  };
+
+  const handleTogglePaths = () => {
+    if (isToolboxOpen) {
+      triggerShakeIndicator();
+      showToast("Please exit edit mode first.", "info"); // Use showToast
+      return;
+    }
+    if (!isPathsPageOpen) {
+      closeAllPanels();
+      setIsPathsPageOpen(true);
+    } else {
+      setIsPathsPageOpen(false);
+    }
+  };
+
+  const handleToggleCalendar = () => {
+    if (isToolboxOpen) {
+      triggerShakeIndicator();
+      showToast("Please exit edit mode first.", "info"); // Use showToast
+      return;
+    }
+    if (!isCalendarDataSourceOpen) {
+      closeAllPanels();
+      setIsCalendarDataSourceOpen(true);
+    } else {
+      setIsCalendarDataSourceOpen(false);
+    }
+  };
+
+  const handleToggleHealth = () => {
+    if (isToolboxOpen) {
+      triggerShakeIndicator();
+      showToast("Please exit edit mode first.", "info"); // Use showToast
+      return;
+    }
+    if (!isHealthDataSourceOpen) {
+      closeAllPanels();
+      setIsHealthDataSourceOpen(true);
+    } else {
+      setIsHealthDataSourceOpen(false);
+    }
+  };
+
+  const handleToggleTodos = () => {
+    if (isToolboxOpen) {
+      triggerShakeIndicator();
+      showToast("Please exit edit mode first.", "info"); // Use showToast
+      return;
+    }
+    if (!isTodosDataSourceOpen) {
+      closeAllPanels();
+      setIsTodosDataSourceOpen(true);
+    } else {
+      setIsTodosDataSourceOpen(false);
+    }
+  };
+
+  const handleToggleToolbox = () => {
+    toggleToolbox(); // Toggle the toolbox state via prop
+    if (!isToolboxOpen) {
+      // If toolbox is about to open
+      closeAllPanels(); // Close any open panels
+    }
+  };
+
+  // Determine if any panel (excluding toolbox) is open
+  const isAnyPanelOpen =
+    isGameMasterPanelOpen ||
+    isUserProfilePanelOpen ||
+    isPathsPageOpen ||
+    isCalendarDataSourceOpen ||
+    isHealthDataSourceOpen ||
+    isTodosDataSourceOpen;
+
   return (
     <>
+      {/* Sidebar Buttons (Structure remains the same) */}
       <aside className="fixed left-0 top-0 bottom-0 z-30 flex h-screen w-16 flex-col items-center border-r border-gray-200 bg-white py-4 dark:border-gray-700 dark:bg-gray-800">
         {/* Logo Button */}
         <button
-          onClick={handleLogoClick} // Use new handler
+          onClick={handleLogoClick}
           title="View Changelog"
           className={cn(
             "relative mb-6 flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg bg-gradient-to-br from-orange-400 to-pink-500 transition-transform hover:scale-105",
-            hasNewChangelog && "widget-shake" // Apply shake animation if new
+            hasNewChangelog && "widget-shake"
           )}
         >
           <span className="text-2xl">🥭</span>
-          {/* Badge */}
           {hasNewChangelog && (
             <span className="absolute -top-1 -right-1 flex h-3 w-3">
-              {/* Changed red to blue */}
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
             </span>
           )}
         </button>
         <nav className="flex flex-col items-center gap-3">
+          {/* Toolbox Button */}
           <Button
             variant={isToolboxOpen ? "secondary" : "ghost"}
             size="icon"
@@ -118,13 +259,14 @@ export function LeftSidebar({
                 ? "text-indigo-600 dark:text-indigo-400"
                 : "text-gray-500 dark:text-gray-400"
             }`}
-            onClick={toggleToolbox}
+            onClick={handleToggleToolbox}
             title="Toggle Edit Mode / Toolbox"
           >
             <Pencil size={20} />
             <span className="sr-only">Toggle Toolbox</span>
           </Button>
 
+          {/* Game Master Button */}
           <Button
             variant={isGameMasterPanelOpen ? "secondary" : "ghost"}
             size="icon"
@@ -133,7 +275,7 @@ export function LeftSidebar({
                 ? "text-indigo-600 dark:text-indigo-400"
                 : "text-gray-500 dark:text-gray-400"
             }`}
-            onClick={toggleGameMasterPanel}
+            onClick={handleToggleGameMaster}
             title="Toggle Game Master Panel"
           >
             <Bot size={20} />
@@ -149,7 +291,7 @@ export function LeftSidebar({
                 ? "text-indigo-600 dark:text-indigo-400"
                 : "text-gray-500 dark:text-gray-400"
             }`}
-            onClick={togglePathsPage}
+            onClick={handleTogglePaths}
             title="Paths"
           >
             <Milestone size={20} />
@@ -169,7 +311,7 @@ export function LeftSidebar({
                 ? "text-indigo-600 dark:text-indigo-400"
                 : "text-gray-500 dark:text-gray-400"
             }`}
-            onClick={toggleCalendarDataSource}
+            onClick={handleToggleCalendar}
             title="Calendar Data Source"
           >
             <CalendarDays size={20} />
@@ -183,7 +325,7 @@ export function LeftSidebar({
                 ? "text-indigo-600 dark:text-indigo-400"
                 : "text-gray-500 dark:text-gray-400"
             }`}
-            onClick={toggleHealthDataSource}
+            onClick={handleToggleHealth}
             title="Health Data Source"
           >
             <HeartPulse size={20} />
@@ -197,7 +339,7 @@ export function LeftSidebar({
                 ? "text-indigo-600 dark:text-indigo-400"
                 : "text-gray-500 dark:text-gray-400"
             }`}
-            onClick={toggleTodosDataSource}
+            onClick={handleToggleTodos}
             title="Todos Data Source"
           >
             <ListTodo size={20} />
@@ -214,12 +356,13 @@ export function LeftSidebar({
                 ? "text-indigo-600 dark:text-indigo-400"
                 : "text-gray-500 dark:text-gray-400"
             }`}
-            onClick={onProfileClick}
+            onClick={handleToggleUserProfile}
             title="User Profile"
           >
             <User size={18} />
             <span className="sr-only">User Profile</span>
           </Button>
+          {/* TODO: Get level/points dynamically */}
           <span className="text-[10px] font-medium text-gray-600 dark:text-gray-300">
             Level 1
           </span>
@@ -228,7 +371,83 @@ export function LeftSidebar({
           </span>
         </div>
       </aside>
-      {/* Render the modal */}
+
+      {/* Overlay for darkening the background */}
+      <div
+        className={cn(
+          "fixed inset-0 left-16 z-10 bg-black/50 transition-opacity duration-300",
+          isAnyPanelOpen
+            ? "opacity-100 pointer-events-auto"
+            : "opacity-0 pointer-events-none"
+        )}
+        onClick={closeAllPanels} // Close any open panel when overlay is clicked
+        aria-hidden="true"
+      />
+
+      {/* Render Panels Conditionally with updated styles */}
+      <div
+        className={cn(
+          "absolute top-0 left-16 bottom-0 transition-transform duration-300 ease-in-out z-20",
+          "max-w-md w-full bg-white dark:bg-gray-800 shadow-lg", // Add background, max-width, shadow
+          isGameMasterPanelOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
+        <GameMasterPanel onClose={handleToggleGameMaster} />
+      </div>
+      <div
+        className={cn(
+          "absolute top-0 left-16 bottom-0 transition-transform duration-300 ease-in-out z-20",
+          "max-w-md w-full bg-white dark:bg-gray-800 shadow-lg", // Add background, max-width, shadow
+          isUserProfilePanelOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
+        <UserProfilePanel onClose={handleToggleUserProfile} />
+      </div>
+      <div
+        className={cn(
+          "absolute top-0 left-16 bottom-0 transition-transform duration-300 ease-in-out z-20",
+          "max-w-md w-full bg-white dark:bg-gray-800 shadow-lg", // Add background, max-width, shadow
+          isPathsPageOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
+        <PathsPage
+          onClose={handleTogglePaths}
+          activePathName={activePathName}
+          setActivePath={setActivePath}
+          unlockedItems={unlockedItems}
+          currentPathProgressXP={currentPathProgressXP}
+          nextUnlockXP={nextUnlockXP}
+        />
+      </div>
+      <div
+        className={cn(
+          "absolute top-0 left-16 bottom-0 transition-transform duration-300 ease-in-out z-20",
+          "max-w-sm w-full bg-white dark:bg-gray-800 shadow-lg", // Use max-w-sm for data sources
+          isCalendarDataSourceOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
+        <CalendarDataSource />
+      </div>
+      <div
+        className={cn(
+          "absolute top-0 left-16 bottom-0 transition-transform duration-300 ease-in-out z-20",
+          "max-w-sm w-full bg-white dark:bg-gray-800 shadow-lg", // Use max-w-sm
+          isHealthDataSourceOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
+        <HealthDataSource />
+      </div>
+      <div
+        className={cn(
+          "absolute top-0 left-16 bottom-0 transition-transform duration-300 ease-in-out z-20",
+          "max-w-sm w-full bg-white dark:bg-gray-800 shadow-lg", // Use max-w-sm
+          isTodosDataSourceOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
+        <TodosDataSource />
+      </div>
+
+      {/* Render the changelog modal */}
       <ChangelogModal
         isOpen={isChangelogOpen}
         onOpenChange={setIsChangelogOpen}

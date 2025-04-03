@@ -52,7 +52,7 @@ These components handle the interaction and persistence of core application data
   - [x] Concept: User selects one linear path at a time; XP contributes to path progress. Switching paths resets progress towards the _next_ item on the previous path.
   - [x] UI Mockup: Implemented as a sliding panel (`PathsPage.tsx`) showing defined paths, active path indication (star icon), progress bar for active path, unlock status (lock/check icon), XP costs, and path switching confirmation.
   - [ ] Path Definition: Finalize items, order, XP costs, level requirements per path.
-  - [x] Implementation: Logic for path selection, progress tracking, unlocking items (state managed in `Dashboard.tsx`, saved to localStorage - _Path state only_).
+  - [x] Implementation: Logic for path selection, progress tracking, unlocking items (state managed in `LeftSidebar.tsx` now, saved to localStorage - _Path state only_).
   - [ ] XP Gain Mechanism: Define how users earn XP (e.g., completing quests, using widgets).
 - [ ] Widgets unlocked/customized through app usage (via Paths / Shop).
 - [ ] **Shop:**
@@ -68,11 +68,17 @@ These components handle the interaction and persistence of core application data
 - [x] **Layout persistence (Database):**
   - [x] Backend API (`/api/dashboards`) created to GET/PUT layouts.
   - [x] Supabase table (`user_dashboard_layouts`) created.
-  - [x] Frontend (`Dashboard.tsx`) fetches/saves layouts via API, replacing localStorage.
+  - [x] Frontend (`useDashboardLayout` hook) fetches/saves layouts via API.
+- [x] **Layout Caching (Local Storage):**
+  - [x] Layouts ('default', 'mobile') cached to reduce API calls.
+  - [x] Last sync time stored to check cache staleness (12hr).
+  - [x] Cache used on initial load; stale cache updated on focus.
+  - [x] Fetches forced on entering/exiting edit mode or switching edit target.
 - [x] **Mobile Layout Support:**
-  - [x] Separate 'mobile' layout fetched/saved via API.
-  - [x] Automatic loading of 'mobile' or 'default' layout based on screen width.
+  - [x] Separate 'mobile' layout fetched/saved via API & cached.
+  - [x] Automatic loading of 'mobile' or 'default' layout based on screen width (initial load).
   - [x] Mobile Edit Mode UI implemented (toggle in edit bar, narrow preview, filtered toolbox).
+  - [x] Mobile edit preview uses separate grid instance (`DashboardGrid.tsx`).
 - [ ] **Multiple Named Dashboards:** (Future - requires UI for management)
 - [x] **Refined Widget List & Categories (Used for Paths):**
   - **Productivity:**
@@ -133,12 +139,19 @@ These components handle the interaction and persistence of core application data
 - [ ] Minimal user input focus.
 - [x] Intuitive interface (Implemented Left sidebar, sliding panels for Toolbox, GM, Profile, Paths).
 - [x] Dashboard customization implemented.
-- [x] **Panel Behavior:** Panels (except Toolbox) now slide over the dashboard content.
+- [x] **Panel Behavior:**
+  - [x] Panels (except Toolbox) slide over the dashboard content.
+  - [x] State and rendering for sliding panels moved into `LeftSidebar.tsx`.
+  - [x] Panels use `max-width` for responsiveness.
+  - [x] Background overlay added when panels are open.
+- [x] **Edit Mode Interaction:**
+  - [x] Exiting edit mode always returns to the default desktop view.
+  - [x] Attempting to open a panel during edit mode shakes the edit indicator and shows a toast.
 - [ ] Emphasis on Positive Reinforcement (Guiding principle).
 - **[x] PWA Update Notifications:** Implemented prompt for app updates & fixed update flow.
-- **[x] Toast Notifications:** Added system for user feedback.
+- **[x] Toast Notifications:** Added system for user feedback (`useToast` context).
 - **[x] Collapse on Drag:** Todo list items collapse during drag to improve DnD experience.
-- **[x] Dashboard Loading:** Improved loading state to avoid full-screen flash.
+- **[x] Dashboard Loading:** Improved loading state to avoid full-screen flash (further improved by caching).
 
 ## LLM Prompting Considerations
 

@@ -5,7 +5,8 @@
     "date": "2025-04-03",
     "data": [
       "Dashboard layout now saves to the cloud!",
-      "Mobile dashboard layout support."
+      "Mobile dashboard layout support.",
+      "Left sidebars now appear independently of the dashboard."
     ]
   },
   {
