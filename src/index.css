@@ -34,7 +34,9 @@
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
+  /* Explicitly set color-scheme to dark */
+  color-scheme: dark;
+  /* Keep the default dark colors here */
   color: rgba(255, 255, 255, 0.87);
   background-color: #242424;
 
@@ -84,18 +86,7 @@ button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
-}
+/* Removed the @media (prefers-color-scheme: light) block */
 
 /* Add this for the loading bar animation */
 @keyframes loading-bar {
@@ -132,6 +123,7 @@ button:focus-visible {
 
 
 @layer base {
+  /* Light theme variables (kept for reference, but .dark overrides) */
   :root {
     --background: 0 0% 100%;
     --foreground: 0 0% 3.9%;
@@ -159,6 +151,7 @@ button:focus-visible {
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
   }
+  /* Dark theme variables */
   .dark {
     --background: 0 0% 3.9%;
     --foreground: 0 0% 98%;
