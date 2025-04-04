@@ -1,6 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 // Removed: import { useRegisterSW } from "virtual:pwa-register/react";
-import { RefreshCw, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -8,6 +7,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Loader2, RefreshCw } from "lucide-react";
 import changelogData from "../../public/changelog.json";
 
 const latestVersion =

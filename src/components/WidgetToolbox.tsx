@@ -2,11 +2,13 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 // Update imports to use widgetConfig.ts
-import { WidgetGroup, WidgetType } from "@/lib/widgetConfig";
-import { availableWidgets } from "@/lib/widgetConfig";
-import { widgetMetadata } from "@/lib/widgetConfig";
+import {
+  availableWidgets,
+  WidgetGroup,
+  widgetMetadata,
+  WidgetType,
+} from "@/lib/widgetConfig";
 import { Plus, X } from "lucide-react"; // Import Plus icon
-import React from "react";
 // Removed: import { Draggable } from "./Draggable"; // No longer needed
 import { DashboardName } from "./dashboard/types";
 
@@ -68,7 +70,7 @@ export function WidgetToolbox({
         <div className="p-4 space-y-6">
           {filteredGroupOrder.map((group) => {
             const widgetsInGroup = groupedWidgets[group]?.filter(
-              (widgetType) => {
+              (_widgetType) => {
                 // Further filter widgets within groups for mobile if needed (remains the same)
                 if (editTargetDashboard === "mobile") {
                   // Example: Exclude specific widgets if necessary for mobile

@@ -9,14 +9,13 @@ import {
   Milestone,
   Pencil,
   User,
-  Info, // Import Info icon for tooltip
 } from "lucide-react";
-import { useEffect, useState, useMemo, useCallback } from "react"; // Import useCallback
+import { useCallback, useEffect, useMemo, useState } from "react"; // Import useCallback
 import { ChangelogModal } from "./ChangelogModal";
 // Import the panel components that will now be rendered here
 import { GameMasterPanel } from "./GameMasterPanel";
-import { UserProfilePanel } from "./UserProfilePanel";
 import { PathsPage } from "./PathsPage";
+import { UserProfilePanel } from "./UserProfilePanel";
 import { CalendarDataSource } from "./datasources/CalendarDataSource";
 import { HealthDataSource } from "./datasources/HealthDataSource";
 import { TodosDataSource } from "./datasources/TodosDataSource";
@@ -24,20 +23,20 @@ import { FinanceSettingsPanel } from "./finance/FinanceSettingsPanel"; // Import
 // Import the changelog data
 import changelogData from "../../public/changelog.json";
 // Import types and constants needed for PathsPage
-import { pathsData } from "./dashboard/constants";
-import { SavedPathState } from "./dashboard/types";
-import {
-  loadPathStateFromLocalStorage,
-  savePathStateToLocalStorage,
-  isMobileView as checkIsMobileView, // Import the utility function
-} from "./dashboard/utils";
-import { useToast } from "@/contexts/ToastContext"; // Import useToast
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"; // Import Tooltip components
+import { useToast } from "@/contexts/ToastContext"; // Import useToast
+import { pathsData } from "./dashboard/constants";
+import { SavedPathState } from "./dashboard/types";
+import {
+  isMobileView as checkIsMobileView,
+  loadPathStateFromLocalStorage,
+  savePathStateToLocalStorage,
+} from "./dashboard/utils";
 // Import the new data source config
 import { dataSourceConfig, DataSourceId } from "@/lib/dataSourceConfig";
 

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import { useCallback, useState } from "react";
 // Removed: import { Button } from "@/components/ui/button";
 // Removed: import { RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils"; // Import cn

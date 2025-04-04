@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Play, Pause, RotateCcw } from "lucide-react";
 import { usePomodoro } from "@/contexts/PomodoroContext"; // Import the context hook
+import { cn } from "@/lib/utils"; // Import cn for conditional classes
+import { Pause, Play, RotateCcw } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CircularProgressbar, buildStyles } from "react-circular-progressbar";
 import "react-circular-progressbar/dist/styles.css"; // Import the styles
-import { cn } from "@/lib/utils"; // Import cn for conditional classes
 
 // Define common props for widget components
 interface WidgetProps {
@@ -19,7 +19,7 @@ const NOTIFICATION_SOUND_SRC = "/audio/pomodoro_notification.mp3"; // Path to no
 
 // Prefix unused props with underscore to satisfy TypeScript/ESLint
 export function PomodoroWidget({ id: _id, w: _w, h: _h }: WidgetProps) {
-  const { pomodoroState, setPomodoroState } = usePomodoro(); // Get state and setter
+  const { pomodoroState: _pomodoroState, setPomodoroState } = usePomodoro(); // Get state and setter
   const [timeLeft, setTimeLeft] = useState(WORK_DURATION); // Tracks countdown OR countup time
   const [isActive, setIsActive] = useState(false);
   const [isWorkPhase, setIsWorkPhase] = useState(true);
