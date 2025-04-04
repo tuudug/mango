@@ -15,19 +15,20 @@ This guide outlines the steps required to add a new custom widget to the Mango D
 import React from "react";
 
 // Define the props your widget expects (must include id, w, h)
-interface MyNewWidgetProps {
+interface WidgetProps {
   id: string;
   w: number;
   h: number;
 }
 
-export function MyNewWidget({ id, w, h }: MyNewWidgetProps) {
-  const isMini = w < 4; // Example threshold for a "mini" view
+// Prefix unused props with underscore if needed
+export function MyNewWidget({ id: _id, w: _w, h: _h }: WidgetProps) {
+  const isMini = _w < 4; // Example threshold for a "mini" view
 
   if (isMini) {
     return (
       <div className="p-2 h-full flex items-center justify-center">
-        <h3 className="text-sm font-medium">Mini View (w: {w})</h3>
+        <h3 className="text-sm font-medium">Mini View (w: {_w})</h3>
         {/* Render a compact version of the widget */}
       </div>
     );
@@ -36,9 +37,9 @@ export function MyNewWidget({ id, w, h }: MyNewWidgetProps) {
   // Render the full version
   return (
     <div className="p-4 h-full flex flex-col items-center justify-center">
-      <h2 className="text-lg font-semibold">My New Widget (ID: {id})</h2>
+      <h2 className="text-lg font-semibold">My New Widget (ID: {_id})</h2>
       <p className="text-xs text-gray-500">
-        Size: {w}x{h}
+        Size: {_w}x{_h}
       </p>
       {/* Add your full widget UI and functionality here */}
     </div>
@@ -49,14 +50,14 @@ export function MyNewWidget({ id, w, h }: MyNewWidgetProps) {
 ## 2. Configure Widget Properties
 
 - Open the **widget configuration file**: `src/lib/widgetConfig.ts`.
-- **Define Widget Type:** Add your new widget's display name to the `WidgetType` union type.
+- **Define Widget Type:** Add your new widget's display name to the `WidgetType` union type. **Convention:** Use concise names (e.g., "Pomodoro", "Ambience") rather than "Pomodoro Widget".
   ```typescript
   export type WidgetType =
     | "Steps Tracker"
     | // ... other types
     | "My New Widget"; // <-- Add your type name here
   ```
-- **Define Default Layout:** Add an entry for your widget in the `defaultWidgetLayouts` object, specifying its default width (`w`), height (`h`), and optional minimum dimensions (`minW`, `minH`) in grid units.
+- **Define Default Layout:** Add an entry for your widget in the `defaultWidgetLayouts` object, specifying its default width (`w`), height (`h`), and optional minimum dimensions (`minW`, `minH`) in grid units. Use the same `WidgetType` string as the key.
   ```typescript
   export const defaultWidgetLayouts: Record<
     WidgetType,
@@ -66,7 +67,7 @@ export function MyNewWidget({ id, w, h }: MyNewWidgetProps) {
     "My New Widget": { w: 6, h: 4, minW: 2, minH: 2 }, // <-- Add layout defaults
   };
   ```
-- **Define Metadata (Icon, Color, Group):** Add an entry for your widget in the `widgetMetadata` object.
+- **Define Metadata (Icon, Color, Group):** Add an entry for your widget in the `widgetMetadata` object. Use the same `WidgetType` string as the key.
 
   - Choose an appropriate icon from `lucide-react` and import it at the top of `widgetConfig.ts`.
   - Define the `colorAccentClass` using Tailwind CSS classes for the left border color (e.g., `border-l-cyan-400`).
@@ -113,15 +114,28 @@ export function MyNewWidget({ id, w, h }: MyNewWidgetProps) {
   ```
 - The `DashboardGridItem` component automatically passes the `id`, `w`, and `h` props to your widget component.
 
-## 4. Add to Toolbox (Optional)
+## 4. Add to Toolbox
 
-- If you want the widget to be available for users to add from the toolbox in edit mode:
+- To make the widget available for users to add from the toolbox in edit mode:
   - Open `src/lib/widgetConfig.ts`.
   - Add the `WidgetType` string to the `availableWidgets` array.
   ```typescript
   export const availableWidgets: WidgetType[] = [
     // ... other available widgets
     "My New Widget", // <-- Add here to make it available in toolbox
+  ];
+  ```
+- **Important:** Ensure the `WidgetGroup` you assigned in Step 2 (`widgetMetadata`) is included in the `groupOrder` array within `src/components/WidgetToolbox.tsx`. If the group is missing from `groupOrder`, the widget will not appear in the toolbox even if added to `availableWidgets`.
+
+  ```typescript
+  // Example from src/components/WidgetToolbox.tsx
+  const groupOrder: WidgetGroup[] = [
+    "Finance",
+    "Tracking",
+    "Productivity",
+    "Mindfulness/Focus", // <-- Make sure your widget's group is listed here
+    "Calendar",
+    "Other",
   ];
   ```
 
@@ -156,7 +170,7 @@ export function MySizableWidget({ id, w, h }: WidgetProps) {
 After completing these steps, your new widget should be integrated into the dashboard system. You should be able to:
 
 - See it rendered if added to the initial `items` state in `Dashboard.tsx` (for testing).
-- Add it from the toolbox (if step 4 was completed) when the dashboard is in edit mode.
+- Add it from the toolbox (if step 4 was completed correctly) when the dashboard is in edit mode.
 - See its specific icon and accent color applied.
 - Interact with its unique UI and functionality.
 - Optionally, see the widget adapt its display based on its size if you implemented dynamic rendering (Step 5).

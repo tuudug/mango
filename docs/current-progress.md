@@ -1,3 +1,41 @@
+# Current Progress: New Widgets & UX Refinements (As of 2025-04-04 ~8:05 PM)
+
+## Goal: Add new widgets and improve existing widget UX/functionality.
+
+## Implementation Progress:
+
+1.  **Widget Adding:** Replaced drag-and-drop from toolbox with a "+" button click. New widgets are automatically placed in the first available grid slot (`Dashboard.tsx`, `WidgetToolbox.tsx`, `DashboardGrid.tsx`, removed `Draggable.tsx`/`Droppable.tsx`).
+2.  **Pomodoro Widget:**
+    - Created `PomodoroWidget.tsx` with 25/5 min timer, circular progress bar, and controls.
+    - Implemented timer overflow: counts up with visual changes (yellow color) when phase ends.
+    - Added `PomodoroContext.tsx` for global state (`idle`, `work`, `break`).
+    - Added `PomodoroBanner.tsx` displayed at the top of the app, pushing content down, visible only during the 'work' phase (including overflow).
+    - Added notification sound (`pomodoro_notification.mp3`) on phase end.
+    - Fixed bug where banner appeared incorrectly after break overflow.
+3.  **Ambience Widget:**
+    - Created `AmbienceWidget.tsx` with Play/Pause button, volume slider, and info button for attribution.
+    - Added `AmbienceContext.tsx` using Web Audio API to play looping rain sound (`rain.flac`). Refactored to use `suspend`/`resume` for potentially smoother looping and ignoring system media keys.
+    - Added attribution modal triggered by info button.
+    - Added background raindrop animation using `framer-motion`, visible only when playing. Fixed visibility issues related to CSS stacking context and overflow clipping.
+    - Fixed bug where changing volume paused playback.
+4.  **Affirmation Widget:**
+    - Created `AffirmationWidget.tsx` displaying random static affirmations.
+    - Made affirmation text clickable to show the next one (removed button).
+    - Applied golden gradient text style and fixed vertical centering.
+5.  **Daily Allowance Widget:**
+    - Updated `formatCurrency` helper (`currencies.ts`) to prioritize currency symbol over code.
+    - Refactored layout for compactness: moved "Record Expense" button to be an icon button next to the text display, centered the content group.
+6.  **Widget Registration & Config:**
+    - Added "Pomodoro", "Ambience", and "Affirmation Widget" types, layouts, and metadata to `widgetConfig.ts`. Added "Mindfulness/Focus" group.
+    - Registered new widget components in `DashboardGridItem.tsx`.
+    - Renamed "Pomodoro Widget" to "Pomodoro" and "Ambience Widget" to "Ambience" in configs.
+    - Fixed issue where new widgets didn't appear in toolbox by adding "Mindfulness/Focus" to `groupOrder` in `WidgetToolbox.tsx`.
+7.  **Error Handling:** Fixed issues with `ErrorBoundary` prop passing (`App.tsx`, `ErrorBoundary.tsx`).
+
+---
+
+## _Previous entries below this line_
+
 # Current Progress: Refactoring & Bug Fixes (As of 2025-04-04 ~3:38 PM)
 
 ## Goal: Address Production Bugs, Refactor Configuration, Improve UX

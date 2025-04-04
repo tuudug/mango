@@ -6,6 +6,12 @@ import { formatCurrency } from "@/lib/currencies";
 import { CircularProgressbar, buildStyles } from "react-circular-progressbar";
 import "react-circular-progressbar/dist/styles.css";
 import { ExpenseEntryModal } from "@/components/finance/ExpenseEntryModal";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"; // Import Tooltip components
 
 interface DailyAllowanceWidgetProps {
   id: string; // Widget instance ID
@@ -78,8 +84,6 @@ export const DailyAllowanceWidget: React.FC<DailyAllowanceWidgetProps> = () => {
   // Use default values if settings/remainingToday are null/undefined initially
   const goal = settings?.daily_allowance_goal ?? null; // Keep goal as null if not set
   const currency = settings?.currency ?? "USD"; // Default currency
-  // Don't use isLoading for rendering main content anymore
-  // const isLoading = isLoadingSettings || isLoadingEntries;
 
   // Use the animated counter hook for the remaining amount
   const animatedRemaining = useAnimatedCounter(remainingToday);
@@ -105,66 +109,78 @@ export const DailyAllowanceWidget: React.FC<DailyAllowanceWidgetProps> = () => {
   }
 
   return (
-    <div className="p-3 h-full w-full flex flex-col text-sm text-gray-300">
-      {/* Removed loading check */}
-      {goal === null && !isLoadingSettings ? ( // Show "No goal" only if loading finished and goal is null
-        <div className="flex-1 flex flex-col justify-center items-center text-center">
-          <p className="text-gray-400 mb-2">No daily goal set.</p>
-          <p className="text-xs text-gray-500">
-            Set a goal in Finance Settings.
-          </p>
-        </div>
-      ) : (
-        // Main content area: Always render, use defaults/animated values
-        <div className="flex-1 flex flex-col justify-between items-center pt-2">
-          {/* Top section: Progress circle and text info side-by-side */}
-          <div className="flex items-center justify-center gap-4 w-full">
-            {/* Progress Bar Container */}
-            <div className="w-16 h-16 relative flex-shrink-0">
-              <CircularProgressbar
-                value={percentage} // Percentage updates instantly, transition handled by CSS
-                strokeWidth={8}
-                styles={buildStyles({
-                  strokeLinecap: "round",
-                  pathTransitionDuration: 0.5, // CSS transition duration
-                  pathColor: pathColor,
-                  trailColor: "rgba(255, 255, 255, 0.1)",
-                })}
-              />
-              {/* Icon centered inside */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <PiggyBank className={`w-6 h-6 ${iconColor}`} />
+    <TooltipProvider delayDuration={300}>
+      {/* Ensure outer div allows centering */}
+      <div className="p-3 h-full w-full flex flex-col justify-center items-center text-sm text-gray-300">
+        {goal === null && !isLoadingSettings ? (
+          <div className="flex-1 flex flex-col justify-center items-center text-center">
+            <p className="text-gray-400 mb-2">No daily goal set.</p>
+            <p className="text-xs text-gray-500">
+              Set a goal in Finance Settings.
+            </p>
+          </div>
+        ) : (
+          // This div centers the content horizontally within the widget space
+          <div className="flex flex-col justify-center items-center">
+            {/* Main Row: Progress circle and text/button group */}
+            {/* Use items-center to vertically align circle and text/button group */}
+            {/* Removed w-full, parent div handles centering */}
+            <div className="flex items-center gap-4">
+              {/* Progress Bar Container */}
+              <div className="w-16 h-16 relative flex-shrink-0">
+                <CircularProgressbar
+                  value={percentage}
+                  strokeWidth={8}
+                  styles={buildStyles({
+                    strokeLinecap: "round",
+                    pathTransitionDuration: 0.5,
+                    pathColor: pathColor,
+                    trailColor: "rgba(255, 255, 255, 0.1)",
+                  })}
+                />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <PiggyBank className={`w-6 h-6 ${iconColor}`} />
+                </div>
+              </div>
+              {/* Text and Button Group */}
+              {/* Use flex-row items-center to align text block and button horizontally AND vertically center them */}
+              <div className="flex flex-row items-center justify-start gap-2 flex-grow min-w-0">
+                {/* Text block */}
+                <div className="text-left leading-tight">
+                  <span className="text-2xl font-bold text-gray-100 block tabular-nums">
+                    {formatCurrency(animatedRemaining, currency)}
+                  </span>
+                  <span className="text-xs text-gray-400">
+                    Left of {formatCurrency(goal, currency)}
+                  </span>
+                </div>
+                {/* Button next to text */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      // Rely on variant/size for icon-only feel, add hover color
+                      className="h-7 w-7 text-gray-400 hover:text-green-400 flex-shrink-0"
+                      onClick={() => setIsModalOpen(true)}
+                      disabled={goal === null}
+                    >
+                      <PlusCircle className="w-5 h-5" />
+                      <span className="sr-only">Record Expense</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    <p>Record Expense</p>
+                  </TooltipContent>
+                </Tooltip>
               </div>
             </div>
-            {/* Text beside */}
-            <div className="text-left leading-tight">
-              <span className="text-2xl font-bold text-gray-100 block tabular-nums">
-                {/* Use animated value here */}
-                {formatCurrency(animatedRemaining, currency)}
-              </span>
-              <span className="text-xs text-gray-400">
-                {/* Use goal directly, formatCurrency handles null */}
-                Left of {formatCurrency(goal, currency)}
-              </span>
-            </div>
           </div>
+        )}
 
-          {/* Bottom section: Record Expense Button */}
-          <Button
-            variant="outline"
-            size="sm"
-            className="mt-3 border-gray-600 hover:bg-gray-700 hover:text-gray-100 text-gray-300 w-full"
-            onClick={() => setIsModalOpen(true)}
-            disabled={goal === null} // Disable if no goal is set
-          >
-            <PlusCircle className="w-4 h-4 mr-1.5" />
-            Record Expense
-          </Button>
-        </div>
-      )}
-
-      {/* Expense Modal */}
-      <ExpenseEntryModal isOpen={isModalOpen} onOpenChange={setIsModalOpen} />
-    </div>
+        {/* Expense Modal */}
+        <ExpenseEntryModal isOpen={isModalOpen} onOpenChange={setIsModalOpen} />
+      </div>
+    </TooltipProvider>
   );
 };

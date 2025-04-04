@@ -3,7 +3,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { WidgetType, defaultWidgetLayouts } from "@/lib/widgetConfig";
 import { GridItem } from "@/lib/dashboardConfig"; // Keep GridItem import
 import { cn } from "@/lib/utils";
-// Removed DnD imports: DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors, restrictToWindowEdges
 import { Loader2 } from "lucide-react";
 import { nanoid } from "nanoid";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -11,10 +10,9 @@ import { Layout } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 import { DashboardHeader } from "./DashboardHeader";
-// Removed: import { Droppable } from "./Droppable"; // No longer needed for adding
 import { LeftSidebar } from "./LeftSidebar";
-// Removed: import { WidgetPreview } from "./WidgetPreview"; // No longer needed
 import { WidgetToolbox } from "./WidgetToolbox";
+import { PomodoroBanner } from "./PomodoroBanner"; // Import the banner
 
 // Import refactored modules
 import { DashboardGrid } from "./dashboard/components/DashboardGrid";
@@ -50,7 +48,6 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
     useState<DashboardName>("default");
   const prevEditTargetRef = useRef<DashboardName>("default");
 
-  // Removed DnD state: const [activeWidget, setActiveWidget] = useState<WidgetType | null>(null);
   const gridContainerRef = useRef<HTMLDivElement>(null); // Keep ref if needed for other calculations
 
   const [shakeCount, setShakeCount] = useState(0);
@@ -152,7 +149,7 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
   };
   // --- End Toolbox Toggle Logic ---
 
-  // --- NEW: Add Widget Logic ---
+  // --- Add Widget Logic (remains the same) ---
   const findFirstAvailablePosition = (
     widgetMinW: number,
     widgetMinH: number,
@@ -164,43 +161,31 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
       maxY = Math.max(maxY, item.y + item.h);
     });
 
-    // Iterate row by row, then column by column
     for (let y = 0; y <= maxY; y++) {
-      // Check up to maxY + some buffer
       for (let x = 0; x <= cols - widgetMinW; x++) {
         let collision = false;
-        // Check for collision with existing items
         for (const item of currentItems) {
           const newItemRight = x + widgetMinW;
           const newItemBottom = y + widgetMinH;
           const existingItemRight = item.x + item.w;
           const existingItemBottom = item.y + item.h;
 
-          // Basic overlap check
           if (
             !(
-              (
-                newItemRight <= item.x || // New item is left of existing
-                x >= existingItemRight || // New item is right of existing
-                newItemBottom <= item.y || // New item is above existing
-                y >= existingItemBottom
-              ) // New item is below existing
+              newItemRight <= item.x ||
+              x >= existingItemRight ||
+              newItemBottom <= item.y ||
+              y >= existingItemBottom
             )
           ) {
             collision = true;
-            break; // Collision found, try next x
+            break;
           }
         }
-
-        if (!collision) {
-          // Found a spot!
-          return { x, y };
-        }
+        if (!collision) return { x, y };
       }
     }
-
-    // If no spot found within existing height + buffer, try placing below everything
-    return { x: 0, y: maxY }; // Default to placing at the bottom-left if no gaps found
+    return { x: 0, y: maxY };
   };
 
   const handleAddWidget = (widgetType: WidgetType) => {
@@ -212,12 +197,11 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
       minW: 2,
       minH: 2,
     };
-    const { w, h, minW = 2, minH = 2 } = widgetDefaults; // Ensure minW/minH have defaults
+    const { w, h, minW = 2, minH = 2 } = widgetDefaults;
 
     const cols =
       editTargetDashboard === "mobile" ? mobileCols.mobile : standardCols.lg;
 
-    // Filter out placeholder if present
     const isPlaceholderPresent = items.some(
       (item) => item.type === "Placeholder"
     );
@@ -248,7 +232,6 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
       saveLayoutToServer(newItems, editTargetDashboard);
       console.log(`Added ${widgetType} at x:${position.x}, y:${position.y}`);
     } else {
-      // This case should ideally not happen with the fallback logic, but good to have
       console.warn(`Could not find space for ${widgetType}`);
       showToast({
         title: "Dashboard Full",
@@ -258,8 +241,6 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
     }
   };
   // --- End Add Widget Logic ---
-
-  // --- Removed DnD Handlers: handleDragStart, handleDragEnd ---
 
   // --- Layout Change Handlers (Remain the same) ---
   const onLayoutChange = useCallback(
@@ -338,8 +319,6 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
   };
   // --- End Layout Change Handlers ---
 
-  // Removed: Configure sensors for dnd-kit
-
   // --- Panel Behavior & Styling (remains the same) ---
   const mainContentPaddingLeft = isToolboxOpen ? "pl-64" : "pl-0";
   const isMobileEditMode = isToolboxOpen && editTargetDashboard === "mobile";
@@ -361,7 +340,6 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
     );
   }
 
-  // Removed DndContext wrapper
   return (
     <div className="flex h-screen bg-gray-950 text-gray-100 pl-16">
       <LeftSidebar
@@ -371,10 +349,11 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
       />
 
       <div className="flex flex-col flex-1 overflow-hidden">
+        {/* Render Pomodoro Banner here, above the header */}
+        <PomodoroBanner />
         <DashboardHeader updateSW={updateSW} needRefresh={needRefresh} />
 
         <div className="flex-1 relative overflow-hidden w-full">
-          {/* Removed Droppable wrapper */}
           <main
             ref={gridContainerRef}
             className={cn(
@@ -404,17 +383,14 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
               isToolboxOpen ? "translate-x-0" : "-translate-x-full"
             }`}
           >
-            {/* Pass the new handler */}
             <WidgetToolbox
               onClose={() => toggleToolbox(false)}
               editTargetDashboard={editTargetDashboard}
-              onAddWidget={handleAddWidget} // Pass the new handler
+              onAddWidget={handleAddWidget}
             />
           </div>
         </div>
       </div>
-
-      {/* Removed Drag Overlay */}
 
       <EditModeIndicator
         isToolboxOpen={isToolboxOpen}
@@ -424,6 +400,5 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
         shakeCount={shakeCount}
       />
     </div>
-    // Removed closing DndContext tag
   );
 }

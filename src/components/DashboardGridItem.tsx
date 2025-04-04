@@ -24,6 +24,9 @@ import { PlaceholderWidget } from "../widgets/PlaceholderWidget";
 import { DailySummaryWidget } from "../widgets/DailySummaryWidget"; // Import the new widget
 import { DailyAllowanceWidget } from "../widgets/DailyAllowanceWidget"; // Import Daily Allowance widget
 import { ExpensesReportWidget } from "../widgets/ExpensesReportWidget"; // Import Expenses Report widget
+import { PomodoroWidget } from "../widgets/PomodoroWidget"; // Import Pomodoro Widget
+import { AmbienceWidget } from "../widgets/AmbienceWidget"; // Import Ambience Widget
+import { AffirmationWidget } from "../widgets/AffirmationWidget"; // Import Affirmation Widget
 
 interface DashboardGridItemProps {
   item: GridItem;
@@ -39,7 +42,7 @@ interface WidgetProps {
   h: number; // Add height
 }
 
-// Map widget types to their components using the defined props interface
+// Map widget types to their components using the defined props interface - Add Affirmation
 const widgetComponentMap: Record<
   WidgetType,
   React.ComponentType<WidgetProps>
@@ -55,6 +58,9 @@ const widgetComponentMap: Record<
   "Daily Summary": DailySummaryWidget,
   "Daily Allowance": DailyAllowanceWidget, // Corrected key with space
   "Expenses Report": ExpensesReportWidget, // Corrected key with space
+  Pomodoro: PomodoroWidget, // Renamed key
+  Ambience: AmbienceWidget, // Renamed key
+  "Affirmation Widget": AffirmationWidget, // Add Affirmation Widget mapping
   Placeholder: PlaceholderWidget,
 };
 

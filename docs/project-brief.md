@@ -28,6 +28,8 @@ These components handle the interaction and persistence of core application data
   - **[x] Database:** Added `manual_finance_settings` and `manual_finance_entries` tables.
   - **[x] Backend:** Added API routes (`/api/finance`) for settings and entries (GET, PUT, POST, DELETE).
   - **[x] Frontend:** Created context, settings panel (in sidebar), expense entry modal.
+- [x] **Pomodoro Context (`PomodoroContext.tsx`):** Manages global Pomodoro state (idle, work, break).
+- [x] **Ambience Context (`AmbienceContext.tsx`):** Manages background audio playback state and volume using Web Audio API.
 
 ## Key Features
 
@@ -53,7 +55,7 @@ These components handle the interaction and persistence of core application data
 - [ ] User-defined statistics (weight, steps, etc.).
 - [x] Dashboard display for tracked stats (Partially done - widgets exist, data is static for some).
 - [x] **Finance Tracking:**
-  - [x] Daily Allowance Widget (`DailyAllowanceWidget.tsx`) - Shows remaining daily budget.
+  - [x] Daily Allowance Widget (`DailyAllowanceWidget.tsx`) - Shows remaining daily budget. **Layout improved.**
   - [x] Expenses Report Widget (`ExpensesReportWidget.tsx`) - Shows weekly spending bar chart.
 
 ### Progression System
@@ -79,6 +81,7 @@ These components handle the interaction and persistence of core application data
 
 - [x] Central hub for progress and planning (`Dashboard.tsx`).
 - [x] Add/Move/Resize widgets (`react-grid-layout` integration).
+- [x] **Widget Adding:** Replaced drag-and-drop from toolbox with "+" button click; widgets auto-place in first available slot.
 - [x] **Layout persistence (Database):**
   - [x] Backend API (`/api/dashboards`) created to GET/PUT layouts.
   - [x] Supabase table (`user_dashboard_layouts`) created.
@@ -102,7 +105,7 @@ These components handle the interaction and persistence of core application data
     - [x] Month Calendar (`MonthCalendarWidget.tsx`)
     - [x] Daily Calendar (`DailyCalendarWidget.tsx`)
     - [x] Goal Tracker (`GoalTrackerWidget.tsx`)
-    - [ ] Pomodoro Widget
+    - [x] Pomodoro (`PomodoroWidget.tsx`) - **Added basic timer, overflow count-up, progress bar, global banner (work phase only), notification sound.**
       - [ ] _Upgrade:_ Weekly View/Stats
       - [ ] _Upgrade:_ Monthly View/Stats
       - [ ] _Upgrade:_ Advanced Reports
@@ -115,14 +118,14 @@ These components handle the interaction and persistence of core application data
       - [ ] _Upgrade:_ Daily Routine Generator
     - [ ] Air Quality Widget
   - **Finance:** (**New Category**)
-    - [x] Daily Allowance (`DailyAllowanceWidget.tsx`)
+    - [x] Daily Allowance (`DailyAllowanceWidget.tsx`) - **Layout improved, currency symbol prioritized.**
     - [x] Expenses Report (`ExpensesReportWidget.tsx`)
-  - **Mindfulness/Focus:**
+  - **Mindfulness/Focus:** (**New Category**)
     - [x] Journaling Widget (`JournalWidget.tsx`)
-    - [ ] Affirmation Widget
-    - [ ] Ambience Widget (Sounds)
+    - [x] Affirmation Widget (`AffirmationWidget.tsx`) - **Added random affirmations, clickable text, gradient style.**
+    - [x] Ambience (`AmbienceWidget.tsx`) - **Added basic rain sound (FLAC via Web Audio API), play/pause, volume, attribution modal, raindrop animation.**
       - [ ] _Unlock:_ White Noise
-      - [ ] _Upgrade:_ Rain Sounds
+      - [ ] _Upgrade:_ Rain Sounds (More variety?)
       - [ ] _Upgrade:_ Wind Sounds
       - [ ] _Upgrade:_ LoFi Music
       - [ ] _Upgrade:_ Bird Sounds
@@ -158,6 +161,7 @@ These components handle the interaction and persistence of core application data
 - [ ] Minimal user input focus.
 - [x] Intuitive interface (Implemented Left sidebar, sliding panels for Toolbox, GM, Profile, Paths, Data Sources, Finance Settings). **Sidebar refactored for dynamic data source buttons.**
 - [x] Dashboard customization implemented.
+- [x] **Widget Adding:** Replaced drag-and-drop with click-to-add from toolbox.
 - [x] **Panel Behavior:**
   - [x] Panels (except Toolbox) slide over the dashboard content.
   - [x] State and rendering for sliding panels moved into `LeftSidebar.tsx`.
@@ -169,12 +173,13 @@ These components handle the interaction and persistence of core application data
   - **[x] Invalid Widget Handling:** Error state with delete button shown for unknown widget types in edit mode.
 - [ ] Emphasis on Positive Reinforcement (Guiding principle).
 - **[x] PWA Update Notifications:** Implemented prompt for app updates & fixed update flow.
-- **[x] PWA Error Handling:** Implemented global Error Boundary (`ErrorBoundary.tsx`, `ErrorFallback.tsx`) to catch rendering errors and offer PWA update if available.
+- **[x/✓] PWA Error Handling:** Implemented global Error Boundary (`ErrorBoundary.tsx`, `ErrorFallback.tsx`) to catch rendering errors and offer PWA update if available. **Fixed prop passing.**
 - **[x] Toast Notifications:** Added system for user feedback (`useToast` context). **Signature updated.**
 - **[x] Collapse on Drag:** Todo list items collapse during drag to improve DnD experience.
 - **[x] Dashboard Loading:** Improved loading state to avoid full-screen flash (further improved by caching & background fetching).
 - **[x] Dark Mode:** Forced dark mode via CSS, ignoring device preference.
 - **[x] Development Aids:** Added widget coordinate display in dev mode.
+- **[x] Pomodoro Banner:** Banner now pushes content down instead of overlaying.
 
 ## LLM Prompting Considerations
 

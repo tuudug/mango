@@ -20,7 +20,7 @@ export const CURRENCIES: CurrencyInfo[] = [
  * @returns The currency symbol (e.g., '$') or the code if not found.
  */
 export const getCurrencySymbol = (code: string | null | undefined): string => {
-  if (!code) return "";
+  if (!code) return "$"; // Default to $ if no code provided
   const currency = CURRENCIES.find(
     (c) => c.code.toUpperCase() === code.toUpperCase()
   );
@@ -28,34 +28,38 @@ export const getCurrencySymbol = (code: string | null | undefined): string => {
 };
 
 /**
- * Formats a number as currency with the appropriate symbol.
- * Uses Intl.NumberFormat for locale-aware formatting if possible,
- * otherwise falls back to basic symbol + fixed decimal places.
+ * Formats a number as currency, prioritizing the symbol.
+ * Uses Intl.NumberFormat for number formatting only.
  * @param amount The numeric amount.
  * @param currencyCode The currency code (e.g., 'USD').
  * @param locale Optional locale string (e.g., 'en-US'). Defaults to undefined (system default).
- * @returns The formatted currency string.
+ * @returns The formatted currency string with symbol first.
  */
 export const formatCurrency = (
   amount: number | null | undefined,
   currencyCode: string | null | undefined,
   locale: string | undefined = undefined
 ): string => {
-  if (amount === null || amount === undefined || !currencyCode) return "";
+  // Handle null/undefined amount gracefully
+  const numericAmount = amount ?? 0;
+  const code = currencyCode ?? "USD"; // Default to USD if no code
+
+  const symbol = getCurrencySymbol(code);
 
   try {
-    // Use Intl.NumberFormat for better localization and formatting
-    return new Intl.NumberFormat(locale, {
-      style: "currency",
-      currency: currencyCode,
-      // minimumFractionDigits: 2, // Default for most currencies
-      // maximumFractionDigits: 2,
-    }).format(amount);
+    // Use Intl.NumberFormat just for number formatting (commas, decimals)
+    const numberFormatter = new Intl.NumberFormat(locale, {
+      // style: 'currency', // REMOVED
+      // currency: code, // REMOVED
+      minimumFractionDigits: 2, // Keep decimals consistent
+      maximumFractionDigits: 2,
+    });
+    // Manually prepend the symbol
+    return `${symbol}${numberFormatter.format(numericAmount)}`;
   } catch (error) {
-    // Fallback for unsupported currency codes or environments
-    console.warn(`Intl.NumberFormat failed for ${currencyCode}:`, error);
-    const symbol = getCurrencySymbol(currencyCode);
+    // Fallback for environments without Intl support or other errors
+    console.warn(`Intl.NumberFormat failed for locale/number:`, error);
     // Basic fallback formatting
-    return `${symbol}${amount.toFixed(2)}`;
+    return `${symbol}${numericAmount.toFixed(2)}`;
   }
 };

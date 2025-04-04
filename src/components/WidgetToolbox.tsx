@@ -26,11 +26,12 @@ const groupedWidgets = availableWidgets.reduce((acc, widgetType) => {
   return acc;
 }, {} as Record<WidgetGroup, WidgetType[]>);
 
-// Define the order of groups (remains the same)
+// Define the order of groups - ADDED Mindfulness/Focus
 const groupOrder: WidgetGroup[] = [
   "Finance",
   "Tracking",
   "Productivity",
+  "Mindfulness/Focus", // Added the missing group
   "Calendar",
   "Other",
 ];

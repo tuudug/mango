@@ -1,9 +1,22 @@
-import { Component, ErrorInfo, ReactNode } from "react";
+import React, { Component, ErrorInfo, ReactNode } from "react";
+
+// Define the expected props for the fallback component
+export interface FallbackProps {
+  error: Error | null;
+  // Explicitly add props passed down from App.tsx via pwaProps
+  updateSW?: (reloadPage?: boolean) => Promise<void>;
+  needRefresh?: boolean;
+}
 
 // Define the props for the ErrorBoundary
 interface Props {
   children: ReactNode;
-  fallback?: ReactNode; // Optional custom fallback UI
+  FallbackComponent?: React.ComponentType<FallbackProps>; // Use FallbackComponent prop
+  pwaProps?: {
+    // Add pwaProps here to be passed down
+    updateSW: (reloadPage?: boolean) => Promise<void>;
+    needRefresh: boolean;
+  };
 }
 
 // Define the state for the ErrorBoundary
@@ -34,13 +47,18 @@ class ErrorBoundary extends Component<Props, State> {
   // Render method
   public render() {
     if (this.state.hasError) {
-      // You can render any custom fallback UI
-      // For now, just a simple message. We'll create a dedicated component next.
-      // If a custom fallback prop is provided, render that instead.
-      if (this.props.fallback) {
-        return this.props.fallback;
+      // If FallbackComponent is provided, render it with error and pwaProps
+      if (this.props.FallbackComponent) {
+        const { FallbackComponent, pwaProps } = this.props;
+        return (
+          <FallbackComponent
+            error={this.state.error}
+            // Spread pwaProps if they exist
+            {...(pwaProps || {})}
+          />
+        );
       }
-      // Default fallback
+      // Default fallback if no FallbackComponent is provided
       return (
         <div className="flex items-center justify-center h-screen bg-gray-900 text-white">
           <div className="text-center p-6 bg-gray-800 rounded-lg shadow-xl">
@@ -50,7 +68,6 @@ class ErrorBoundary extends Component<Props, State> {
             <p className="mb-4">
               An unexpected error occurred. Please try refreshing the page.
             </p>
-            {/* We will add an update button here later */}
             {this.state.error && (
               <pre className="mt-4 p-2 bg-gray-700 rounded text-left text-xs overflow-auto max-h-40">
                 {this.state.error.toString()}

@@ -11,7 +11,8 @@ The dashboard serves as the central hub for the user, displaying various widgets
 - **`src/components/Dashboard.tsx`:** The main container component. It orchestrates the overall dashboard functionality, including:
   - Integrating the `LeftSidebar` and `DashboardHeader`.
   - Managing edit mode state (`isToolboxOpen`, `editTargetDashboard`).
-  - Handling Drag and Drop (DnD) operations using `@dnd-kit/core` for adding widgets from the toolbox.
+  - Handling adding widgets via button clicks in the `WidgetToolbox`.
+  - Implementing the logic to find the first available grid position for new widgets.
   - Rendering the `DashboardGrid` component.
   - Displaying loading states (initial auth check, initial layout load, edit mode switching).
   - Coordinating fetches via the `useDashboardLayout` hook based on user actions (opening/closing toolbox, changing edit target).
@@ -24,15 +25,15 @@ The dashboard serves as the central hub for the user, displaying various widgets
   - Provides a debounced function to save layout changes to the backend (`saveLayoutToServer`).
 - **`src/components/dashboard/components/DashboardGrid.tsx`:** Renders the actual grid using `react-grid-layout`.
   - Receives the `items` array and renders corresponding widgets (`DashboardGridItem`).
-  - Handles layout change events (`onLayoutChange`, `onResizeStop`) passed up from `react-grid-layout`.
+  - Handles layout change events (`onLayoutChange`, `onResizeStop`) passed up from `react-grid-layout` for moving/resizing existing widgets.
   - Adapts grid properties (columns, width) based on whether it's rendering the default or mobile layout preview.
-- **`src/components/WidgetToolbox.tsx`:** A sliding panel displaying available widgets that can be dragged onto the dashboard grid when in edit mode.
+- **`src/components/WidgetToolbox.tsx`:** A sliding panel displaying available widgets. Each widget has a "+" button to add it to the dashboard when in edit mode.
 - **`src/components/dashboard/components/EditModeIndicator.tsx`:** A floating indicator displayed when in edit mode, allowing the user to toggle between previewing/editing the 'default' and 'mobile' layouts and to exit edit mode.
 - **`src/components/dashboard/utils.ts`:** Contains helper functions for:
   - Interacting with `localStorage` for caching layouts and sync times.
   - Loading/saving user path state (related to gamification, not directly dashboard layout).
   - **`deepCompareLayouts`:** (Recent Addition) Compares two layout arrays to check for meaningful differences before updating the UI state.
-- **`src/lib/dashboardConfig.ts`:** Defines the available `WidgetType`s and their default dimensions (`defaultWidgetLayouts`).
+- **`src/lib/widgetConfig.ts`:** Defines the available `WidgetType`s and their default dimensions (`defaultWidgetLayouts`).
 
 ## Layout Management
 
@@ -65,12 +66,12 @@ The primary layout state (`items: GridItem[]`) is managed within the `useDashboa
 - **API Endpoints:**
   - `GET /api/dashboards/:name`: Fetches the layout for the specified dashboard name ('default' or 'mobile'). Requires authentication (Bearer token). Returns `{ layout: GridItem[] }` or 404/default on error.
   - `PUT /api/dashboards/:name`: Upserts (updates or creates) the layout for the specified dashboard name. Requires authentication and a JSON body `{ layout: CachedGridItemData[] }` (where `CachedGridItemData` is `GridItem` without `minW`/`minH`).
-- **Saving:** Changes made in edit mode trigger the `saveLayoutToServer` function (debounced by 1 second) in `useDashboardLayout` to call the `PUT` endpoint.
+- **Saving:** Changes made in edit mode (moving, resizing, adding, deleting) trigger the `saveLayoutToServer` function (debounced by 1 second) in `useDashboardLayout` to call the `PUT` endpoint.
 
 ### Default Layouts
 
 - If no layout is found for a user (e.g., new user or fetch error), a default layout is generated using `getDefaultLayout` (defined in `src/components/dashboard/constants.ts`).
-- Default dimensions and constraints for specific widget types are defined in `defaultWidgetLayouts` in `src/lib/dashboardConfig.ts`.
+- Default dimensions and constraints for specific widget types are defined in `defaultWidgetLayouts` in `src/lib/widgetConfig.ts`.
 
 ## Fetching and Caching
 
@@ -124,19 +125,15 @@ Edit mode is activated by opening the `WidgetToolbox` (`isToolboxOpen = true`).
   - The `EditModeIndicator` allows toggling this target via `toggleEditTarget`.
   - Switching the target triggers a non-background fetch for the newly selected target layout.
   - **Recent Change:** A specific loading state (`isSwitchingEditMode`) and overlay are now used _only_ when switching between 'default' and 'mobile' edit targets, managed within `Dashboard.tsx`.
-- **Adding Widgets:** Dragging a widget type from `WidgetToolbox` onto the `DashboardGrid` triggers `handleDragEnd` in `Dashboard.tsx`, which adds a new `GridItem` to the `items` state and triggers `saveLayoutToServer`.
+- **Adding Widgets:** Clicking the "+" button next to a widget in the `WidgetToolbox` triggers the `handleAddWidget` function in `Dashboard.tsx`. This function calculates the first available grid position (top-to-bottom, left-to-right) based on the widget's minimum dimensions (`minW`, `minH`) and existing items. It then adds the new `GridItem` to the `items` state and triggers `saveLayoutToServer`.
 - **Moving/Resizing:** Handled by `react-grid-layout` callbacks (`onLayoutChange`, `handleResize`) within `DashboardGrid.tsx`, which are passed up to `Dashboard.tsx`. These update the `items` state and trigger `saveLayoutToServer`.
 - **Deleting:** Clicking a delete button on a widget (rendered by `DashboardGridItem`) calls `handleDeleteWidget` in `Dashboard.tsx`, filtering the `items` state and triggering `saveLayoutToServer`.
 - **Saving:** All modifications in edit mode trigger `saveLayoutToServer`, which debounces the actual `PUT` request to the backend API.
 
-## Drag and Drop (DnD)
+## Drag and Drop (DnD) - Removed for Toolbox
 
-- Implemented using `@dnd-kit/core`.
-- `DndContext` wraps the main `Dashboard` component.
-- `WidgetToolbox` items are draggable sources.
-- `DashboardGrid` (via the `<main>` element wrapped in `<Droppable>`) is the droppable target.
-- `handleDragStart` and `handleDragEnd` in `Dashboard.tsx` manage the DnD lifecycle for adding new widgets.
-- `DragOverlay` shows a `WidgetPreview` during drag operations.
+- Drag and Drop functionality using `@dnd-kit/core` was previously used for adding widgets from the toolbox but has been **removed** in favor of the click-to-add mechanism described above.
+- DnD might still be used internally by `react-grid-layout` for moving/resizing widgets _within_ the grid itself.
 
 ## Key Files Summary
 
@@ -148,6 +145,6 @@ Edit mode is activated by opening the `WidgetToolbox` (`isToolboxOpen = true`).
 - `src/components/dashboard/types.ts`
 - `src/components/WidgetToolbox.tsx`
 - `src/components/dashboard/components/EditModeIndicator.tsx`
-- `src/lib/dashboardConfig.ts`
+- `src/lib/widgetConfig.ts`
 - `api/src/routes/dashboards/getDashboardLayout.ts`
 - `api/src/routes/dashboards/upsertDashboardLayout.ts`

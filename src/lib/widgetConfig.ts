@@ -12,6 +12,9 @@ import {
   LayoutDashboard,
   PiggyBank,
   BarChartHorizontal,
+  Timer,
+  Volume2,
+  Sparkles, // Add icon for Affirmation
 } from "lucide-react";
 
 // Widget Groups
@@ -20,9 +23,10 @@ export type WidgetGroup =
   | "Productivity"
   | "Calendar"
   | "Finance"
+  | "Mindfulness/Focus"
   | "Other";
 
-// Widget types
+// Widget types - Add Affirmation
 export type WidgetType =
   | "Steps Tracker"
   | "Habit Graph"
@@ -35,9 +39,12 @@ export type WidgetType =
   | "Daily Summary"
   | "Daily Allowance"
   | "Expenses Report"
+  | "Pomodoro"
+  | "Ambience"
+  | "Affirmation Widget" // Add Affirmation Widget type
   | "Placeholder";
 
-// Available widgets for the toolbox
+// Available widgets for the toolbox - Add Affirmation
 export const availableWidgets: WidgetType[] = [
   "Steps Tracker",
   "Habit Graph",
@@ -50,10 +57,13 @@ export const availableWidgets: WidgetType[] = [
   "Daily Summary",
   "Daily Allowance",
   "Expenses Report",
+  "Pomodoro",
+  "Ambience",
+  "Affirmation Widget", // Add Affirmation to toolbox
   // Placeholder is not available in the toolbox
 ];
 
-// Default widget layouts for new widgets (adjusted for 24 columns, 30px row height)
+// Default widget layouts for new widgets - Add Affirmation
 export const defaultWidgetLayouts: Record<
   WidgetType,
   { w: number; h: number; minW?: number; minH?: number }
@@ -69,10 +79,13 @@ export const defaultWidgetLayouts: Record<
   "Daily Summary": { w: 6, h: 7, minW: 5, minH: 6 },
   "Daily Allowance": { w: 6, h: 5, minW: 4, minH: 4 },
   "Expenses Report": { w: 10, h: 7, minW: 8, minH: 5 },
+  Pomodoro: { w: 4, h: 4, minW: 3, minH: 3 },
+  Ambience: { w: 4, h: 4, minW: 3, minH: 3 },
+  "Affirmation Widget": { w: 6, h: 3, minW: 4, minH: 2 }, // Add Affirmation layout
   Placeholder: { w: 12, h: 7, minW: 8, minH: 5 },
 };
 
-// Widget Metadata: Icon, Accent Color (Left Border), and Group
+// Widget Metadata: Icon, Accent Color (Left Border), and Group - Add Affirmation
 export const widgetMetadata: Record<
   WidgetType,
   { icon: LucideIcon; colorAccentClass: string; group: WidgetGroup }
@@ -131,6 +144,22 @@ export const widgetMetadata: Record<
     icon: BarChartHorizontal,
     colorAccentClass: "border-l-cyan-400",
     group: "Finance",
+  },
+  Pomodoro: {
+    icon: Timer,
+    colorAccentClass: "border-l-red-500",
+    group: "Mindfulness/Focus",
+  },
+  Ambience: {
+    icon: Volume2,
+    colorAccentClass: "border-l-sky-400",
+    group: "Mindfulness/Focus",
+  },
+  "Affirmation Widget": {
+    // Add Affirmation metadata
+    icon: Sparkles,
+    colorAccentClass: "border-l-amber-400", // Choose color
+    group: "Mindfulness/Focus",
   },
   Placeholder: {
     icon: HelpCircle,
