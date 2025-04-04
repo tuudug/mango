@@ -1,9 +1,7 @@
 import { useAuth } from "@/contexts/AuthContext";
-import {
-  GridItem,
-  WidgetType,
-  defaultWidgetLayouts,
-} from "@/lib/dashboardConfig";
+// Update imports to point to correct config files
+import { GridItem } from "@/lib/dashboardConfig";
+import { WidgetType, defaultWidgetLayouts } from "@/lib/widgetConfig"; // Import from new location
 import { useCallback, useState } from "react";
 import { useDebouncedCallback } from "use-debounce";
 import { CACHE_STALE_DURATION, getDefaultLayout } from "../constants";

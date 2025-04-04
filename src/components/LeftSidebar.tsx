@@ -2,16 +2,16 @@ import { Button } from "@/components/ui/button";
 import { cn, compareVersions } from "@/lib/utils";
 import {
   Bot,
-  CalendarDays,
-  HeartPulse,
-  Landmark, // Import finance icon
-  ListTodo,
+  // CalendarDays, // Now imported from config
+  // HeartPulse, // Now imported from config
+  // Landmark, // Now imported from config
+  // ListTodo, // Now imported from config
   Milestone,
   Pencil,
   User,
   Info, // Import Info icon for tooltip
 } from "lucide-react";
-import { useEffect, useState, useMemo } from "react"; // Import useMemo
+import { useEffect, useState, useMemo, useCallback } from "react"; // Import useCallback
 import { ChangelogModal } from "./ChangelogModal";
 // Import the panel components that will now be rendered here
 import { GameMasterPanel } from "./GameMasterPanel";
@@ -38,6 +38,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"; // Import Tooltip components
+// Import the new data source config
+import { dataSourceConfig, DataSourceId } from "@/lib/dataSourceConfig";
 
 interface LeftSidebarProps {
   isToolboxOpen: boolean;
@@ -49,6 +51,21 @@ const LOCALSTORAGE_KEY = "mango_last_read_changelog_version";
 const latestVersion =
   changelogData && changelogData.length > 0 ? changelogData[0].version : "0";
 
+// Helper type for panel open state, including non-data source panels
+type PanelId = DataSourceId | "gameMaster" | "userProfile" | "paths";
+type PanelOpenState = Record<PanelId, boolean>;
+
+// Initial state for panels
+const initialPanelState: PanelOpenState = {
+  gameMaster: false,
+  userProfile: false,
+  paths: false,
+  finance: false,
+  calendar: false,
+  health: false,
+  todos: false,
+};
+
 export function LeftSidebar({
   isToolboxOpen,
   toggleToolbox,
@@ -56,16 +73,9 @@ export function LeftSidebar({
 }: LeftSidebarProps) {
   const { showToast } = useToast(); // Get showToast function
 
-  // State for panels is now managed internally
-  const [isGameMasterPanelOpen, setIsGameMasterPanelOpen] = useState(false);
-  const [isUserProfilePanelOpen, setIsUserProfilePanelOpen] = useState(false);
-  const [isPathsPageOpen, setIsPathsPageOpen] = useState(false);
-  const [isCalendarDataSourceOpen, setIsCalendarDataSourceOpen] =
-    useState(false);
-  const [isHealthDataSourceOpen, setIsHealthDataSourceOpen] = useState(false);
-  const [isTodosDataSourceOpen, setIsTodosDataSourceOpen] = useState(false);
-  const [isFinanceSettingsPanelOpen, setIsFinanceSettingsPanelOpen] =
-    useState(false); // State for finance panel
+  // Consolidated state for panel visibility
+  const [panelOpenState, setPanelOpenState] =
+    useState<PanelOpenState>(initialPanelState);
 
   // State for changelog modal
   const [isChangelogOpen, setIsChangelogOpen] = useState(false);
@@ -83,7 +93,6 @@ export function LeftSidebar({
   // Effect to check window width on mount and resize using the utility function
   useEffect(() => {
     const checkMobile = () => {
-      // Use the imported utility function
       setIsMobileView(checkIsMobileView());
     };
     checkMobile(); // Check on initial mount
@@ -142,116 +151,28 @@ export function LeftSidebar({
     }
   };
 
-  // --- Internal Toggle Handlers ---
-  const closeAllPanels = () => {
-    setIsGameMasterPanelOpen(false);
-    setIsUserProfilePanelOpen(false);
-    setIsPathsPageOpen(false);
-    setIsCalendarDataSourceOpen(false);
-    setIsHealthDataSourceOpen(false);
-    setIsTodosDataSourceOpen(false);
-    setIsFinanceSettingsPanelOpen(false); // Close finance panel too
-  };
-
-  // --- Revised Individual Toggle Handlers ---
-  const handleToggleGameMaster = () => {
-    if (isToolboxOpen) {
-      triggerShakeIndicator();
-      showToast({ title: "Please exit edit mode first.", variant: "info" });
-      return;
-    }
-    if (!isGameMasterPanelOpen) {
-      closeAllPanels();
-      setIsGameMasterPanelOpen(true);
-    } else {
-      setIsGameMasterPanelOpen(false);
-    }
-  };
-
-  const handleToggleUserProfile = () => {
-    if (isToolboxOpen) {
-      triggerShakeIndicator();
-      showToast({ title: "Please exit edit mode first.", variant: "info" });
-      return;
-    }
-    if (!isUserProfilePanelOpen) {
-      closeAllPanels();
-      setIsUserProfilePanelOpen(true);
-    } else {
-      setIsUserProfilePanelOpen(false);
-    }
-  };
-
-  const handleTogglePaths = () => {
-    if (isToolboxOpen) {
-      triggerShakeIndicator();
-      showToast({ title: "Please exit edit mode first.", variant: "info" });
-      return;
-    }
-    if (!isPathsPageOpen) {
-      closeAllPanels();
-      setIsPathsPageOpen(true);
-    } else {
-      setIsPathsPageOpen(false);
-    }
-  };
-
-  const handleToggleCalendar = () => {
-    if (isToolboxOpen) {
-      triggerShakeIndicator();
-      showToast({ title: "Please exit edit mode first.", variant: "info" });
-      return;
-    }
-    if (!isCalendarDataSourceOpen) {
-      closeAllPanels();
-      setIsCalendarDataSourceOpen(true);
-    } else {
-      setIsCalendarDataSourceOpen(false);
-    }
-  };
-
-  const handleToggleHealth = () => {
-    if (isToolboxOpen) {
-      triggerShakeIndicator();
-      showToast({ title: "Please exit edit mode first.", variant: "info" });
-      return;
-    }
-    if (!isHealthDataSourceOpen) {
-      closeAllPanels();
-      setIsHealthDataSourceOpen(true);
-    } else {
-      setIsHealthDataSourceOpen(false);
-    }
-  };
-
-  const handleToggleTodos = () => {
-    if (isToolboxOpen) {
-      triggerShakeIndicator();
-      showToast({ title: "Please exit edit mode first.", variant: "info" });
-      return;
-    }
-    if (!isTodosDataSourceOpen) {
-      closeAllPanels();
-      setIsTodosDataSourceOpen(true);
-    } else {
-      setIsTodosDataSourceOpen(false);
-    }
-  };
-
-  // Handler for Finance Settings Panel
-  const handleToggleFinance = () => {
-    if (isToolboxOpen) {
-      triggerShakeIndicator();
-      showToast({ title: "Please exit edit mode first.", variant: "info" });
-      return;
-    }
-    if (!isFinanceSettingsPanelOpen) {
-      closeAllPanels();
-      setIsFinanceSettingsPanelOpen(true);
-    } else {
-      setIsFinanceSettingsPanelOpen(false);
-    }
-  };
+  // --- Generic Panel Toggle Handler ---
+  const handleTogglePanel = useCallback(
+    (panelId: PanelId) => {
+      if (isToolboxOpen) {
+        triggerShakeIndicator();
+        showToast({ title: "Please exit edit mode first.", variant: "info" });
+        return;
+      }
+      setPanelOpenState((prevState) => {
+        const isOpen = prevState[panelId];
+        // Create a new state object with all panels closed
+        const newState = { ...initialPanelState }; // Start with all false
+        // If the clicked panel wasn't open, open it
+        if (!isOpen) {
+          newState[panelId] = true;
+        }
+        // Otherwise, all panels remain closed (effectively closing the clicked one)
+        return newState;
+      });
+    },
+    [isToolboxOpen, triggerShakeIndicator, showToast]
+  );
 
   const handleToggleToolbox = () => {
     // Prevent toggling if in mobile view, but allow click to show toast
@@ -266,23 +187,26 @@ export function LeftSidebar({
     toggleToolbox(); // Toggle the toolbox state via prop
     if (!isToolboxOpen) {
       // If toolbox is about to open
-      closeAllPanels(); // Close any open panels
+      // Close any open panels by resetting the panel state
+      setPanelOpenState(initialPanelState);
     }
   };
 
   // Determine if any panel (excluding toolbox) is open
-  const isAnyPanelOpen =
-    isGameMasterPanelOpen ||
-    isUserProfilePanelOpen ||
-    isPathsPageOpen ||
-    isCalendarDataSourceOpen ||
-    isHealthDataSourceOpen ||
-    isTodosDataSourceOpen ||
-    isFinanceSettingsPanelOpen; // Include finance panel
+  const isAnyPanelOpen = Object.values(panelOpenState).some((isOpen) => isOpen);
+
+  // Helper function to get panel class names
+  const getPanelClasses = (panelId: PanelId, maxWidthClass = "max-w-md") =>
+    cn(
+      "absolute top-0 left-16 bottom-0 transition-transform duration-300 ease-in-out z-20",
+      maxWidthClass,
+      "w-full bg-gray-800 shadow-lg",
+      panelOpenState[panelId] ? "translate-x-0" : "-translate-x-full"
+    );
 
   return (
     <>
-      {/* Sidebar Buttons (Structure remains the same) */}
+      {/* Sidebar Buttons */}
       <aside className="fixed left-0 top-0 bottom-0 z-30 flex h-screen w-16 flex-col items-center border-r border-gray-700 bg-gray-800 py-4">
         {/* Logo Button */}
         <button
@@ -302,33 +226,31 @@ export function LeftSidebar({
           )}
         </button>
         <nav className="flex flex-col items-center gap-3">
-          {/* Toolbox Button - No longer truly disabled, but styled and handled in onClick */}
+          {/* Toolbox Button */}
           <TooltipProvider delayDuration={100}>
             <Tooltip>
               <TooltipTrigger asChild>
-                {/* Button is always clickable, onClick handles mobile case */}
-                <Button
-                  variant={isToolboxOpen ? "secondary" : "ghost"}
-                  size="icon"
-                  className={cn(
-                    "h-10 w-10 rounded-lg",
-                    isToolboxOpen ? "text-indigo-400" : "text-gray-400",
-                    isMobileView && "opacity-50" // Keep visual cue, remove cursor-not-allowed
-                  )}
-                  onClick={handleToggleToolbox}
-                  // Removed disabled={isMobileView}
-                  // Removed aria-disabled={isMobileView}
-                  title={
-                    isMobileView
-                      ? "Edit mode disabled on mobile"
-                      : "Toggle Edit Mode / Toolbox"
-                  } // Dynamic title
-                >
-                  <Pencil size={20} />
-                  <span className="sr-only">Toggle Toolbox</span>
-                </Button>
+                <span tabIndex={isMobileView ? 0 : -1}>
+                  <Button
+                    variant={isToolboxOpen ? "secondary" : "ghost"}
+                    size="icon"
+                    className={cn(
+                      "h-10 w-10 rounded-lg",
+                      isToolboxOpen ? "text-indigo-400" : "text-gray-400",
+                      isMobileView && "opacity-50"
+                    )}
+                    onClick={handleToggleToolbox}
+                    title={
+                      isMobileView
+                        ? "Edit mode disabled on mobile"
+                        : "Toggle Edit Mode / Toolbox"
+                    }
+                  >
+                    <Pencil size={20} />
+                    <span className="sr-only">Toggle Toolbox</span>
+                  </Button>
+                </span>
               </TooltipTrigger>
-              {/* Tooltip content shows the standard action or disabled reason */}
               <TooltipContent side="right">
                 {isMobileView
                   ? "Edit mode disabled on mobile"
@@ -339,12 +261,12 @@ export function LeftSidebar({
 
           {/* Game Master Button */}
           <Button
-            variant={isGameMasterPanelOpen ? "secondary" : "ghost"}
+            variant={panelOpenState.gameMaster ? "secondary" : "ghost"}
             size="icon"
             className={`h-10 w-10 rounded-lg ${
-              isGameMasterPanelOpen ? "text-indigo-400" : "text-gray-400"
+              panelOpenState.gameMaster ? "text-indigo-400" : "text-gray-400"
             }`}
-            onClick={handleToggleGameMaster}
+            onClick={() => handleTogglePanel("gameMaster")}
             title="Toggle Game Master Panel"
           >
             <Bot size={20} />
@@ -353,82 +275,48 @@ export function LeftSidebar({
 
           {/* Paths Button */}
           <Button
-            variant={isPathsPageOpen ? "secondary" : "ghost"}
+            variant={panelOpenState.paths ? "secondary" : "ghost"}
             size="icon"
             className={`h-10 w-10 rounded-lg ${
-              isPathsPageOpen ? "text-indigo-400" : "text-gray-400"
+              panelOpenState.paths ? "text-indigo-400" : "text-gray-400"
             }`}
-            onClick={handleTogglePaths}
+            onClick={() => handleTogglePanel("paths")}
             title="Paths"
           >
             <Milestone size={20} />
             <span className="sr-only">Paths</span>
           </Button>
         </nav>
-        {/* Data Sources Section */}
+        {/* Data Sources Section - Rendered Programmatically */}
         <nav className="mt-6 flex flex-col items-center gap-3 border-t border-gray-700 pt-4">
           <span className="mb-1 text-[10px] font-medium text-gray-500">
             DATA
           </span>
-          {/* Finance Button */}
-          <Button
-            variant={isFinanceSettingsPanelOpen ? "secondary" : "ghost"}
-            size="icon"
-            className={`h-10 w-10 rounded-lg ${
-              isFinanceSettingsPanelOpen ? "text-indigo-400" : "text-gray-400"
-            }`}
-            onClick={handleToggleFinance}
-            title="Finance Settings"
-          >
-            <Landmark size={20} />
-            <span className="sr-only">Finance Settings</span>
-          </Button>
-          <Button
-            variant={isCalendarDataSourceOpen ? "secondary" : "ghost"}
-            size="icon"
-            className={`h-10 w-10 rounded-lg ${
-              isCalendarDataSourceOpen ? "text-indigo-400" : "text-gray-400"
-            }`}
-            onClick={handleToggleCalendar}
-            title="Calendar Data Source"
-          >
-            <CalendarDays size={20} />
-            <span className="sr-only">Calendar Data</span>
-          </Button>
-          <Button
-            variant={isHealthDataSourceOpen ? "secondary" : "ghost"}
-            size="icon"
-            className={`h-10 w-10 rounded-lg ${
-              isHealthDataSourceOpen ? "text-indigo-400" : "text-gray-400"
-            }`}
-            onClick={handleToggleHealth}
-            title="Health Data Source"
-          >
-            <HeartPulse size={20} />
-            <span className="sr-only">Health Data</span>
-          </Button>
-          <Button
-            variant={isTodosDataSourceOpen ? "secondary" : "ghost"}
-            size="icon"
-            className={`h-10 w-10 rounded-lg ${
-              isTodosDataSourceOpen ? "text-indigo-400" : "text-gray-400"
-            }`}
-            onClick={handleToggleTodos}
-            title="Todos Data Source"
-          >
-            <ListTodo size={20} />
-            <span className="sr-only">Todos Data</span>
-          </Button>
+          {dataSourceConfig.map(({ id, label, IconComponent }) => (
+            <Button
+              key={id}
+              variant={panelOpenState[id] ? "secondary" : "ghost"}
+              size="icon"
+              className={`h-10 w-10 rounded-lg ${
+                panelOpenState[id] ? "text-indigo-400" : "text-gray-400"
+              }`}
+              onClick={() => handleTogglePanel(id)}
+              title={label}
+            >
+              <IconComponent size={20} />
+              <span className="sr-only">{label}</span>
+            </Button>
+          ))}
         </nav>
         {/* User Profile Section */}
         <div className="mt-auto flex w-full flex-col items-center gap-1 border-t border-gray-700 pt-3 pb-2">
           <Button
-            variant={isUserProfilePanelOpen ? "secondary" : "ghost"}
+            variant={panelOpenState.userProfile ? "secondary" : "ghost"}
             size="icon"
             className={`h-9 w-9 rounded-full hover:bg-gray-700 ${
-              isUserProfilePanelOpen ? "text-indigo-400" : "text-gray-400"
+              panelOpenState.userProfile ? "text-indigo-400" : "text-gray-400"
             }`}
-            onClick={handleToggleUserProfile}
+            onClick={() => handleTogglePanel("userProfile")}
             title="User Profile"
           >
             <User size={18} />
@@ -448,39 +336,28 @@ export function LeftSidebar({
             ? "opacity-100 pointer-events-auto"
             : "opacity-0 pointer-events-none"
         )}
-        onClick={closeAllPanels} // Close any open panel when overlay is clicked
+        onClick={() => {
+          // Find the currently open panel and close it
+          const openPanelId = Object.keys(panelOpenState).find(
+            (key) => panelOpenState[key as PanelId]
+          ) as PanelId | undefined;
+          if (openPanelId) {
+            handleTogglePanel(openPanelId);
+          }
+        }}
         aria-hidden="true"
       />
 
-      {/* Render Panels Conditionally with updated styles */}
-      {/* ... (GameMaster, UserProfile, Paths panels remain the same) ... */}
-      <div
-        className={cn(
-          "absolute top-0 left-16 bottom-0 transition-transform duration-300 ease-in-out z-20",
-          "max-w-md w-full bg-gray-800 shadow-lg", // Add background, max-width, shadow
-          isGameMasterPanelOpen ? "translate-x-0" : "-translate-x-full"
-        )}
-      >
-        <GameMasterPanel onClose={handleToggleGameMaster} />
+      {/* Render Panels Conditionally */}
+      <div className={getPanelClasses("gameMaster")}>
+        <GameMasterPanel onClose={() => handleTogglePanel("gameMaster")} />
       </div>
-      <div
-        className={cn(
-          "absolute top-0 left-16 bottom-0 transition-transform duration-300 ease-in-out z-20",
-          "max-w-md w-full bg-gray-800 shadow-lg", // Add background, max-width, shadow
-          isUserProfilePanelOpen ? "translate-x-0" : "-translate-x-full"
-        )}
-      >
-        <UserProfilePanel onClose={handleToggleUserProfile} />
+      <div className={getPanelClasses("userProfile")}>
+        <UserProfilePanel onClose={() => handleTogglePanel("userProfile")} />
       </div>
-      <div
-        className={cn(
-          "absolute top-0 left-16 bottom-0 transition-transform duration-300 ease-in-out z-20",
-          "max-w-md w-full bg-gray-800 shadow-lg", // Add background, max-width, shadow
-          isPathsPageOpen ? "translate-x-0" : "-translate-x-full"
-        )}
-      >
+      <div className={getPanelClasses("paths")}>
         <PathsPage
-          onClose={handleTogglePaths}
+          onClose={() => handleTogglePanel("paths")}
           activePathName={activePathName}
           setActivePath={setActivePath}
           unlockedItems={unlockedItems}
@@ -489,43 +366,17 @@ export function LeftSidebar({
         />
       </div>
       {/* Data Source Panels */}
-      <div
-        className={cn(
-          "absolute top-0 left-16 bottom-0 transition-transform duration-300 ease-in-out z-20",
-          "max-w-sm w-full bg-gray-800 shadow-lg", // Use max-w-sm for data sources
-          isCalendarDataSourceOpen ? "translate-x-0" : "-translate-x-full"
-        )}
-      >
-        <CalendarDataSource />
+      <div className={getPanelClasses("calendar", "max-w-sm")}>
+        <CalendarDataSource onClose={() => handleTogglePanel("calendar")} />
       </div>
-      <div
-        className={cn(
-          "absolute top-0 left-16 bottom-0 transition-transform duration-300 ease-in-out z-20",
-          "max-w-sm w-full bg-gray-800 shadow-lg", // Use max-w-sm
-          isHealthDataSourceOpen ? "translate-x-0" : "-translate-x-full"
-        )}
-      >
-        <HealthDataSource />
+      <div className={getPanelClasses("health", "max-w-sm")}>
+        <HealthDataSource onClose={() => handleTogglePanel("health")} />
       </div>
-      <div
-        className={cn(
-          "absolute top-0 left-16 bottom-0 transition-transform duration-300 ease-in-out z-20",
-          "max-w-sm w-full bg-gray-800 shadow-lg", // Use max-w-sm
-          isTodosDataSourceOpen ? "translate-x-0" : "-translate-x-full"
-        )}
-      >
-        <TodosDataSource />
+      <div className={getPanelClasses("todos", "max-w-sm")}>
+        <TodosDataSource onClose={() => handleTogglePanel("todos")} />
       </div>
-      {/* Finance Settings Panel */}
-      <div
-        className={cn(
-          "absolute top-0 left-16 bottom-0 transition-transform duration-300 ease-in-out z-20",
-          "max-w-sm w-full bg-gray-800 shadow-lg", // Use max-w-sm
-          isFinanceSettingsPanelOpen ? "translate-x-0" : "-translate-x-full"
-        )}
-      >
-        <FinanceSettingsPanel />
-        {/* Add onClose prop if needed later */}
+      <div className={getPanelClasses("finance", "max-w-sm")}>
+        <FinanceSettingsPanel onClose={() => handleTogglePanel("finance")} />
       </div>
 
       {/* Render the changelog modal */}

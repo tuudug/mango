@@ -1,4 +1,5 @@
-import { GridItem, defaultWidgetLayouts } from "@/lib/dashboardConfig";
+import { GridItem } from "@/lib/dashboardConfig";
+import { defaultWidgetLayouts } from "@/lib/widgetConfig";
 import { nanoid } from "nanoid";
 
 // --- Local Storage Keys & Constants ---

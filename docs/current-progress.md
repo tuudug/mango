@@ -1,3 +1,63 @@
+# Current Progress: Refactoring & Bug Fixes (As of 2025-04-04 ~3:38 PM)
+
+## Goal: Address Production Bugs, Refactor Configuration, Improve UX
+
+Focused on fixing Google authentication/token issues in production, improving PWA update/error handling, and refactoring configuration for better maintainability.
+
+## Implementation Progress:
+
+1.  **Google Authentication (Production Fix):**
+    - **Issue:** Google Auth failed on the deployed server (DigitalOcean) with `"User session not authenticated."` at `/api/auth/google/start`, while working locally.
+    - **Diagnosis:** Identified the issue as Express session middleware (`cookie: { secure: true }`) not trusting the reverse proxy (likely terminating SSL).
+    - **Resolution:** Added `app.set("trust proxy", 1);` in `api/src/server.ts` before session middleware to make Express trust `X-Forwarded-*` headers.
+2.  **Google Health Token Refresh:**
+    - **Issue:** Health data stopped fetching after ~1 hour due to expired access tokens.
+    - **Diagnosis:** The `getHealthEntries.ts` API route was missing the `oauth2Client.on('tokens', ...)` listener needed to handle automatic token refreshes and update stored credentials.
+    - **Resolution:** Added the token refresh handler logic (copied from `getCalendarEvents.ts`) to `getHealthEntries.ts`. Updated `health.ts` types to include `expiry_date`.
+3.  **Google Health Disconnect:**
+    - **Issue:** Disconnect button for Google Health didn't work; logs showed decryption errors for incorrectly encrypted old tokens.
+    - **Diagnosis:**
+      - Backend disconnect handler (`googleDisconnect.ts`) hardcoded `'google_calendar'` provider.
+      - Frontend context (`HealthContext.tsx`) didn't send the provider type in the API call.
+      - Decryption errors prevented potential token revocation logic (which wasn't strictly necessary for disconnect).
+    - **Resolution:**
+      - Modified `googleDisconnect.ts` to accept `provider` in the request body and use it in the Supabase delete query.
+      - Updated `disconnectGoogleHealth` in `HealthContext.tsx` to call the correct endpoint (`/api/auth/google/disconnect`) and send `{ provider: 'google_health' }` in the body. This allows deleting the connection even with bad tokens.
+4.  **PWA Error Handling & Update:**
+    - **Issue:** App showed a blank screen on critical errors, potentially caused by outdated PWA versions.
+    - **Resolution:**
+      - Created a global React Error Boundary (`ErrorBoundary.tsx`).
+      - Created a fallback UI component (`ErrorFallback.tsx`) showing an error message and an "Update App" button.
+      - Lifted PWA update state (`needRefresh`) and function (`updateServiceWorker`) from `DashboardHeader.tsx` to `App.tsx` using `useRegisterSW`.
+      - Wrapped the main `<Routes>` in `App.tsx` with the `ErrorBoundary`, passing the PWA state/function to the `ErrorFallback`.
+      - Updated `Dashboard.tsx` and `DashboardHeader.tsx` to receive PWA state/function via props.
+5.  **Configuration Refactoring:**
+    - **Goal:** Improve organization of widget and data source configurations.
+    - **Implementation:**
+      - Created `src/lib/widgetConfig.ts` and moved widget-related types (`WidgetType`, `WidgetGroup`), constants (`availableWidgets`, `defaultWidgetLayouts`), and metadata (`widgetMetadata`) into it from `dashboardConfig.ts`.
+      - Created `src/lib/dataSourceConfig.ts` defining data source IDs and a configuration array (`dataSourceConfig`) containing ID, label, and icon component for each data source button.
+      - Cleaned up `src/lib/dashboardConfig.ts`.
+      - Updated all necessary component imports (`WidgetToolbox`, `WidgetPreview`, `DashboardGridItem`, `Dashboard`, `useDashboardLayout`, `constants.ts`, `utils.ts`) to point to the new config files.
+6.  **Left Sidebar Refactoring:**
+    - **Goal:** Reduce duplication for data source buttons and panel logic.
+    - **Implementation:**
+      - Modified `LeftSidebar.tsx` to import and use `dataSourceConfig`.
+      - Replaced individual panel open states (`isXxxOpen`) with a single state object (`panelOpenState`).
+      - Created a generic `handleTogglePanel` function.
+      - Mapped over `dataSourceConfig` to render data source buttons dynamically.
+      - Updated panel rendering logic to use the consolidated state.
+7.  **Mobile Edit Mode Disabled:**
+    - **Goal:** Prevent users from entering dashboard edit mode on small screens.
+    - **Implementation:**
+      - Created/Used a utility function `isMobileView` in `src/components/dashboard/utils.ts` based on `standardBreakpoints.sm`.
+      - Updated `LeftSidebar.tsx` to use this utility to check screen width on mount and resize.
+      - The edit/toolbox button (`Pencil` icon) in `LeftSidebar.tsx` is now visually distinct (opacity) and shows a toast message when clicked on mobile, instead of being fully disabled or toggling edit mode.
+      - Updated `Dashboard.tsx` to use the same utility function for determining the initial layout ('default' or 'mobile') to load.
+
+---
+
+## _Previous entries below this line_
+
 # Current Progress: Finance Data Source & Widgets (As of 2025-04-03 ~9:24 PM)
 
 ## Goal: Implement Manual Finance Tracking
@@ -62,7 +122,7 @@ Added a new data source for manual finance tracking, including settings manageme
 ## Remaining TODOs / Next Steps (Backburner):
 
 - **Backend:**
-  - Implement disconnect logic/route for **Google Health**.
+  - Implement disconnect logic/route for **Google Health**. **(DONE)**
   - Refine data merging logic (e.g., summing vs. overwriting) for Health steps.
   - Add support for other health data types (sleep, weight, etc.) from Google Health.
   - Add support for external Todo providers (e.g., Google Tasks).

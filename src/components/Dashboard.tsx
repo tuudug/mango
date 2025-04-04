@@ -1,5 +1,6 @@
 import { useAuth } from "@/contexts/AuthContext";
-import { WidgetType, defaultWidgetLayouts } from "@/lib/dashboardConfig"; // Import config
+// Update imports to point to correct config files
+import { WidgetType, defaultWidgetLayouts } from "@/lib/widgetConfig";
 import { cn } from "@/lib/utils";
 import {
   DndContext,

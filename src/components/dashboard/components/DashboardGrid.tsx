@@ -71,7 +71,7 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({
     isResizable: isToolboxOpen,
     compactType: null,
     preventCollision: true,
-    draggableCancel: ".widget-controls-cancel-drag",
+    draggableCancel: ".widget-controls-cancel-drag", // Use class to prevent drag on controls
   };
 
   // Render the appropriate grid based on edit mode
@@ -100,7 +100,8 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({
               <div key={item.id}>
                 <DashboardGridItem
                   item={item}
-                  isEditing={isToolboxOpen}
+                  isEditing={isToolboxOpen} // Corrected prop name
+                  // Removed isMobileEditMode prop
                   handleDeleteWidget={handleDeleteWidget}
                 />
               </div>
@@ -130,7 +131,8 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({
             <div key={item.id}>
               <DashboardGridItem
                 item={item}
-                isEditing={isToolboxOpen}
+                isEditing={isToolboxOpen} // Corrected prop name
+                // Removed isMobileEditMode prop
                 handleDeleteWidget={handleDeleteWidget}
               />
             </div>

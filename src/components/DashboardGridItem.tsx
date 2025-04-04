@@ -1,11 +1,12 @@
 import React from "react";
 import { WidgetErrorBoundary } from "./WidgetErrorBoundary";
+// Update imports to use widgetConfig.ts
 import {
-  GridItem,
-  // Mode, // Removed unused import
   WidgetType,
   widgetMetadata,
-} from "@/lib/dashboardConfig"; // Corrected import path
+  defaultWidgetLayouts,
+} from "@/lib/widgetConfig";
+import { GridItem } from "@/lib/dashboardConfig"; // Keep GridItem import
 import { X, Pencil, AlertTriangle } from "lucide-react"; // Import AlertTriangle for error
 import { Button } from "@/components/ui/button"; // Import Button
 
@@ -61,8 +62,8 @@ export function DashboardGridItem({
   isEditing, // Use the new prop
   handleDeleteWidget,
 }: DashboardGridItemProps) {
-  const metadata = widgetMetadata[item.type];
-  const WidgetContentComponent = widgetComponentMap[item.type];
+  const metadata = widgetMetadata[item.type as WidgetType]; // Cast type here for safety
+  const WidgetContentComponent = widgetComponentMap[item.type as WidgetType]; // Cast type here
 
   // --- Error Handling for Missing Component or Metadata ---
   if (!WidgetContentComponent || !metadata) {
@@ -70,9 +71,17 @@ export function DashboardGridItem({
     console.error(
       `Error rendering widget: ${errorType} not found for type: ${item.type}`
     );
+    // Use default layout for placeholder size calculation in error state
+    const errorLayout = defaultWidgetLayouts["Placeholder"] ?? { w: 6, h: 4 };
     return (
       // Added relative positioning for the delete button
-      <div className="relative bg-red-900/50 border border-red-700 rounded-lg p-3 text-red-200 flex flex-col items-center justify-center text-center h-full">
+      <div
+        className="relative bg-red-900/50 border border-red-700 rounded-lg p-3 text-red-200 flex flex-col items-center justify-center text-center h-full"
+        style={{
+          minWidth: `${errorLayout.w * 20}px`,
+          minHeight: `${errorLayout.h * 20}px`,
+        }} // Basic min size
+      >
         {/* Delete button for error state, only shown in edit mode */}
         {isEditing && (
           <Button
@@ -103,6 +112,7 @@ export function DashboardGridItem({
   const isDevMode = import.meta.env.DEV;
 
   return (
+    // Pass widgetId to WidgetErrorBoundary
     <WidgetErrorBoundary widgetId={item.id}>
       {/* Main widget container - Apply shake class conditionally */}
       <div

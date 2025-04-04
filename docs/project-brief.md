@@ -10,19 +10,20 @@ Here's a checklist based on the project brief ideas:
 
 ## Data Sources & Management
 
-These components handle the interaction and persistence of core application data via React Contexts.
+These components handle the interaction and persistence of core application data via React Contexts. **Configuration for data source sidebar buttons (icon, label) is now centralized in `src/lib/dataSourceConfig.ts`.**
 
 - [x] **Calendar Data Source (`CalendarDataSource.tsx`):** Manages calendar events (add, delete, view) using `CalendarContext`.
   - **[x] Backend:** Fix token decryption errors. (**Resolved: Incorrect ENV VAR**)
   - **[x] Backend:** Implement refresh token logic. (**Verified: Existing logic works after decryption fix**)
 - [x] **Health Data Source (`HealthDataSource.tsx`):** Manages daily step counts (add, update, view) using `HealthContext`.
   - **[x] Backend:** Fix token decryption errors. (**Resolved: Incorrect ENV VAR**)
-  - **[x] Backend:** Implement refresh token logic. (**Verified: Existing logic works after decryption fix**)
+  - **[x] Backend:** Implement refresh token logic. (**Added: Missing handler in API route**)
+  - **[x] Backend:** Fix disconnect logic. (**Fixed: Handler now uses provider from request body**)
 - [x] **Todos Data Source (`TodosDataSource.tsx`):** Manages todo items (add, delete, toggle completion) using `TodosContext`.
   - **[x] Editing:** Added ability to edit todo item text.
   - **[x] Reordering:** Top-level items use drag-and-drop; nested items use Move Up/Down buttons.
   - **[x] Sub-items:** Added support for nested sub-items (up to 2 levels).
-  - **[x] AI Breakdown:** Added "magic" button to generate sub-tasks using Gemini. **Now includes parent task context.**
+  - **[x] AI Breakdown:** Added "magic" button to generate sub-tasks using Gemini. **Now includes parent context.**
 - [x] **Finance Data Source (`FinanceDataSource.tsx`):** Manages manual finance entries and settings.
   - **[x] Database:** Added `manual_finance_settings` and `manual_finance_entries` tables.
   - **[x] Backend:** Added API routes (`/api/finance`) for settings and entries (GET, PUT, POST, DELETE).
@@ -74,6 +75,8 @@ These components handle the interaction and persistence of core application data
 
 ### Customizable Dashboard
 
+**Configuration for widgets (types, default layouts, metadata like icons/colors/groups) is now centralized in `src/lib/widgetConfig.ts`.**
+
 - [x] Central hub for progress and planning (`Dashboard.tsx`).
 - [x] Add/Move/Resize widgets (`react-grid-layout` integration).
 - [x] **Layout persistence (Database):**
@@ -88,9 +91,10 @@ These components handle the interaction and persistence of core application data
   - **[x] Background Fetching:** Implemented background fetching with comparison to avoid unnecessary re-renders.
 - [x] **Mobile Layout Support:**
   - [x] Separate 'mobile' layout fetched/saved via API & cached.
-  - [x] Automatic loading of 'mobile' or 'default' layout based on screen width (initial load).
+  - [x] Automatic loading of 'mobile' or 'default' layout based on screen width (initial load). **Logic centralized in `src/components/dashboard/utils.ts`.**
   - [x] Mobile Edit Mode UI implemented (toggle in edit bar, narrow preview, filtered toolbox).
   - [x] Mobile edit preview uses separate grid instance (`DashboardGrid.tsx`).
+  - **[x] Mobile Edit Disabled:** Edit mode button in sidebar is now disabled (shows toast) on mobile viewports. **Logic centralized in `src/components/dashboard/utils.ts`.**
 - [ ] **Multiple Named Dashboards:** (Future - requires UI for management)
 - [x] **Refined Widget List & Categories (Used for Paths):**
   - **Productivity:**
@@ -152,7 +156,7 @@ These components handle the interaction and persistence of core application data
 ## User Experience (UX)
 
 - [ ] Minimal user input focus.
-- [x] Intuitive interface (Implemented Left sidebar, sliding panels for Toolbox, GM, Profile, Paths, Data Sources, Finance Settings).
+- [x] Intuitive interface (Implemented Left sidebar, sliding panels for Toolbox, GM, Profile, Paths, Data Sources, Finance Settings). **Sidebar refactored for dynamic data source buttons.**
 - [x] Dashboard customization implemented.
 - [x] **Panel Behavior:**
   - [x] Panels (except Toolbox) slide over the dashboard content.
@@ -165,6 +169,7 @@ These components handle the interaction and persistence of core application data
   - **[x] Invalid Widget Handling:** Error state with delete button shown for unknown widget types in edit mode.
 - [ ] Emphasis on Positive Reinforcement (Guiding principle).
 - **[x] PWA Update Notifications:** Implemented prompt for app updates & fixed update flow.
+- **[x] PWA Error Handling:** Implemented global Error Boundary (`ErrorBoundary.tsx`, `ErrorFallback.tsx`) to catch rendering errors and offer PWA update if available.
 - **[x] Toast Notifications:** Added system for user feedback (`useToast` context). **Signature updated.**
 - **[x] Collapse on Drag:** Todo list items collapse during drag to improve DnD experience.
 - **[x] Dashboard Loading:** Improved loading state to avoid full-screen flash (further improved by caching & background fetching).
