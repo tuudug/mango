@@ -20,6 +20,10 @@ const app: Express = express();
 const port = process.env.PORT || 3001;
 
 // --- Middleware ---
+// Trust the first hop (common for platforms like DO App Platform)
+// This allows 'secure: true' cookies and req.protocol to work correctly behind a proxy
+app.set("trust proxy", 1);
+
 // Enable CORS for all origins (adjust for production)
 app.use(
   cors({
