@@ -8,8 +8,9 @@ import { Button } from "./components/ui/button";
 import { useAuth } from "./contexts/AuthContext";
 import AuthSuccessPage from "./components/auth/AuthSuccessPage"; // Import success page
 import AuthFailurePage from "./components/auth/AuthFailurePage"; // Import failure page
-import ErrorBoundary from "./components/ErrorBoundary"; // Import ErrorBoundary
-import ErrorFallback from "./components/ErrorFallback"; // Import Fallback UI
+// Removed ErrorBoundary imports as it's now in main.tsx
+// import ErrorBoundary from "./components/ErrorBoundary";
+// import ErrorFallback from "./components/ErrorFallback";
 import { useRegisterSW } from "virtual:pwa-register/react"; // Import PWA hook
 
 // Component to handle the main logic (Dashboard or Auth forms)
@@ -79,28 +80,18 @@ function App() {
 
   return (
     <Router>
-      {/* Wrap the Routes with ErrorBoundary */}
-      <ErrorBoundary
-        fallback={
-          <ErrorFallback
-            error={null}
-            onUpdate={handleUpdate}
-            updateAvailable={needRefresh}
-          />
-        }
-      >
-        <Routes>
-          <Route
-            path="/"
-            element={
-              <MainContent updateSW={handleUpdate} needRefresh={needRefresh} />
-            }
-          />
-          <Route path="/auth-success" element={<AuthSuccessPage />} />
-          <Route path="/login-failure" element={<AuthFailurePage />} />
-          {/* Add other routes here if needed */}
-        </Routes>
-      </ErrorBoundary>
+      {/* ErrorBoundary wrapper removed, now handled in main.tsx */}
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <MainContent updateSW={handleUpdate} needRefresh={needRefresh} />
+          }
+        />
+        <Route path="/auth-success" element={<AuthSuccessPage />} />
+        <Route path="/login-failure" element={<AuthFailurePage />} />
+        {/* Add other routes here if needed */}
+      </Routes>
     </Router>
   );
 }
