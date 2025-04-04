@@ -9,6 +9,7 @@ import {
 import { GridItem } from "@/lib/dashboardConfig"; // Keep GridItem import
 import { X, Pencil, AlertTriangle } from "lucide-react"; // Import AlertTriangle for error
 import { Button } from "@/components/ui/button"; // Import Button
+import { motion } from "framer-motion"; // Import motion
 
 // Widget component imports
 import { StepsTrackerWidget } from "../widgets/StepsTrackerWidget"; // Renamed import
@@ -111,6 +112,13 @@ export function DashboardGridItem({
   // Check if in development mode using Vite's env variable
   const isDevMode = import.meta.env.DEV;
 
+  // Animation props for the content
+  const contentAnimationProps = {
+    initial: { opacity: 0, y: 10 }, // Start slightly down and invisible
+    animate: { opacity: 1, y: 0 }, // Fade in and move up
+    transition: { duration: 0.3, ease: "easeOut", delay: 0.1 }, // Add a slight delay
+  };
+
   return (
     // Pass widgetId to WidgetErrorBoundary
     <WidgetErrorBoundary widgetId={item.id}>
@@ -176,13 +184,14 @@ export function DashboardGridItem({
           </div>
         )}
 
-        {/* Widget Content Area */}
-        <div className="flex-1 overflow-hidden p-0">
-          {" "}
-          {/* Let content take remaining space, remove internal padding if widgets handle it */}
+        {/* Widget Content Area - Wrapped with motion.div */}
+        <motion.div
+          className="flex-1 overflow-hidden p-0" // Apply original classes here
+          {...contentAnimationProps} // Apply animation
+        >
           {/* Pass id, w, and h props */}
           <WidgetContentComponent id={item.id} w={item.w} h={item.h} />
-        </div>
+        </motion.div>
       </div>
     </WidgetErrorBoundary>
   );

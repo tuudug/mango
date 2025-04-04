@@ -1,36 +1,34 @@
 import { useAuth } from "@/contexts/AuthContext";
 // Update imports to point to correct config files
 import { WidgetType, defaultWidgetLayouts } from "@/lib/widgetConfig";
+import { GridItem } from "@/lib/dashboardConfig"; // Keep GridItem import
 import { cn } from "@/lib/utils";
-import {
-  DndContext,
-  DragEndEvent,
-  DragOverlay,
-  DragStartEvent,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from "@dnd-kit/core";
-import { restrictToWindowEdges } from "@dnd-kit/modifiers";
+// Removed DnD imports: DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors, restrictToWindowEdges
 import { Loader2 } from "lucide-react";
 import { nanoid } from "nanoid";
-import { useCallback, useEffect, useRef, useState } from "react"; // Added useRef
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Layout } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 import { DashboardHeader } from "./DashboardHeader";
-import { Droppable } from "./Droppable";
+// Removed: import { Droppable } from "./Droppable"; // No longer needed for adding
 import { LeftSidebar } from "./LeftSidebar";
-import { WidgetPreview } from "./WidgetPreview";
+// Removed: import { WidgetPreview } from "./WidgetPreview"; // No longer needed
 import { WidgetToolbox } from "./WidgetToolbox";
 
 // Import refactored modules
 import { DashboardGrid } from "./dashboard/components/DashboardGrid";
 import { EditModeIndicator } from "./dashboard/components/EditModeIndicator";
-import { CACHE_STALE_DURATION, getDefaultLayout } from "./dashboard/constants";
+import {
+  CACHE_STALE_DURATION,
+  getDefaultLayout,
+  standardCols, // Import grid columns
+  mobileCols, // Import grid columns
+} from "./dashboard/constants";
 import { useDashboardLayout } from "./dashboard/hooks/useDashboardLayout";
-import { DashboardName } from "./dashboard/types"; // SavedPathState no longer needed here
-import { getCachedLastSyncTime, isMobileView } from "./dashboard/utils"; // Import isMobileView
+import { DashboardName } from "./dashboard/types";
+import { getCachedLastSyncTime, isMobileView } from "./dashboard/utils";
+import { useToast } from "@/contexts/ToastContext"; // Import useToast
 
 // Define props for Dashboard, including PWA update props
 interface DashboardProps {
@@ -39,54 +37,41 @@ interface DashboardProps {
 }
 
 export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
-  // Accept props
-  const { isLoading: isAuthLoading } = useAuth(); // Get auth loading state
+  const { isLoading: isAuthLoading } = useAuth();
+  const { showToast } = useToast(); // Use the toast hook
 
-  // Use the custom hook for layout management
-  const {
-    items,
-    setItems,
-    isLoadingLayout, // Still used for initial load
-    // isBackgroundFetching, // Can be used for subtle indicators if needed later
-    fetchLayout,
-    saveLayoutToServer,
-  } = useDashboardLayout();
+  const { items, setItems, isLoadingLayout, fetchLayout, saveLayoutToServer } =
+    useDashboardLayout();
   const [isToolboxOpen, setIsToolboxOpen] = useState(false);
 
-  // State for view/edit targets remains
   const [currentViewDashboardName, setCurrentViewDashboardName] =
     useState<DashboardName>("default");
   const [editTargetDashboard, setEditTargetDashboard] =
     useState<DashboardName>("default");
-  const prevEditTargetRef = useRef<DashboardName>("default"); // Ref to track previous edit target
+  const prevEditTargetRef = useRef<DashboardName>("default");
 
-  // State for DnD remains
-  const [activeWidget, setActiveWidget] = useState<WidgetType | null>(null);
-  const gridContainerRef = useRef<HTMLDivElement>(null);
+  // Removed DnD state: const [activeWidget, setActiveWidget] = useState<WidgetType | null>(null);
+  const gridContainerRef = useRef<HTMLDivElement>(null); // Keep ref if needed for other calculations
 
-  // State for shaking the edit mode indicator
   const [shakeCount, setShakeCount] = useState(0);
   const triggerShakeIndicator = () => setShakeCount((c) => c + 1);
 
-  // State for loader when switching between desktop/mobile edit modes
   const [isSwitchingEditMode, setIsSwitchingEditMode] = useState(false);
 
-  // --- Initial Load & Focus Handling ---
+  // --- Initial Load & Focus Handling (remains the same) ---
   useEffect(() => {
     const loadInitial = async () => {
-      // Use the utility function to check mobile view
       const isMobile = isMobileView();
       const initialName: DashboardName = isMobile ? "mobile" : "default";
       setCurrentViewDashboardName(initialName);
       setEditTargetDashboard(initialName);
-      // Initial fetch is NOT background
       await fetchLayout(initialName, false, { background: false });
     };
     if (!isAuthLoading) {
       loadInitial();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthLoading]); // fetchLayout removed as it's called inside
+  }, [isAuthLoading]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -97,7 +82,6 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
       ) {
         const lastSyncTime = getCachedLastSyncTime();
         if (!lastSyncTime || Date.now() - lastSyncTime > CACHE_STALE_DURATION) {
-          // Fetch on focus should be background
           fetchLayout(currentViewDashboardName, true, { background: true });
         }
       }
@@ -109,13 +93,11 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
   }, [isAuthLoading, currentViewDashboardName, fetchLayout, isToolboxOpen]);
 
   useEffect(() => {
-    // Fetch layout for the target being edited when toolbox opens or target changes
     if (isToolboxOpen && !isAuthLoading) {
       const previousTarget = prevEditTargetRef.current;
       const targetChanged = previousTarget !== editTargetDashboard;
 
       if (targetChanged) {
-        // Switching between desktop/mobile edit view - show loader
         console.log(
           `Edit target changed from ${previousTarget} to ${editTargetDashboard}. Fetching with loader.`
         );
@@ -124,144 +106,160 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
           () => setIsSwitchingEditMode(false)
         );
       } else {
-        // Just opening toolbox or target hasn't changed - fetch without specific loader (hook handles initial load state)
         console.log(
           `Toolbox opened or target ${editTargetDashboard} unchanged. Fetching.`
         );
-        // Fetch non-background on initial toolbox open to ensure latest data is shown for editing
         fetchLayout(editTargetDashboard, true, { background: false });
       }
     }
-    // Update ref *after* comparison
     prevEditTargetRef.current = editTargetDashboard;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editTargetDashboard, isToolboxOpen, isAuthLoading]); // fetchLayout removed as it's called inside
+  }, [editTargetDashboard, isToolboxOpen, isAuthLoading]);
   // --- End Initial Load & Focus Handling ---
 
-  // --- Only Toolbox Toggle Logic Remains ---
+  // --- Toolbox Toggle Logic (remains the same) ---
   const toggleToolbox = (forceState?: boolean) => {
     setIsToolboxOpen((prev) => {
       const nextIsOpen = forceState !== undefined ? forceState : !prev;
-
       if (nextIsOpen) {
-        // --- OPENING TOOLBOX ---
         console.log(
           `Opening toolbox. Setting edit target to: ${currentViewDashboardName}`
         );
-        setEditTargetDashboard(currentViewDashboardName); // Set edit target to current view
-        // Fetching is handled by the useEffect watching editTargetDashboard and isToolboxOpen
+        setEditTargetDashboard(currentViewDashboardName);
       } else {
-        // --- CLOSING TOOLBOX ---
-        // ALWAYS reset state to default view when closing toolbox
         const viewTarget: DashboardName = "default";
         setCurrentViewDashboardName(viewTarget);
         setEditTargetDashboard(viewTarget);
-
         if (forceState === false) {
-          // Closed because another panel opened (called with forceState=false)
           console.log(
             `Toolbox closed implicitly. Set view to ${viewTarget}. (No fetch)`
           );
-          // Only update the state (already done above), don't fetch
         } else {
-          // Closed explicitly by user (forceState is undefined)
           console.log(
             `Toolbox closed explicitly. Set view to ${viewTarget} and fetching background.`
           );
-          // Fetch default layout in background when closing toolbox
           fetchLayout(viewTarget, true, { background: true });
         }
       }
-      return nextIsOpen; // Return the new state for isToolboxOpen
+      return nextIsOpen;
     });
   };
 
   const toggleEditTarget = () => {
-    // This only changes which layout is *previewed* in edit mode
     setEditTargetDashboard((prev) =>
       prev === "default" ? "mobile" : "default"
     );
-    // The useEffect watching editTargetDashboard and isToolboxOpen handles fetching & loader
   };
+  // --- End Toolbox Toggle Logic ---
 
-  // --- DnD Handlers (Remain the same) ---
-  const handleDragStart = (event: DragStartEvent) => {
-    if (event.active.data.current?.type === "toolbox-item") {
-      setActiveWidget(event.active.id as WidgetType);
-    }
-  };
+  // --- NEW: Add Widget Logic ---
+  const findFirstAvailablePosition = (
+    widgetMinW: number,
+    widgetMinH: number,
+    currentItems: GridItem[],
+    cols: number
+  ): { x: number; y: number } | null => {
+    let maxY = 0;
+    currentItems.forEach((item) => {
+      maxY = Math.max(maxY, item.y + item.h);
+    });
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    setActiveWidget(null);
+    // Iterate row by row, then column by column
+    for (let y = 0; y <= maxY; y++) {
+      // Check up to maxY + some buffer
+      for (let x = 0; x <= cols - widgetMinW; x++) {
+        let collision = false;
+        // Check for collision with existing items
+        for (const item of currentItems) {
+          const newItemRight = x + widgetMinW;
+          const newItemBottom = y + widgetMinH;
+          const existingItemRight = item.x + item.w;
+          const existingItemBottom = item.y + item.h;
 
-    if (
-      active.data.current?.type === "toolbox-item" &&
-      over?.id === "dashboard-grid"
-    ) {
-      const widgetType = active.id as WidgetType;
-      const defaultLayout = defaultWidgetLayouts[widgetType];
-      const isPlaceholderPresent = items.some(
-        (item) => item.type === "Placeholder"
-      );
-      const filteredItems = isPlaceholderPresent
-        ? items.filter((item) => item.type !== "Placeholder")
-        : items;
+          // Basic overlap check
+          if (
+            !(
+              (
+                newItemRight <= item.x || // New item is left of existing
+                x >= existingItemRight || // New item is right of existing
+                newItemBottom <= item.y || // New item is above existing
+                y >= existingItemBottom
+              ) // New item is below existing
+            )
+          ) {
+            collision = true;
+            break; // Collision found, try next x
+          }
+        }
 
-      let gridX = 0;
-      let gridY = Infinity;
-      const cols = editTargetDashboard === "mobile" ? 4 : 24;
-      const isMobileEditMode =
-        isToolboxOpen && editTargetDashboard === "mobile";
-
-      if (
-        gridContainerRef.current &&
-        event.activatorEvent instanceof PointerEvent
-      ) {
-        const gridRect = gridContainerRef.current.getBoundingClientRect();
-        const sidebarWidth = 64;
-        const relativeX =
-          event.activatorEvent.clientX - gridRect.left - sidebarWidth;
-        const relativeY = event.activatorEvent.clientY - gridRect.top;
-
-        const rowHeight = 30;
-        const margin: [number, number] = [10, 10];
-        const containerPadding: [number, number] = [15, 15];
-        const panelWidth = isToolboxOpen ? 256 : 0;
-        const adjustedX = relativeX - containerPadding[0] - panelWidth;
-        const adjustedY = relativeY - containerPadding[1];
-
-        const gridWidth = isMobileEditMode
-          ? 320
-          : gridRect.width -
-            sidebarWidth -
-            containerPadding[0] * 2 -
-            panelWidth;
-
-        const approxCellWidth = gridWidth / cols;
-        gridX = Math.max(
-          0,
-          Math.min(
-            cols - (defaultLayout?.w || 6),
-            Math.floor(adjustedX / approxCellWidth)
-          )
-        );
-        gridY = Math.max(0, Math.floor(adjustedY / (rowHeight + margin[1])));
+        if (!collision) {
+          // Found a spot!
+          return { x, y };
+        }
       }
+    }
 
-      const newItem = {
+    // If no spot found within existing height + buffer, try placing below everything
+    return { x: 0, y: maxY }; // Default to placing at the bottom-left if no gaps found
+  };
+
+  const handleAddWidget = (widgetType: WidgetType) => {
+    if (!isToolboxOpen) return;
+
+    const widgetDefaults = defaultWidgetLayouts[widgetType] || {
+      w: 6,
+      h: 4,
+      minW: 2,
+      minH: 2,
+    };
+    const { w, h, minW = 2, minH = 2 } = widgetDefaults; // Ensure minW/minH have defaults
+
+    const cols =
+      editTargetDashboard === "mobile" ? mobileCols.mobile : standardCols.lg;
+
+    // Filter out placeholder if present
+    const isPlaceholderPresent = items.some(
+      (item) => item.type === "Placeholder"
+    );
+    const currentFilteredItems = isPlaceholderPresent
+      ? items.filter((item) => item.type !== "Placeholder")
+      : items;
+
+    const position = findFirstAvailablePosition(
+      minW,
+      minH,
+      currentFilteredItems,
+      cols
+    );
+
+    if (position) {
+      const newItem: GridItem = {
         id: nanoid(),
         type: widgetType,
-        x: gridX,
-        y: gridY,
-        ...(defaultLayout || { w: 6, h: 4, minW: 2, minH: 2 }),
+        x: position.x,
+        y: position.y,
+        w: w,
+        h: h,
+        minW: minW,
+        minH: minH,
       };
-      const newItems = [...filteredItems, newItem];
+      const newItems = [...currentFilteredItems, newItem];
       setItems(newItems);
       saveLayoutToServer(newItems, editTargetDashboard);
+      console.log(`Added ${widgetType} at x:${position.x}, y:${position.y}`);
+    } else {
+      // This case should ideally not happen with the fallback logic, but good to have
+      console.warn(`Could not find space for ${widgetType}`);
+      showToast({
+        title: "Dashboard Full",
+        description: `Could not find an available space for the ${widgetType} widget.`,
+        variant: "destructive",
+      });
     }
   };
-  // --- End DnD Handlers ---
+  // --- End Add Widget Logic ---
+
+  // --- Removed DnD Handlers: handleDragStart, handleDragEnd ---
 
   // --- Layout Change Handlers (Remain the same) ---
   const onLayoutChange = useCallback(
@@ -340,18 +338,14 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
   };
   // --- End Layout Change Handlers ---
 
-  // Configure sensors for dnd-kit
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
-  );
+  // Removed: Configure sensors for dnd-kit
 
-  // --- Panel Behavior & Styling ---
+  // --- Panel Behavior & Styling (remains the same) ---
   const mainContentPaddingLeft = isToolboxOpen ? "pl-64" : "pl-0";
   const isMobileEditMode = isToolboxOpen && editTargetDashboard === "mobile";
 
   // --- Render Logic ---
   if (isAuthLoading) {
-    // Loader for initial auth check
     return (
       <div className="flex h-screen items-center justify-center bg-gray-950">
         <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
@@ -359,7 +353,6 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
     );
   }
 
-  // Loader for initial layout fetch (after auth)
   if (isLoadingLayout && items.length === 0) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-950 pl-16">
@@ -368,85 +361,69 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
     );
   }
 
+  // Removed DndContext wrapper
   return (
-    <DndContext
-      sensors={sensors}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-      modifiers={[restrictToWindowEdges]}
-    >
-      <div className="flex h-screen bg-gray-950 text-gray-100 pl-16">
-        {/* Left Sidebar - Pass shake trigger */}
-        <LeftSidebar
-          isToolboxOpen={isToolboxOpen}
-          toggleToolbox={toggleToolbox}
-          triggerShakeIndicator={triggerShakeIndicator} // Pass down the function
-        />
+    <div className="flex h-screen bg-gray-950 text-gray-100 pl-16">
+      <LeftSidebar
+        isToolboxOpen={isToolboxOpen}
+        toggleToolbox={toggleToolbox}
+        triggerShakeIndicator={triggerShakeIndicator}
+      />
 
-        <div className="flex flex-col flex-1 overflow-hidden">
-          {/* Header - Pass PWA props */}
-          <DashboardHeader updateSW={updateSW} needRefresh={needRefresh} />
+      <div className="flex flex-col flex-1 overflow-hidden">
+        <DashboardHeader updateSW={updateSW} needRefresh={needRefresh} />
 
-          <div className="flex-1 relative overflow-hidden w-full">
-            {/* Dashboard Grid Area */}
-            <Droppable id="dashboard-grid">
-              <main
-                ref={gridContainerRef}
-                className={cn(
-                  `absolute inset-0 bg-gray-950 overflow-auto transition-padding duration-300 ease-in-out`,
-                  mainContentPaddingLeft,
-                  isMobileEditMode && "flex justify-center items-start pt-4"
-                )}
-              >
-                {/* Removed main isLoadingLayout check here */}
-                <DashboardGrid
-                  items={items}
-                  isToolboxOpen={isToolboxOpen}
-                  isMobileEditMode={isMobileEditMode}
-                  editTargetDashboard={editTargetDashboard}
-                  onLayoutChange={onLayoutChange}
-                  handleResize={handleResize}
-                  handleDeleteWidget={handleDeleteWidget}
-                />
-                {/* Loader specifically for switching edit modes */}
-                {isSwitchingEditMode && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-gray-950 bg-opacity-50 z-30">
-                    <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-                  </div>
-                )}
-              </main>
-            </Droppable>
+        <div className="flex-1 relative overflow-hidden w-full">
+          {/* Removed Droppable wrapper */}
+          <main
+            ref={gridContainerRef}
+            className={cn(
+              `absolute inset-0 bg-gray-950 overflow-auto transition-padding duration-300 ease-in-out`,
+              mainContentPaddingLeft,
+              isMobileEditMode && "flex justify-center items-start pt-4"
+            )}
+          >
+            <DashboardGrid
+              items={items}
+              isToolboxOpen={isToolboxOpen}
+              isMobileEditMode={isMobileEditMode}
+              editTargetDashboard={editTargetDashboard}
+              onLayoutChange={onLayoutChange}
+              handleResize={handleResize}
+              handleDeleteWidget={handleDeleteWidget}
+            />
+            {isSwitchingEditMode && (
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-950 bg-opacity-50 z-30">
+                <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+              </div>
+            )}
+          </main>
 
-            {/* Sliding Panels Container */}
-            {/* Toolbox - Remains here */}
-            <div
-              className={`absolute top-0 left-0 bottom-0 transition-transform duration-300 ease-in-out z-20 ${
-                isToolboxOpen ? "translate-x-0" : "-translate-x-full"
-              }`}
-            >
-              <WidgetToolbox
-                onClose={() => toggleToolbox(false)} // Use simplified close
-                editTargetDashboard={editTargetDashboard}
-              />
-            </div>
-            {/* Other Panels are now rendered inside LeftSidebar */}
+          <div
+            className={`absolute top-0 left-0 bottom-0 transition-transform duration-300 ease-in-out z-20 ${
+              isToolboxOpen ? "translate-x-0" : "-translate-x-full"
+            }`}
+          >
+            {/* Pass the new handler */}
+            <WidgetToolbox
+              onClose={() => toggleToolbox(false)}
+              editTargetDashboard={editTargetDashboard}
+              onAddWidget={handleAddWidget} // Pass the new handler
+            />
           </div>
         </div>
-
-        {/* Drag Overlay */}
-        <DragOverlay>
-          {activeWidget ? <WidgetPreview type={activeWidget} /> : null}
-        </DragOverlay>
-
-        {/* Floating Edit Mode Indicator - Pass shake count */}
-        <EditModeIndicator
-          isToolboxOpen={isToolboxOpen}
-          editTargetDashboard={editTargetDashboard}
-          toggleEditTarget={toggleEditTarget}
-          toggleToolbox={() => toggleToolbox()} // Pass simple toggle
-          shakeCount={shakeCount} // Pass down the count
-        />
       </div>
-    </DndContext>
+
+      {/* Removed Drag Overlay */}
+
+      <EditModeIndicator
+        isToolboxOpen={isToolboxOpen}
+        editTargetDashboard={editTargetDashboard}
+        toggleEditTarget={toggleEditTarget}
+        toggleToolbox={() => toggleToolbox()}
+        shakeCount={shakeCount}
+      />
+    </div>
+    // Removed closing DndContext tag
   );
 }

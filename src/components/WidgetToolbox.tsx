@@ -5,19 +5,18 @@ import { cn } from "@/lib/utils";
 import { WidgetGroup, WidgetType } from "@/lib/widgetConfig";
 import { availableWidgets } from "@/lib/widgetConfig";
 import { widgetMetadata } from "@/lib/widgetConfig";
-// Removed: import { WidgetType } from "@/lib/dashboardConfig"; // Keep GridItem if needed elsewhere
-// Removed: import { defaultWidgetLayouts } from "@/lib/dashboardConfig"; // Keep GridItem if needed elsewhere
-import { GripVertical, X } from "lucide-react";
+import { Plus, X } from "lucide-react"; // Import Plus icon
 import React from "react";
-import { Draggable } from "./Draggable";
+// Removed: import { Draggable } from "./Draggable"; // No longer needed
 import { DashboardName } from "./dashboard/types";
 
 interface WidgetToolboxProps {
   onClose: () => void;
   editTargetDashboard: DashboardName; // Receive edit target
+  onAddWidget: (widgetType: WidgetType) => void; // Add new prop
 }
 
-// Group widgets by their group metadata
+// Group widgets by their group metadata (remains the same)
 const groupedWidgets = availableWidgets.reduce((acc, widgetType) => {
   const group = widgetMetadata[widgetType].group;
   if (!acc[group]) {
@@ -27,7 +26,7 @@ const groupedWidgets = availableWidgets.reduce((acc, widgetType) => {
   return acc;
 }, {} as Record<WidgetGroup, WidgetType[]>);
 
-// Define the order of groups
+// Define the order of groups (remains the same)
 const groupOrder: WidgetGroup[] = [
   "Finance",
   "Tracking",
@@ -39,8 +38,9 @@ const groupOrder: WidgetGroup[] = [
 export function WidgetToolbox({
   onClose,
   editTargetDashboard,
+  onAddWidget, // Use the new prop
 }: WidgetToolboxProps) {
-  // Filter groups based on edit target
+  // Filter groups based on edit target (remains the same)
   const filteredGroupOrder =
     editTargetDashboard === "mobile"
       ? groupOrder.filter((group) => group !== "Calendar") // Exclude Calendar group for mobile
@@ -48,7 +48,7 @@ export function WidgetToolbox({
 
   return (
     <div className="flex h-full w-64 flex-col border-r border-gray-700 bg-gray-800 shadow-lg">
-      {/* Header */}
+      {/* Header (remains the same) */}
       <div className="flex items-center justify-between border-b border-gray-700 p-4">
         <h2 className="text-lg font-semibold">Add Widgets</h2>
         <Button
@@ -68,7 +68,7 @@ export function WidgetToolbox({
           {filteredGroupOrder.map((group) => {
             const widgetsInGroup = groupedWidgets[group]?.filter(
               (widgetType) => {
-                // Further filter widgets within groups for mobile if needed
+                // Further filter widgets within groups for mobile if needed (remains the same)
                 if (editTargetDashboard === "mobile") {
                   // Example: Exclude specific widgets if necessary for mobile
                   // return widgetType !== 'SomeComplexWidget';
@@ -77,7 +77,7 @@ export function WidgetToolbox({
               }
             );
 
-            // Only render the group if it has widgets after filtering
+            // Only render the group if it has widgets after filtering (remains the same)
             if (!widgetsInGroup || widgetsInGroup.length === 0) {
               return null;
             }
@@ -92,25 +92,30 @@ export function WidgetToolbox({
                     const metadata = widgetMetadata[widgetType];
                     const Icon = metadata.icon;
                     return (
-                      <Draggable
-                        key={widgetType}
-                        id={widgetType}
-                        data={{ type: "toolbox-item" }} // Add type data for dnd context
+                      // Removed Draggable wrapper
+                      <div
+                        key={widgetType} // Key moved here
+                        className={cn(
+                          "flex items-center gap-3 rounded-md border border-gray-700 bg-gray-700/50 p-3 shadow-sm", // Removed cursor classes
+                          metadata.colorAccentClass, // Apply accent color
+                          "border-l-4" // Ensure left border is thick enough
+                        )}
                       >
-                        <div
-                          className={cn(
-                            "flex cursor-grab items-center gap-3 rounded-md border border-gray-700 bg-gray-700/50 p-3 shadow-sm transition-colors hover:bg-gray-700 active:cursor-grabbing",
-                            metadata.colorAccentClass, // Apply accent color
-                            "border-l-4" // Ensure left border is thick enough
-                          )}
+                        <Icon className="h-5 w-5 flex-shrink-0 text-gray-300" />
+                        <span className="flex-1 text-sm font-medium text-gray-100">
+                          {widgetType}
+                        </span>
+                        {/* Add Button */}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-gray-400 hover:text-gray-100 hover:bg-gray-600"
+                          onClick={() => onAddWidget(widgetType)} // Call the new handler
+                          aria-label={`Add ${widgetType} widget`}
                         >
-                          <Icon className="h-5 w-5 flex-shrink-0 text-gray-300" />
-                          <span className="flex-1 text-sm font-medium text-gray-100">
-                            {widgetType}
-                          </span>
-                          <GripVertical className="h-5 w-5 flex-shrink-0 text-gray-500" />
-                        </div>
-                      </Draggable>
+                          <Plus size={16} />
+                        </Button>
+                      </div>
                     );
                   })}
                 </div>

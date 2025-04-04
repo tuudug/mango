@@ -1,16 +1,11 @@
 import React from "react";
 import { Layout, Responsive, WidthProvider } from "react-grid-layout";
-import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
 import { GridItem } from "@/lib/dashboardConfig";
 import { DashboardGridItem } from "@/components/DashboardGridItem";
 import { cn } from "@/lib/utils";
-import {
-  standardBreakpoints,
-  standardCols,
-  // mobileBreakpoints, // Will define slightly differently below
-  mobileCols,
-} from "../constants";
+import { standardBreakpoints, standardCols, mobileCols } from "../constants";
 import { DashboardName } from "../types";
+// Removed: import { motion, AnimatePresence } from "framer-motion"; // Revert import
 
 // Create responsive grid layout
 const ResponsiveGridLayout = WidthProvider(Responsive);
@@ -22,7 +17,7 @@ interface DashboardGridProps {
   items: GridItem[];
   isToolboxOpen: boolean;
   isMobileEditMode: boolean;
-  editTargetDashboard: DashboardName; // Keep for potential future use, though not directly used in grid logic now
+  editTargetDashboard: DashboardName;
   onLayoutChange: (layout: Layout[]) => void;
   handleResize: (
     layout: Layout[],
@@ -42,7 +37,6 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({
   handleDeleteWidget,
 }) => {
   // Generate layout for grid (used by RGL)
-  // This function is used by both grid instances
   const generateLayout = (): Layout[] => {
     return items.map((item) => ({
       i: item.id,
@@ -63,7 +57,6 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({
     rowHeight: 30,
     margin: [10, 10] as [number, number],
     containerPadding: [15, 15] as [number, number],
-    isDroppable: isToolboxOpen,
     onLayoutChange: onLayoutChange,
     onResizeStop: handleResize,
     style: { minHeight: "100%" },
@@ -71,74 +64,62 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({
     isResizable: isToolboxOpen,
     compactType: null,
     preventCollision: true,
-    draggableCancel: ".widget-controls-cancel-drag", // Use class to prevent drag on controls
+    draggableCancel: ".widget-controls-cancel-drag",
   };
+
+  // Removed animation props
 
   // Render the appropriate grid based on edit mode
   if (isMobileEditMode) {
-    // Mobile Edit Grid - Render inside the styled wrapper
+    // Mobile Edit Grid
     const mobileEditWrapperClasses =
-      "w-[375px] max-w-[375px] border-2 border-dashed border-blue-400 mx-auto h-full"; // Ensure h-full
+      "w-[375px] max-w-[375px] border-2 border-dashed border-blue-400 mx-auto h-full";
 
     return (
       <div className={cn(mobileEditWrapperClasses)}>
-        <SortableContext
-          items={items.map((item) => item.id)}
-          strategy={rectSortingStrategy}
-        >
-          <ResponsiveGridLayout
-            {...commonGridProps}
-            key="mobile-grid-instance" // Explicit key for the instance
-            // Use mobile-specific breakpoints and cols
-            breakpoints={mobileEditBreakpoints}
-            cols={mobileCols}
-            // layouts prop needs to match the breakpoint name ('mobile')
-            layouts={{ mobile: generateLayout() }}
-            // WidthProvider should get width from the parent div
-          >
-            {items.map((item) => (
-              <div key={item.id}>
-                <DashboardGridItem
-                  item={item}
-                  isEditing={isToolboxOpen} // Corrected prop name
-                  // Removed isMobileEditMode prop
-                  handleDeleteWidget={handleDeleteWidget}
-                />
-              </div>
-            ))}
-          </ResponsiveGridLayout>
-        </SortableContext>
-      </div>
-    );
-  } else {
-    // Standard Desktop/Responsive Grid - Render directly
-    return (
-      <SortableContext
-        items={items.map((item) => item.id)}
-        strategy={rectSortingStrategy}
-      >
         <ResponsiveGridLayout
           {...commonGridProps}
-          key="standard-grid-instance" // Explicit key for the instance
-          // Use standard breakpoints and cols
-          breakpoints={standardBreakpoints}
-          cols={standardCols}
-          // RGL uses 'lg' layout if breakpoint matches, or finds closest match
-          // Providing the layout under 'lg' is usually sufficient for standard view
-          layouts={{ lg: generateLayout() }}
+          key="mobile-grid-instance"
+          breakpoints={mobileEditBreakpoints}
+          cols={mobileCols}
+          layouts={{ mobile: generateLayout() }} // RGL needs layouts prop
         >
+          {/* Removed AnimatePresence wrapper */}
           {items.map((item) => (
+            // Removed motion.div wrapper
             <div key={item.id}>
               <DashboardGridItem
                 item={item}
-                isEditing={isToolboxOpen} // Corrected prop name
-                // Removed isMobileEditMode prop
+                isEditing={isToolboxOpen}
                 handleDeleteWidget={handleDeleteWidget}
               />
             </div>
           ))}
         </ResponsiveGridLayout>
-      </SortableContext>
+      </div>
+    );
+  } else {
+    // Standard Desktop/Responsive Grid
+    return (
+      <ResponsiveGridLayout
+        {...commonGridProps}
+        key="standard-grid-instance"
+        breakpoints={standardBreakpoints}
+        cols={standardCols}
+        layouts={{ lg: generateLayout() }} // RGL needs layouts prop
+      >
+        {/* Removed AnimatePresence wrapper */}
+        {items.map((item) => (
+          // Removed motion.div wrapper
+          <div key={item.id}>
+            <DashboardGridItem
+              item={item}
+              isEditing={isToolboxOpen}
+              handleDeleteWidget={handleDeleteWidget}
+            />
+          </div>
+        ))}
+      </ResponsiveGridLayout>
     );
   }
 };
