@@ -29,9 +29,16 @@ import { EditModeIndicator } from "./dashboard/components/EditModeIndicator";
 import { CACHE_STALE_DURATION, getDefaultLayout } from "./dashboard/constants";
 import { useDashboardLayout } from "./dashboard/hooks/useDashboardLayout";
 import { DashboardName } from "./dashboard/types"; // SavedPathState no longer needed here
-import { getCachedLastSyncTime } from "./dashboard/utils";
+import { getCachedLastSyncTime, isMobileView } from "./dashboard/utils"; // Import isMobileView
 
-export function Dashboard() {
+// Define props for Dashboard, including PWA update props
+interface DashboardProps {
+  updateSW: () => void;
+  needRefresh: boolean;
+}
+
+export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
+  // Accept props
   const { isLoading: isAuthLoading } = useAuth(); // Get auth loading state
 
   // Use the custom hook for layout management
@@ -66,7 +73,8 @@ export function Dashboard() {
   // --- Initial Load & Focus Handling ---
   useEffect(() => {
     const loadInitial = async () => {
-      const isMobile = window.innerWidth < 768;
+      // Use the utility function to check mobile view
+      const isMobile = isMobileView();
       const initialName: DashboardName = isMobile ? "mobile" : "default";
       setCurrentViewDashboardName(initialName);
       setEditTargetDashboard(initialName);
@@ -375,8 +383,8 @@ export function Dashboard() {
         />
 
         <div className="flex flex-col flex-1 overflow-hidden">
-          {/* Header */}
-          <DashboardHeader />
+          {/* Header - Pass PWA props */}
+          <DashboardHeader updateSW={updateSW} needRefresh={needRefresh} />
 
           <div className="flex-1 relative overflow-hidden w-full">
             {/* Dashboard Grid Area */}

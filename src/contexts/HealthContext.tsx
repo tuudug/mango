@@ -182,17 +182,30 @@ export const HealthProvider: React.FC<HealthProviderProps> = ({ children }) => {
     setIsLoading(true);
     setError(null);
     try {
-      console.warn("Backend disconnect for Google Health not implemented yet.");
-      // TODO: Implement backend disconnect route
-      // const response = await fetch("/api/auth/google-health/disconnect", { method: "POST", headers: getAuthHeaders() });
-      // if (!response.ok) throw new Error("Failed to disconnect");
-      await fetchHealthData(); // Refetch to update status
+      // Use the generic disconnect endpoint and specify the provider
+      const response = await fetch("/api/auth/google/disconnect", {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ provider: "google_health" }), // Specify provider
+      });
+      if (!response.ok) {
+        let errorMsg = `HTTP error! status: ${response.status}`;
+        try {
+          const errorBody = await response.json();
+          errorMsg = errorBody.message || errorMsg;
+        } catch {
+          /* Ignore */
+        }
+        throw new Error(errorMsg);
+      }
+      console.log("Successfully disconnected Google Health via API.");
+      await fetchHealthData(); // Refetch to update status (will set isLoading=false)
     } catch (e) {
       console.error("Failed to disconnect Google Health:", e);
       setError(e instanceof Error ? e.message : "An unknown error occurred");
-      await fetchHealthData(); // Refetch even on error
+      await fetchHealthData(); // Refetch even on error to update state
     } finally {
-      /* setIsLoading(false); // fetchHealthData handles this */
+      // No need for setIsLoading(false) here, fetchHealthData handles it
     }
   };
 
@@ -224,7 +237,7 @@ export const HealthProvider: React.FC<HealthProviderProps> = ({ children }) => {
       setError(e instanceof Error ? e.message : "An unknown error occurred");
       await fetchHealthData(); // Refetch even on error
     } finally {
-      /* setIsLoading(false); // fetchHealthData handles this */
+      // No need for setIsLoading(false) here, fetchHealthData handles it
     }
   };
 

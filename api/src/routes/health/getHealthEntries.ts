@@ -1,9 +1,9 @@
 import { Response, NextFunction } from "express";
-import { google, fitness_v1 } from "googleapis"; // Import fitness API types
+import { google, fitness_v1, Auth } from "googleapis"; // Import fitness API types & Auth
 import { GaxiosResponse } from "gaxios"; // Import GaxiosResponse type
 import { supabaseAdmin } from "../../supabaseClient"; // Need admin client
 import { AuthenticatedRequest } from "../../middleware/auth";
-import { decrypt } from "../../utils/crypto"; // Need decrypt
+import { encrypt, decrypt } from "../../utils/crypto"; // Need encrypt/decrypt
 import { addDays, startOfDay, endOfDay, format } from "date-fns"; // Date helpers + format
 import {
   HealthEntry,
@@ -99,6 +99,8 @@ export const getHealthEntries = async (
                 ? decrypt(storedCredentials.refresh_token)
                 : null,
               scope: storedCredentials.scope,
+              // expiry_date is not strictly needed for health check but good practice
+              expiry_date: storedCredentials.expiry_date,
             };
           } catch (decryptionError) {
             console.error(
@@ -113,14 +115,76 @@ export const getHealthEntries = async (
               const oauth2Client = new google.auth.OAuth2(
                 process.env.GOOGLE_CLIENT_ID,
                 process.env.GOOGLE_CLIENT_SECRET
+                // No redirect URI needed here for API calls
               );
               oauth2Client.setCredentials({
                 access_token: decryptedCreds.access_token,
                 refresh_token: decryptedCreds.refresh_token ?? undefined,
                 scope: decryptedCreds.scope,
+                expiry_date: decryptedCreds.expiry_date ?? undefined,
               });
 
-              // TODO: Add token refresh handler
+              // --- Handle Token Refresh (Copied & Adapted from Calendar) ---
+              oauth2Client.on("tokens", async (tokens: Auth.Credentials) => {
+                console.log(
+                  `Google Health token refreshed for connection ${connection.id}`
+                );
+                let newEncryptedAccessToken: string | null = null;
+                let newEncryptedRefreshToken: string | null = null;
+
+                try {
+                  if (tokens.access_token) {
+                    newEncryptedAccessToken = encrypt(tokens.access_token);
+                  }
+                  // Refresh token might not always be returned, only update if it is
+                  if (tokens.refresh_token) {
+                    newEncryptedRefreshToken = encrypt(tokens.refresh_token);
+                    console.log(
+                      `Received new refresh token for Google Health connection ${connection.id}`
+                    );
+                  }
+
+                  // Prepare updated credentials, merging with existing ones
+                  const currentCredentials =
+                    storedCredentials || ({} as StoredGoogleCredentials);
+                  const updatedCredentials: StoredGoogleCredentials = {
+                    ...currentCredentials, // Keep existing fields like google_profile_id
+                    access_token:
+                      newEncryptedAccessToken ??
+                      currentCredentials.access_token, // Keep old if no new one
+                    expiry_date: tokens.expiry_date,
+                    scope: tokens.scope ?? currentCredentials.scope, // Use new scope if provided
+                  };
+
+                  // Only update refresh token if a new one was provided
+                  if (newEncryptedRefreshToken) {
+                    updatedCredentials.refresh_token = newEncryptedRefreshToken;
+                  }
+
+                  // Update Supabase using ADMIN client
+                  const { error: updateError } = await supabaseAdmin
+                    .from("data_source_connections")
+                    .update({ credentials: updatedCredentials })
+                    .eq("id", connection.id);
+
+                  if (updateError) {
+                    console.error(
+                      `Failed to update refreshed Google Health tokens in Supabase for connection ${connection.id}:`,
+                      updateError
+                    );
+                  } else {
+                    console.log(
+                      `Successfully updated refreshed Google Health tokens in Supabase for connection ${connection.id}`
+                    );
+                  }
+                } catch (encError) {
+                  console.error(
+                    `Failed to encrypt refreshed Google Health tokens for connection ${connection.id}:`,
+                    encError
+                  );
+                }
+              });
+              // --- End Token Refresh Handler ---
 
               const fitness = google.fitness({
                 version: "v1",
@@ -188,7 +252,8 @@ export const getHealthEntries = async (
                 `Error fetching Google Fitness API for conn ${connection.id}:`,
                 apiError
               );
-              // Handle potential 401/invalid_grant errors
+              // TODO: Handle potential 401/invalid_grant errors more gracefully
+              // e.g., mark connection as needing re-auth
             }
           }
         }

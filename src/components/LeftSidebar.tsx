@@ -9,6 +9,7 @@ import {
   Milestone,
   Pencil,
   User,
+  Info, // Import Info icon for tooltip
 } from "lucide-react";
 import { useEffect, useState, useMemo } from "react"; // Import useMemo
 import { ChangelogModal } from "./ChangelogModal";
@@ -28,8 +29,15 @@ import { SavedPathState } from "./dashboard/types";
 import {
   loadPathStateFromLocalStorage,
   savePathStateToLocalStorage,
+  isMobileView as checkIsMobileView, // Import the utility function
 } from "./dashboard/utils";
 import { useToast } from "@/contexts/ToastContext"; // Import useToast
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"; // Import Tooltip components
 
 interface LeftSidebarProps {
   isToolboxOpen: boolean;
@@ -63,11 +71,25 @@ export function LeftSidebar({
   const [isChangelogOpen, setIsChangelogOpen] = useState(false);
   const [hasNewChangelog, setHasNewChangelog] = useState(false);
 
+  // State to track mobile view
+  const [isMobileView, setIsMobileView] = useState(false);
+
   // Path State
   const [pathState, setPathState] = useState<SavedPathState>(
     loadPathStateFromLocalStorage
   );
   const { activePathName, unlockedItems, currentPathProgressXP } = pathState;
+
+  // Effect to check window width on mount and resize using the utility function
+  useEffect(() => {
+    const checkMobile = () => {
+      // Use the imported utility function
+      setIsMobileView(checkIsMobileView());
+    };
+    checkMobile(); // Check on initial mount
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile); // Cleanup listener
+  }, []);
 
   // Effect to save path state
   useEffect(() => {
@@ -232,6 +254,15 @@ export function LeftSidebar({
   };
 
   const handleToggleToolbox = () => {
+    // Prevent toggling if in mobile view, but allow click to show toast
+    if (isMobileView) {
+      showToast({
+        title: "Edit mode is disabled on mobile.",
+        variant: "info",
+      });
+      return; // Stop further execution
+    }
+    // If not mobile, proceed with toggling
     toggleToolbox(); // Toggle the toolbox state via prop
     if (!isToolboxOpen) {
       // If toolbox is about to open
@@ -271,19 +302,40 @@ export function LeftSidebar({
           )}
         </button>
         <nav className="flex flex-col items-center gap-3">
-          {/* Toolbox Button */}
-          <Button
-            variant={isToolboxOpen ? "secondary" : "ghost"}
-            size="icon"
-            className={`h-10 w-10 rounded-lg ${
-              isToolboxOpen ? "text-indigo-400" : "text-gray-400"
-            }`}
-            onClick={handleToggleToolbox}
-            title="Toggle Edit Mode / Toolbox"
-          >
-            <Pencil size={20} />
-            <span className="sr-only">Toggle Toolbox</span>
-          </Button>
+          {/* Toolbox Button - No longer truly disabled, but styled and handled in onClick */}
+          <TooltipProvider delayDuration={100}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                {/* Button is always clickable, onClick handles mobile case */}
+                <Button
+                  variant={isToolboxOpen ? "secondary" : "ghost"}
+                  size="icon"
+                  className={cn(
+                    "h-10 w-10 rounded-lg",
+                    isToolboxOpen ? "text-indigo-400" : "text-gray-400",
+                    isMobileView && "opacity-50" // Keep visual cue, remove cursor-not-allowed
+                  )}
+                  onClick={handleToggleToolbox}
+                  // Removed disabled={isMobileView}
+                  // Removed aria-disabled={isMobileView}
+                  title={
+                    isMobileView
+                      ? "Edit mode disabled on mobile"
+                      : "Toggle Edit Mode / Toolbox"
+                  } // Dynamic title
+                >
+                  <Pencil size={20} />
+                  <span className="sr-only">Toggle Toolbox</span>
+                </Button>
+              </TooltipTrigger>
+              {/* Tooltip content shows the standard action or disabled reason */}
+              <TooltipContent side="right">
+                {isMobileView
+                  ? "Edit mode disabled on mobile"
+                  : "Toggle Edit Mode / Toolbox"}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
 
           {/* Game Master Button */}
           <Button

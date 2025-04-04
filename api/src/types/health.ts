@@ -16,6 +16,7 @@ export interface StoredGoogleCredentials {
   refresh_token?: string | null; // Encrypted
   scope?: string;
   google_profile_id?: string;
+  expiry_date?: number | null; // Add expiry date (timestamp in ms)
 }
 
 // Type for credentials used by googleapis client (decrypted)
@@ -23,4 +24,5 @@ export interface DecryptedGoogleCredentials {
   access_token: string;
   refresh_token?: string | null;
   scope?: string;
+  expiry_date?: number | null; // Add expiry date (timestamp in ms)
 }

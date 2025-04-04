@@ -7,8 +7,24 @@ import {
   LAYOUT_CACHE_KEY_PREFIX,
   LAST_SYNC_TIME_KEY,
   PATH_STATE_STORAGE_KEY,
+  standardBreakpoints, // Import standard breakpoints
 } from "./constants";
 import { DashboardName, CachedGridItemData, SavedPathState } from "./types";
+
+// --- Breakpoint Check ---
+
+/**
+ * Checks if the current window width is below the mobile breakpoint (sm).
+ * @returns {boolean} True if the viewport is considered mobile, false otherwise.
+ */
+export const isMobileView = (): boolean => {
+  // Ensure this runs only client-side
+  if (typeof window === "undefined") {
+    return false; // Default to false during SSR or build time
+  }
+  // Use the 'sm' breakpoint from standardBreakpoints
+  return window.innerWidth < standardBreakpoints.sm;
+};
 
 // --- Local Storage Helper Functions ---
 

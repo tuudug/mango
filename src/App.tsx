@@ -8,9 +8,19 @@ import { Button } from "./components/ui/button";
 import { useAuth } from "./contexts/AuthContext";
 import AuthSuccessPage from "./components/auth/AuthSuccessPage"; // Import success page
 import AuthFailurePage from "./components/auth/AuthFailurePage"; // Import failure page
+import ErrorBoundary from "./components/ErrorBoundary"; // Import ErrorBoundary
+import ErrorFallback from "./components/ErrorFallback"; // Import Fallback UI
+import { useRegisterSW } from "virtual:pwa-register/react"; // Import PWA hook
 
 // Component to handle the main logic (Dashboard or Auth forms)
-function MainContent() {
+// Pass PWA update props down
+function MainContent({
+  updateSW,
+  needRefresh,
+}: {
+  updateSW: () => void;
+  needRefresh: boolean;
+}) {
   const { user, session, isLoading } = useAuth();
   const [showLogin, setShowLogin] = useState(true);
 
@@ -23,9 +33,11 @@ function MainContent() {
   }
 
   if (session && user) {
-    return <Dashboard />;
+    // Pass PWA props to Dashboard (which likely passes to Header)
+    return <Dashboard updateSW={updateSW} needRefresh={needRefresh} />;
   }
 
+  // Auth forms don't need PWA props directly
   return (
     <div className="flex flex-col justify-center items-center h-screen bg-gray-900">
       {showLogin ? <LoginForm /> : <SignupForm />}
@@ -40,19 +52,55 @@ function MainContent() {
       </Button>
     </div>
   );
-  // Removed stray closing tags here
 }
 
-// Main App component with routing
+// Main App component with routing and PWA logic
 function App() {
+  // Call PWA hook here
+  const {
+    offlineReady: [offlineReady, setOfflineReady],
+    needRefresh: [needRefresh, setNeedRefresh],
+    updateServiceWorker,
+  } = useRegisterSW({
+    onRegisteredSW(swUrl, r) {
+      console.log(`Service Worker registered: ${swUrl}`);
+      // Optional: Send message to SW for immediate claim?
+      // r?.active?.postMessage({ type: 'SKIP_WAITING' });
+    },
+    onRegisterError(error) {
+      console.error("Service Worker registration error:", error);
+    },
+  });
+
+  // Function to wrap updateServiceWorker for potential future logic
+  const handleUpdate = () => {
+    updateServiceWorker(true); // Pass true to reload the page after update
+  };
+
   return (
     <Router>
-      <Routes>
-        <Route path="/" element={<MainContent />} />
-        <Route path="/auth-success" element={<AuthSuccessPage />} />
-        <Route path="/login-failure" element={<AuthFailurePage />} />
-        {/* Add other routes here if needed */}
-      </Routes>
+      {/* Wrap the Routes with ErrorBoundary */}
+      <ErrorBoundary
+        fallback={
+          <ErrorFallback
+            error={null}
+            onUpdate={handleUpdate}
+            updateAvailable={needRefresh}
+          />
+        }
+      >
+        <Routes>
+          <Route
+            path="/"
+            element={
+              <MainContent updateSW={handleUpdate} needRefresh={needRefresh} />
+            }
+          />
+          <Route path="/auth-success" element={<AuthSuccessPage />} />
+          <Route path="/login-failure" element={<AuthFailurePage />} />
+          {/* Add other routes here if needed */}
+        </Routes>
+      </ErrorBoundary>
     </Router>
   );
 }

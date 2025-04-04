@@ -1,5 +1,14 @@
 [
   {
+    "version": "0.1.11",
+    "date": "2025-04-04",
+    "data": [
+      "Google Health disconnect fixed.",
+      "Google auth issue fixed.",
+      "Added proper error handling for upcoming updates."
+    ]
+  },
+  {
     "version": "0.1.10",
     "date": "2025-04-03",
     "data": [

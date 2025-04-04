@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useRegisterSW } from "virtual:pwa-register/react";
+// Removed: import { useRegisterSW } from "virtual:pwa-register/react";
 import { RefreshCw, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,32 +15,23 @@ const latestVersion =
     ? changelogData[0].version
     : "?.?.?";
 
-export function DashboardHeader() {
-  const [isChecking, setIsChecking] = useState(true);
-  const [isUpdating, setIsUpdating] = useState(false); // Add state for update process
+// Define props for the header, including PWA update props
+interface DashboardHeaderProps {
+  updateSW: () => void;
+  needRefresh: boolean;
+}
 
-  const {
-    offlineReady: [offlineReady, _setOfflineReady],
-    needRefresh: [needRefresh, _setNeedRefresh],
-    updateServiceWorker,
-  } = useRegisterSW();
+export function DashboardHeader({
+  updateSW,
+  needRefresh,
+}: DashboardHeaderProps) {
+  // Accept props
+  // Removed: const [isChecking, setIsChecking] = useState(true); // No longer needed here
+  const [isUpdating, setIsUpdating] = useState(false); // Keep state for update process
 
-  useEffect(() => {
-    if (offlineReady) {
-      console.log("Offline ready, setting isChecking to false.");
-      setIsChecking(false);
-    } else {
-      const timer = setTimeout(() => {
-        if (!offlineReady) {
-          console.log(
-            "Timeout reached, assuming no SW or registration failed. Setting isChecking to false."
-          );
-          setIsChecking(false);
-        }
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [offlineReady]);
+  // Removed: useRegisterSW hook call
+
+  // Removed: useEffect for checking offlineReady - App.tsx handles SW registration
 
   const handleUpdate = async () => {
     if (!needRefresh || isUpdating) return; // Prevent multiple clicks
@@ -49,6 +40,7 @@ export function DashboardHeader() {
 
     // Add listener for controller change *before* triggering update
     // Use { once: true } so the listener cleans itself up
+    // This logic remains relevant as it ensures reload happens after update
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.addEventListener(
         "controllerchange",
@@ -62,19 +54,20 @@ export function DashboardHeader() {
     }
 
     try {
-      console.log("Calling updateServiceWorker...");
-      await updateServiceWorker(true); // Trigger the update
-      console.log("updateServiceWorker promise resolved.");
+      console.log("Calling updateSW prop function...");
+      // Call the prop function passed down from App.tsx
+      updateSW();
+      console.log("updateSW prop function called.");
       // Reload is now handled by the 'controllerchange' listener
     } catch (error) {
-      console.error("Failed to update service worker:", error);
+      console.error("Failed to trigger service worker update:", error);
       setIsUpdating(false); // Reset updating state on error
     }
     // Note: We don't set isUpdating back to false on success,
     // because the page should reload via the listener.
   };
 
-  // Determine button state and content
+  // Determine button state and content based on props
   let buttonIcon = <RefreshCw className="h-5 w-5" />;
   let tooltipContent = "No updates available";
   let ariaLabel = "No updates available";
@@ -82,18 +75,15 @@ export function DashboardHeader() {
   let showIndicator = false;
   let pulseAnimation = "";
 
-  if (isChecking) {
-    buttonIcon = <Loader2 className="h-5 w-5 animate-spin" />;
-    tooltipContent = "Checking for updates...";
-    ariaLabel = "Checking for updates...";
-    isDisabled = true;
-  } else if (isUpdating) {
+  // Removed: isChecking logic
+  if (isUpdating) {
     // Add state for when update is in progress
     buttonIcon = <Loader2 className="h-5 w-5 animate-spin" />;
     tooltipContent = "Updating...";
     ariaLabel = "Updating application...";
     isDisabled = true;
   } else if (needRefresh) {
+    // Use the needRefresh prop
     tooltipContent = "Update available";
     ariaLabel = "Update available";
     isDisabled = false;
@@ -126,7 +116,7 @@ export function DashboardHeader() {
                 onClick={handleUpdate}
                 disabled={isDisabled}
                 className={`relative ${pulseAnimation} ${
-                  isDisabled && !isChecking && !isUpdating
+                  isDisabled && !isUpdating // Adjusted condition
                     ? "opacity-50 cursor-not-allowed"
                     : ""
                 }`}
