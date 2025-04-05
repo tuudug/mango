@@ -20,6 +20,7 @@ import { CalendarDataSource } from "./datasources/CalendarDataSource";
 import { HealthDataSource } from "./datasources/HealthDataSource";
 import { TodosDataSource } from "./datasources/TodosDataSource";
 import { FinanceDataSource } from "./datasources/FinanceDataSource"; // Updated import path and name
+import { HabitsDataSource } from "./datasources/HabitsDataSource"; // Import Habits panel
 // Import the changelog data
 import changelogData from "../../public/changelog.json";
 // Import types and constants needed for PathsPage
@@ -51,7 +52,7 @@ const latestVersion =
   changelogData && changelogData.length > 0 ? changelogData[0].version : "0";
 
 // Helper type for panel open state, including non-data source panels
-type PanelId = DataSourceId | "gameMaster" | "userProfile" | "paths";
+type PanelId = DataSourceId | "gameMaster" | "userProfile" | "paths" | "habits"; // Add 'habits'
 type PanelOpenState = Record<PanelId, boolean>;
 
 // Initial state for panels
@@ -63,6 +64,7 @@ const initialPanelState: PanelOpenState = {
   calendar: false,
   health: false,
   todos: false,
+  habits: false, // Add initial state for habits
 };
 
 export function LeftSidebar({
@@ -390,6 +392,11 @@ export function LeftSidebar({
       <div className={getPanelClasses("finance", "md:max-w-sm")}>
         <FinanceDataSource onClose={() => handleTogglePanel("finance")} />{" "}
         {/* Updated component name */}
+      </div>
+      <div className={getPanelClasses("habits", "md:max-w-sm")}>
+        {" "}
+        {/* Add Habits Panel */}
+        <HabitsDataSource onClose={() => handleTogglePanel("habits")} />
       </div>
 
       {/* Render the changelog modal */}

@@ -1,9 +1,8 @@
 import { useAuth } from "@/contexts/AuthContext";
-// Update imports to point to correct config files
 import { GridItem } from "@/lib/dashboardConfig";
-import { WidgetType, defaultWidgetLayouts } from "@/lib/widgetConfig"; // Import from new location
-import { useCallback, useState } from "react";
-import { useDebouncedCallback } from "use-debounce";
+import { WidgetType, defaultWidgetLayouts } from "@/lib/widgetConfig";
+import { useCallback, useState, useRef, useEffect } from "react";
+import { useDebouncedCallback } from "use-debounce"; // Keep for potential future use?
 import { CACHE_STALE_DURATION, getDefaultLayout } from "../constants";
 import { CachedGridItemData, DashboardName } from "../types";
 import {
@@ -11,81 +10,129 @@ import {
   getCachedLayout,
   setCachedLastSyncTime,
   setCachedLayout,
-  deepCompareLayouts, // Import the new comparison function
+  deepCompareLayouts,
 } from "../utils";
 
 export function useDashboardLayout() {
   const { user, session } = useAuth();
   const token = session?.access_token;
 
+  // State for the currently displayed layout
   const [items, setItems] = useState<GridItem[]>([]);
-  const [isLoadingLayout, setIsLoadingLayout] = useState(true); // Main loader (for initial/edit switch)
-  const [isBackgroundFetching, setIsBackgroundFetching] = useState(false); // Background loader
+  // State for the layout being actively edited (null when not editing)
+  const [editItems, setEditItems] = useState<GridItem[] | null>(null);
 
-  // Function to fetch layout from server (and cache it)
+  // Ref to access the latest displayed items state if needed
+  const itemsRef = useRef(items);
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
+
+  const [isLoadingLayout, setIsLoadingLayout] = useState(true);
+  const [isBackgroundFetching, setIsBackgroundFetching] = useState(false);
+
+  // --- Save Function (Now used primarily by saveEditLayout) ---
+  const saveLayoutToServerInternal = useCallback(
+    async (layoutToSave: GridItem[], dashboardName: DashboardName) => {
+      console.log(
+        `[SaveInternal] Saving layout for dashboard: ${dashboardName}`
+      );
+      if (!token || !user || !dashboardName) {
+        console.error(
+          "[SaveInternal] Missing auth token, user, or dashboardName. Aborting save."
+        );
+        return false; // Indicate failure
+      }
+      try {
+        const itemsToSave: CachedGridItemData[] = layoutToSave.map(
+          ({ minW, minH, ...rest }) => ({
+            id: rest.id,
+            type: rest.type,
+            x: rest.x,
+            y: rest.y,
+            w: rest.w,
+            h: rest.h,
+            config: rest.config,
+          })
+        );
+
+        const response = await fetch(`/api/dashboards/${dashboardName}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ layout: itemsToSave }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error(
+            `[SaveInternal] Error saving layout for ${dashboardName}:`,
+            response.status,
+            errorData
+          );
+          return false; // Indicate failure
+        } else {
+          const savedData = await response.json();
+          console.log(
+            `[SaveInternal] Layout for ${dashboardName} saved successfully. Response ID: ${savedData?.id}`
+          );
+          // Update cache immediately on successful save
+          setCachedLayout(dashboardName, layoutToSave);
+          setCachedLastSyncTime(Date.now());
+          return true; // Indicate success
+        }
+      } catch (error) {
+        console.error(
+          `[SaveInternal] Network error saving layout for ${dashboardName}:`,
+          error
+        );
+        return false; // Indicate failure
+      }
+    },
+    [token, user]
+  );
+
+  // --- Fetch Layout ---
   const fetchLayout = useCallback(
     async (
       dashboardName: DashboardName,
       forceFetch = false,
-      options: { background?: boolean } = {} // Add options object
+      options: { background?: boolean; forEditing?: boolean } = {} // Add forEditing flag
     ): Promise<GridItem[] | null> => {
-      // Return promise with layout or null
-      let isBackground = options.background ?? false; // Default to non-background
+      let isBackground = options.background ?? false;
       let initialItemsSetFromCache = false;
+      const forEditing = options.forEditing ?? false; // Check if fetch is for starting edit mode
 
-      if (!token || !user) return null; // Return null if not authenticated
+      if (!token || !user) return null;
 
       // --- Cache Check Logic ---
-      // If not forcing fetch, check cache validity first
-      if (!forceFetch) {
+      if (!forceFetch && !forEditing) {
+        // Don't use cache if fetching specifically for editing
         const lastSyncTime = getCachedLastSyncTime();
         if (lastSyncTime && Date.now() - lastSyncTime < CACHE_STALE_DURATION) {
           const cachedLayout = getCachedLayout(dashboardName);
           if (cachedLayout) {
-            console.log(
-              `Valid cache found for ${dashboardName}. Using for initial display if needed.`
-            );
-            // Use cache for immediate display if items are empty (initial load)
+            // Use cache for immediate display if items state is empty (initial load)
             if (items.length === 0) {
               setItems(cachedLayout);
-              setIsLoadingLayout(false); // Turn off initial loader early
+              setIsLoadingLayout(false);
               initialItemsSetFromCache = true;
             }
-            // Don't return here, proceed to fetch in background to check for updates
-            isBackground = true; // Force this fetch to be background
-            console.log(
-              `Proceeding with background fetch for ${dashboardName} despite valid cache.`
-            );
-          } else {
-            console.log(
-              `Cache miss for ${dashboardName}, but sync time is recent. Will fetch (Original Background: ${
-                options.background ?? false
-              }).`
-            );
-            // Keep original isBackground setting if cache is missing
-            isBackground = options.background ?? false;
+            isBackground = true; // Always fetch in background if cache is valid
           }
-        } else {
-          console.log(
-            `Cache stale or missing sync time for ${dashboardName}. Will fetch (Original Background: ${
-              options.background ?? false
-            }).`
-          );
-          // Keep original isBackground setting if cache is stale
-          isBackground = options.background ?? false;
         }
       }
       // --- End Cache Check ---
 
       // --- Fetching Logic ---
       console.log(
-        `Fetching layout from server for: ${dashboardName} (Force: ${forceFetch}, Effective Background: ${isBackground})`
+        `Fetching layout from server for: ${dashboardName} (Force: ${forceFetch}, Edit: ${forEditing}, Effective Background: ${isBackground})`
       );
-      // Set appropriate loading state ONLY if not already handled by initial cache display
       if (!isBackground && !initialItemsSetFromCache) {
         setIsLoadingLayout(true);
       } else if (isBackground) {
-        // This includes the case where we forced background due to valid cache
         setIsBackgroundFetching(true);
       }
 
@@ -124,11 +171,7 @@ export function useDashboardLayout() {
                 minH: defaults.minH,
               };
             });
-            console.log(`Layout for ${dashboardName} fetched successfully.`);
           } else {
-            console.log(
-              `No layout data found for ${dashboardName}, using default.`
-            );
             useDefault = true;
           }
         }
@@ -138,100 +181,168 @@ export function useDashboardLayout() {
         }
 
         // --- Process Result ---
-        // Compare potentially fetched items with the *current* state items
-        const areLayoutsEqual = deepCompareLayouts(items, loadedItems);
-
-        if (!areLayoutsEqual) {
-          console.log(
-            `Fetched layout for ${dashboardName} differs from current state. Updating state.`
-          );
-          setItems(loadedItems); // Update state only if different
+        if (forEditing) {
+          // If fetching for editing, set both states
+          console.log(`Setting editItems and items for ${dashboardName}`);
+          setEditItems(loadedItems);
+          setItems(loadedItems); // Also update main display state initially
           setCachedLayout(dashboardName, loadedItems); // Update cache
-          setCachedLastSyncTime(Date.now()); // Update sync time
+          setCachedLastSyncTime(Date.now());
         } else {
-          console.log(
-            `Fetched layout for ${dashboardName} is same as current state. Skipping state update.`
+          // If fetching for display (background or initial load)
+          const currentDisplayItems = itemsRef.current; // Compare against displayed items
+          const areLayoutsEqual = deepCompareLayouts(
+            currentDisplayItems,
+            loadedItems
           );
-          // Update sync time even if layout is the same, indicating a successful check
-          if (!useDefault) {
-            // Only update sync time if fetch was successful
+
+          if (!areLayoutsEqual) {
+            console.log(
+              `Fetched layout for ${dashboardName} differs from current display state. Updating items state.`
+            );
+            setItems(loadedItems); // Update display state only if different
+            setCachedLayout(dashboardName, loadedItems);
             setCachedLastSyncTime(Date.now());
+          } else {
+            console.log(
+              `Fetched layout for ${dashboardName} is same as current display state. Skipping state update.`
+            );
+            if (!useDefault) {
+              setCachedLastSyncTime(Date.now()); // Still update sync time if fetch was successful
+            }
           }
         }
-        return loadedItems; // Return the fetched (or default) result
+        return loadedItems; // Return the fetched/default items
       } catch (error) {
         console.error(`Error fetching layout for ${dashboardName}:`, error);
-        // Use default layout on error ONLY if items are empty (initial load failed)
-        if (items.length === 0) {
+        // Handle initial load failure
+        if (items.length === 0 && !forEditing) {
           const defaultItems = getDefaultLayout();
           setItems(defaultItems);
           setCachedLayout(dashboardName, defaultItems);
           setCachedLastSyncTime(Date.now());
           return defaultItems;
         }
-        return null; // Indicate error without changing state if items already exist
+        // Handle edit load failure? Maybe set editItems to current items?
+        if (forEditing) {
+          console.error(
+            `Failed to fetch layout for editing ${dashboardName}. Setting editItems to current display items.`
+          );
+          setEditItems([...items]); // Fallback to current display items
+          return [...items];
+        }
+        return null;
       } finally {
-        // --- Cleanup Loading States ---
-        // Only turn off main loader if it was potentially turned on
         if (!isBackground && !initialItemsSetFromCache) {
           setIsLoadingLayout(false);
         }
-        setIsBackgroundFetching(false); // Always turn off background flag
+        setIsBackgroundFetching(false);
       }
     },
-    [token, user, items] // Add items to dependency array for comparison
+    [token, user, items] // Added items dependency for fallback in edit fetch failure
   );
 
-  // Debounced function to save layout to the server (and update cache)
-  const saveLayoutToServer = useDebouncedCallback(
-    async (layoutToSave: GridItem[], dashboardName: DashboardName) => {
-      if (!token || !user || !dashboardName) return;
-      console.log(`Debounced save triggered for dashboard: ${dashboardName}`);
-      try {
-        const itemsToSave: CachedGridItemData[] = layoutToSave.map(
-          ({ minW: _minW, minH: _minH, ...rest }) => rest
+  // --- Function to save the edited layout ---
+  const saveEditLayout = useCallback(
+    async (dashboardName: DashboardName): Promise<boolean> => {
+      if (!editItems) {
+        console.warn("[SaveEdit] No edit items to save.");
+        return false;
+      }
+      console.log(`[SaveEdit] Saving editItems for ${dashboardName}`);
+      const success = await saveLayoutToServerInternal(
+        editItems,
+        dashboardName
+      );
+      if (success) {
+        // Update the main display state with the saved items
+        setItems(editItems);
+        // Clear the edit state
+        setEditItems(null);
+        console.log(
+          `[SaveEdit] Successfully saved and cleared editItems for ${dashboardName}`
         );
-
-        const response = await fetch(`/api/dashboards/${dashboardName}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ layout: itemsToSave }),
-        });
-        if (!response.ok) {
-          const errorData = await response.json();
-          console.error(
-            `Error saving layout for ${dashboardName}:`,
-            response.status,
-            errorData
-          );
-          // TODO: Add user feedback
-        } else {
-          console.log(`Layout for ${dashboardName} saved successfully.`);
-          // Update cache immediately on successful save
-          setCachedLayout(dashboardName, layoutToSave);
-          setCachedLastSyncTime(Date.now());
-        }
-      } catch (error) {
+      } else {
         console.error(
-          `Network error saving layout for ${dashboardName}:`,
-          error
+          `[SaveEdit] Failed to save layout for ${dashboardName}. Edit state not cleared.`
         );
-        // TODO: Add user feedback
+        // Optionally: Add user feedback about save failure
+      }
+      return success;
+    },
+    [editItems, saveLayoutToServerInternal]
+  );
+
+  // --- Function to update widget config ---
+  // Now uses an explicit isEditing flag
+  const updateWidgetConfig = (
+    itemId: string,
+    newConfig: Record<string, any>,
+    dashboardName: DashboardName,
+    currentLayout: GridItem[], // Expects the layout array (either items or editItems)
+    isEditing: boolean // Explicit flag
+  ) => {
+    if (!dashboardName) {
+      console.error("[UpdateConfig] dashboardName is required.");
+      return;
+    }
+
+    const itemIndex = currentLayout.findIndex((item) => item.id === itemId);
+    if (itemIndex === -1) {
+      console.error(
+        `[UpdateConfig] Item ${itemId} NOT FOUND in provided layout. Aborting. Layout IDs:`,
+        currentLayout.map((i) => i.id)
+      );
+      return;
+    }
+
+    const updatedLayout = [...currentLayout];
+    updatedLayout[itemIndex] = {
+      ...updatedLayout[itemIndex],
+      config: newConfig,
+    };
+
+    // Use the explicit isEditing flag
+    if (isEditing) {
+      // --- In Edit Mode ---
+      console.log(`[UpdateConfig] Updating editItems state for ${itemId}`);
+      setEditItems(updatedLayout);
+      // NO server save here
+    } else {
+      // --- Not in Edit Mode ---
+      console.warn(
+        `[UpdateConfig] Updating items state directly (not in edit mode) for ${itemId}. Saving immediately.`
+      );
+      setItems(updatedLayout);
+      // Save immediately if not in edit mode
+      saveLayoutToServerInternal(updatedLayout, dashboardName);
+    }
+  };
+
+  // Debounced save - keep it around? Maybe useful for other things later.
+  const saveLayoutDebounced = useDebouncedCallback(
+    (layout: GridItem[], name: DashboardName) => {
+      if (editItems === null) {
+        // Only save debounced if NOT in edit mode
+        saveLayoutToServerInternal(layout, name);
+      } else {
+        console.log("[DebounceSave] In edit mode, debounced save skipped.");
       }
     },
-    1000 // Debounce time
+    1000
   );
 
   return {
-    items,
-    setItems,
-    isLoadingLayout, // For initial load / edit mode switch
-    isBackgroundFetching, // For subtle background updates
-    // setIsLoadingLayout, // No longer expose setter directly? Managed internally.
+    items, // Currently displayed items
+    editItems, // Items being edited (or null)
+    setItems, // To update display items (e.g., after save)
+    setEditItems, // To update edit items directly (e.g., move/resize/add/delete)
+    isLoadingLayout,
+    isBackgroundFetching,
     fetchLayout,
-    saveLayoutToServer,
+    saveEditLayout, // Function to save edits and exit edit mode
+    updateWidgetConfig, // Updates editItems or items based on mode
+    // Expose the debounced save? Maybe rename it? For now, keep internal.
+    // saveLayoutToServer: saveLayoutDebounced,
   };
 }

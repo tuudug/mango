@@ -1,3 +1,87 @@
+# Current Progress: Dashboard Edit Mode Refactor & Fixes (As of 2025-04-05 ~8:17 PM)
+
+## Goal: Improve dashboard edit mode stability and user experience.
+
+## Implementation Progress:
+
+1.  **Edit State Management Refactor (`useDashboardLayout.ts`, `Dashboard.tsx`):**
+    - **Issue:** Configuring newly added widgets failed because they didn't exist on the server yet. Widget config changes didn't reflect immediately. Resizing then moving a widget reverted its size.
+    - **Diagnosis:** Immediate saving on every change in edit mode caused issues with unsaved items and potential race conditions. `onLayoutChange` was incorrectly discarding size updates.
+    - **Resolution:**
+      - Introduced separate local state (`editItems`) in `useDashboardLayout` to hold the layout being edited.
+      - Modified `fetchLayout` to populate `editItems` when entering edit mode (`forEditing: true`).
+      - Modified layout change handlers (`onLayoutChange`, `handleLiveResize`, `handleResizeStop`, `handleAddWidget`, `handleDeleteWidget`) in `Dashboard.tsx` to update _only_ the `editItems` state via `setEditItems` when in edit mode.
+      - Modified `updateWidgetConfig` in `useDashboardLayout` to accept an `isEditing` flag and update `editItems` (without saving) or `items` (with immediate save) accordingly. Passed `isEditing` flag down from `Dashboard` -> `DashboardGrid` -> `DashboardGridItem`.
+      - Created `saveEditLayout` function in `useDashboardLayout` to handle saving the final `editItems` state to the server API.
+      - Modified `toggleToolbox` in `Dashboard.tsx` to call `saveEditLayout` only when closing the toolbox (exiting edit mode).
+      - Corrected `onLayoutChange` in `Dashboard.tsx` to update `w` and `h` based on the layout provided by `react-grid-layout`, fixing the resize+move bug.
+2.  **Save Loader (`Dashboard.tsx`):**
+    - **Issue:** Exiting edit mode caused a 1-2 second delay with no feedback while saving.
+    - **Resolution:**
+      - Added `isSavingLayout` state to `Dashboard.tsx`.
+      - Set `isSavingLayout` to `true` before calling `saveEditLayout` in `toggleToolbox` and `false` afterwards in a `finally` block.
+      - Added a conditional loading overlay (spinner and "Saving Layout..." text) that displays when `isSavingLayout` is true.
+3.  **Widget Update Refactor (Heatmap/Streaks - Partial):**
+    - **Issue:** Habit Heatmap/Streaks widgets didn't update immediately after config change even with correct state update.
+    - **Diagnosis:** Widgets used an intermediate local state derived from props, causing a delay.
+    - **Resolution (Attempted):** Refactored `HabitHeatmapWidget` and `HabitStreakWidget` to remove intermediate state and trigger data fetching directly based on `config.habitId` prop change using `useEffect`. (Note: User reported this didn't fully resolve the issue, further investigation needed).
+
+---
+
+# Current Progress: Habits Feature Implementation & Fixes (As of 2025-04-05 ~7:30 PM)
+
+## Goal: Implement Habits tracking with Data Source panel and Widgets, including configuration saving.
+
+## Implementation Progress:
+
+1.  **Database Schema (Supabase):**
+    - Created `manual_habits` table (`id`, `user_id`, `name`, `type` enum, `reminder_time`, `log_type` enum \['once_daily', 'multiple_daily'], `created_at`, `updated_at`).
+    - Created `manual_habit_entries` table (`id`, `user_id`, `habit_id`, `entry_date`, `completed`, `created_at`).
+    - Added RLS policies for both tables.
+    - Added `updated_at` trigger for `manual_habits`.
+    - Created helper function `get_habit_log_type` (marked IMMUTABLE) and partial unique index `unique_once_daily_entry` on `manual_habit_entries` to enforce `once_daily` constraint.
+2.  **Backend API (`/api/src/routes/habits/`):**
+    - Created router and handlers for full CRUD on `/api/habits` (habit definitions) and `/api/habits/entries` (habit logs).
+    - Endpoints include: `GET /habits`, `POST /habits`, `PUT /habits/:id`, `DELETE /habits/:id`, `GET /habits/entries`, `POST /habits/entries`, `DELETE /habits/entries/:entryId`.
+    - Integrated `ensureAuthenticated` middleware.
+    - **Fixed RLS Issue:** Updated all handlers (`addHabit`, `updateHabit`, `deleteHabit`, `getHabits`, `getHabitEntries`, `addHabitEntry`, `deleteHabitEntry`) to use the request-scoped `req.supabase` client instead of the global client, resolving "violates row-level security policy" errors.
+3.  **Frontend Context (`src/contexts/HabitsContext.tsx`):**
+    - Created `HabitsProvider` and `useHabits` hook.
+    - Manages state for `habits` and `habitEntries`.
+    - Provides functions for interacting with the backend API using `authenticatedFetch`.
+    - Includes helper functions (`getEntriesForDate`, `hasEntryForDate`).
+    - Fetches initial habits and recent entries on login.
+4.  **Data Source Panel (`src/components/datasources/HabitsDataSource.tsx`):**
+    - Created the panel component, displaying the list of habits.
+    - Implemented Add/Edit/Delete functionality using `HabitFormModal.tsx`.
+    - Added loading and delete confirmation states.
+5.  **Sidebar Integration:**
+    - Added `"habits"` to `DataSourceId` and `PanelId` types.
+    - Added configuration to `dataSourceConfig.ts` (using `ListChecks` icon).
+    - Added initial state to `initialPanelState` in `LeftSidebar.tsx`.
+    - Rendered `<HabitsDataSource>` panel in `LeftSidebar.tsx`.
+    - Wrapped `App` with `<HabitsProvider>` in `main.tsx`.
+6.  **Widgets:**
+    - **`HabitsListWidget.tsx`**: Displays habits, allows logging completion for the current date (handles `once_daily` vs `multiple_daily` logic).
+    - **`HabitHeatmapWidget.tsx`**: Displays a GitHub-style heatmap for a selected habit (uses `react-calendar-heatmap`). Added custom CSS (`HabitHeatmapWidget.css`).
+    - **`HabitStreakWidget.tsx`**: Displays current and longest streaks for a selected habit. Includes streak calculation logic.
+7.  **Widget Configuration:**
+    - Added `config` field (optional `Record<string, any>`) to `GridItem` type (`src/lib/dashboardConfig.ts`).
+    - Added `config` column (`jsonb`) to `user_dashboard_layouts` table in Supabase.
+    - Updated backend API (`GET/PUT /api/dashboards/:name`) to handle the `config` field within the `layout` array.
+    - Updated frontend caching utils (`getCachedLayout`, `setCachedLayout`) and comparison util (`deepCompareLayouts`) to handle the `config` field (`src/components/dashboard/utils.ts`).
+    - Added `updateWidgetConfig` function to `useDashboardLayout` hook to update a specific widget's config and trigger a save.
+    - Created `HabitSelectionModal.tsx` for selecting a habit, including UI refinements.
+    - Updated `DashboardGridItem.tsx` to:
+      - Accept `editTargetDashboard` prop.
+      - Render `HabitSelectionModal` when the pencil icon is clicked for Heatmap/Streaks widgets.
+      - Call `updateWidgetConfig` with the selected habit ID and correct `dashboardName`.
+      - Pass the `config` prop down to the rendered widget component.
+    - Updated `HabitHeatmapWidget` and `HabitStreakWidget` to accept and use the `config` prop to determine which habit's data to display.
+    - **Fixed Config Saving:** Refactored `updateWidgetConfig` in `useDashboardLayout` multiple times, finally settling on calling the non-debounced `saveLayoutDirectly` function immediately after `setItems` to resolve the issue where config changes weren't saving reliably due to potential state/timing issues. (Note: This immediate save approach was later reverted during the edit mode refactor).
+
+---
+
 # Current Progress: Steps Tracker Refactor & Live Resize Fix (As of 2025-04-05 ~5:53 PM)
 
 ## Goal: Improve Steps Tracker widget visualization and fix dashboard resizing behavior.
@@ -19,10 +103,10 @@
     - **Issue:** Widgets that change appearance based on size (e.g., Steps Tracker mini/full view) only updated _after_ resizing was complete, not during the drag.
     - **Diagnosis:** Layout state updates were only triggered by `onResizeStop`.
     - **Resolution:**
-      - Added a new `handleLiveResize` function in `Dashboard.tsx` to update layout state (`items`) immediately during resize.
-      - Passed `handleLiveResize` to `DashboardGrid.tsx` as a new `onLiveResize` prop.
-      - Connected the `onLiveResize` prop to the `onResize` event handler in `DashboardGrid.tsx`.
-      - Renamed the original `handleResize` function in `Dashboard.tsx` to `handleResizeStop` and updated the corresponding prop in `DashboardGrid.tsx` (`handleResizeStop` connected to `onResizeStop`) to clarify its purpose (final update and triggering save).
+    - Added a new `handleLiveResize` function in `Dashboard.tsx` to update layout state (`items`) immediately during resize.
+    - Passed `handleLiveResize` to `DashboardGrid.tsx` as a new `onLiveResize` prop.
+    - Connected the `onLiveResize` prop to the `onResize` event handler in `DashboardGrid.tsx`.
+    - Renamed the original `handleResize` function in `Dashboard.tsx` to `handleResizeStop` and updated the corresponding prop in `DashboardGrid.tsx` (`handleResizeStop` connected to `onResizeStop`) to clarify its purpose (final update and triggering save).
 
 ---
 
@@ -118,42 +202,42 @@ Focused on fixing Google authentication/token issues in production, improving PW
 3.  **Google Health Disconnect:**
     - **Issue:** Disconnect button for Google Health didn't work; logs showed decryption errors for incorrectly encrypted old tokens.
     - **Diagnosis:**
-      - Backend disconnect handler (`googleDisconnect.ts`) hardcoded `'google_calendar'` provider.
-      - Frontend context (`HealthContext.tsx`) didn't send the provider type in the API call.
-      - Decryption errors prevented potential token revocation logic (which wasn't strictly necessary for disconnect).
+    - Backend disconnect handler (`googleDisconnect.ts`) hardcoded `'google_calendar'` provider.
+    - Frontend context (`HealthContext.tsx`) didn't send the provider type in the API call.
+    - Decryption errors prevented potential token revocation logic (which wasn't strictly necessary for disconnect).
     - **Resolution:**
-      - Modified `googleDisconnect.ts` to accept `provider` in the request body and use it in the Supabase delete query.
-      - Updated `disconnectGoogleHealth` in `HealthContext.tsx` to call the correct endpoint (`/api/auth/google/disconnect`) and send `{ provider: 'google_health' }` in the body. This allows deleting the connection even with bad tokens.
+    - Modified `googleDisconnect.ts` to accept `provider` in the request body and use it in the Supabase delete query.
+    - Updated `disconnectGoogleHealth` in `HealthContext.tsx` to call the correct endpoint (`/api/auth/google/disconnect`) and send `{ provider: 'google_health' }` in the body. This allows deleting the connection even with bad tokens.
 4.  **PWA Error Handling & Update:**
     - **Issue:** App showed a blank screen on critical errors, potentially caused by outdated PWA versions.
     - **Resolution:**
-      - Created a global React Error Boundary (`ErrorBoundary.tsx`).
-      - Created a fallback UI component (`ErrorFallback.tsx`) showing an error message and an "Update App" button.
-      - Lifted PWA update state (`needRefresh`) and function (`updateServiceWorker`) from `DashboardHeader.tsx` to `App.tsx` using `useRegisterSW`.
-      - Wrapped the main `<Routes>` in `App.tsx` with the `ErrorBoundary`, passing the PWA state/function to the `ErrorFallback`.
-      - Updated `Dashboard.tsx` and `DashboardHeader.tsx` to receive PWA state/function via props.
+    - Created a global React Error Boundary (`ErrorBoundary.tsx`).
+    - Created a fallback UI component (`ErrorFallback.tsx`) showing an error message and an "Update App" button.
+    - Lifted PWA update state (`needRefresh`) and function (`updateServiceWorker`) from `DashboardHeader.tsx` to `App.tsx` using `useRegisterSW`.
+    - Wrapped the main `<Routes>` in `App.tsx` with the `ErrorBoundary`, passing the PWA state/function to the `ErrorFallback`.
+    - Updated `Dashboard.tsx` and `DashboardHeader.tsx` to receive PWA state/function via props.
 5.  **Configuration Refactoring:**
     - **Goal:** Improve organization of widget and data source configurations.
     - **Implementation:**
-      - Created `src/lib/widgetConfig.ts` and moved widget-related types (`WidgetType`, `WidgetGroup`), constants (`availableWidgets`, `defaultWidgetLayouts`), and metadata (`widgetMetadata`) into it from `dashboardConfig.ts`.
-      - Created `src/lib/dataSourceConfig.ts` defining data source IDs and a configuration array (`dataSourceConfig`) containing ID, label, and icon component for each data source button.
-      - Cleaned up `src/lib/dashboardConfig.ts`.
-      - Updated all necessary component imports (`WidgetToolbox`, `WidgetPreview`, `DashboardGridItem`, `Dashboard`, `useDashboardLayout`, `constants.ts`, `utils.ts`) to point to the new config files.
+    - Created `src/lib/widgetConfig.ts` and moved widget-related types (`WidgetType`, `WidgetGroup`), constants (`availableWidgets`, `defaultWidgetLayouts`), and metadata (`widgetMetadata`) into it from `dashboardConfig.ts`.
+    - Created `src/lib/dataSourceConfig.ts` defining data source IDs and a configuration array (`dataSourceConfig`) containing ID, label, and icon component for each data source button.
+    - Cleaned up `src/lib/dashboardConfig.ts`.
+    - Updated all necessary component imports (`WidgetToolbox`, `WidgetPreview`, `DashboardGridItem`, `Dashboard`, `useDashboardLayout`, `constants.ts`, `utils.ts`) to point to the new config files.
 6.  **Left Sidebar Refactoring:**
     - **Goal:** Reduce duplication for data source buttons and panel logic.
     - **Implementation:**
-      - Modified `LeftSidebar.tsx` to import and use `dataSourceConfig`.
-      - Replaced individual panel open states (`isXxxOpen`) with a single state object (`panelOpenState`).
-      - Created a generic `handleTogglePanel` function.
-      - Mapped over `dataSourceConfig` to render data source buttons dynamically.
-      - Updated panel rendering logic to use the consolidated state.
+    - Modified `LeftSidebar.tsx` to import and use `dataSourceConfig`.
+    - Replaced individual panel open states (`isXxxOpen`) with a single state object (`panelOpenState`).
+    - Created a generic `handleTogglePanel` function.
+    - Mapped over `dataSourceConfig` to render data source buttons dynamically.
+    - Updated panel rendering logic to use the consolidated state.
 7.  **Mobile Edit Mode Disabled:**
     - **Goal:** Prevent users from entering dashboard edit mode on small screens.
     - **Implementation:**
-      - Created/Used a utility function `isMobileView` in `src/components/dashboard/utils.ts` based on `standardBreakpoints.sm`.
-      - Updated `LeftSidebar.tsx` to use this utility to check screen width on mount and resize.
-      - The edit/toolbox button (`Pencil` icon) in `LeftSidebar.tsx` is now visually distinct (opacity) and shows a toast message when clicked on mobile, instead of being fully disabled or toggling edit mode.
-      - Updated `Dashboard.tsx` to use the same utility function for determining the initial layout ('default' or 'mobile') to load.
+    - Created/Used a utility function `isMobileView` in `src/components/dashboard/utils.ts` based on `standardBreakpoints.sm`.
+    - Updated `LeftSidebar.tsx` to use this utility to check screen width on mount and resize.
+    - The edit/toolbox button (`Pencil` icon) in `LeftSidebar.tsx` is now visually distinct (opacity) and shows a toast message when clicked on mobile, instead of being fully disabled or toggling edit mode.
+    - Updated `Dashboard.tsx` to use the same utility function for determining the initial layout ('default' or 'mobile') to load.
 
 ---
 
@@ -171,12 +255,12 @@ Added a new data source for manual finance tracking, including settings manageme
 2.  **Backend API (`/api`):**
     - Added new finance router (`/api/finance`).
     - Implemented handlers for:
-      - `GET /settings`: Fetch user finance settings.
-      - `PUT /settings`: Upsert user finance settings (currency, goal, schedule).
-      - `GET /entries/today`: Fetch today's expense entries.
-      - `POST /entries`: Add a new expense entry (supports optional `entry_date`).
-      - `DELETE /entries/:id`: Delete a specific expense entry.
-      - `GET /entries/weekly`: Fetch aggregated daily expenses for a given week range.
+    - `GET /settings`: Fetch user finance settings.
+    - `PUT /settings`: Upsert user finance settings (currency, goal, schedule).
+    - `GET /entries/today`: Fetch today's expense entries.
+    - `POST /entries`: Add a new expense entry (supports optional `entry_date`).
+    - `DELETE /entries/:id`: Delete a specific expense entry.
+    - `GET /entries/weekly`: Fetch aggregated daily expenses for a given week range.
     - Added `cors` middleware to `server.ts` for cross-origin requests (essential for production).
     - Fixed `passport` default import in `server.ts`.
 3.  **Frontend (`/src`):**
@@ -191,9 +275,9 @@ Added a new data source for manual finance tracking, including settings manageme
     - **Provider Setup (`main.tsx`):** Wrapped app with `FinanceProvider`.
     - **Toast Context (`ToastContext.tsx`):** Updated `showToast` signature to accept an options object, aligning with `sonner` library usage.
     - **Dashboard Grid Item (`DashboardGridItem.tsx`):**
-      - Added display of widget coordinates (x, y, w, h) next to the title in development mode.
-      - Added error handling to display an error message and a delete button (in edit mode) for widgets with unknown types found in the layout data.
-      - Corrected mapping keys for `Daily Allowance` and `Expenses Report`.
+    - Added display of widget coordinates (x, y, w, h) next to the title in development mode.
+    - Added error handling to display an error message and a delete button (in edit mode) for widgets with unknown types found in the layout data.
+    - Corrected mapping keys for `Daily Allowance` and `Expenses Report`.
 
 ## Previous Work (Google Token Handling - Resolved 2025-04-03 ~7:43 PM)
 
@@ -241,3 +325,4 @@ Added a new data source for manual finance tracking, including settings manageme
   - Implement UI for editing `salary_schedule` in `FinanceSettingsPanel`.
   - Enhance `useAnimatedCounter` for a true slot-machine effect (optional).
   - Improve robustness of `CustomXAxisTick` highlighting for `ExpensesReportWidget` if needed.
+  - **Investigate widget config update rendering issue.**

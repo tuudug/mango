@@ -30,6 +30,7 @@ These components handle the interaction and persistence of core application data
   - **[x] Frontend:** Created context, settings panel (in sidebar), expense entry modal. **Modal moved to `src/components/`.**
 - [x] **Pomodoro Context (`PomodoroContext.tsx`):** Manages global Pomodoro state (idle, work, break).
 - [x] **Ambience Context (`AmbienceContext.tsx`):** Manages background audio playback state and volume using Web Audio API.
+- [x] **Habits Context (`HabitsContext.tsx`):** Manages habit definitions and entries.
 
 ## Key Features
 
@@ -57,6 +58,10 @@ These components handle the interaction and persistence of core application data
 - [x] **Finance Tracking:**
   - [x] Daily Allowance Widget (`DailyAllowanceWidget.tsx`) - Shows remaining daily budget. **Layout improved.**
   - [x] Expenses Report Widget (`ExpensesReportWidget.tsx`) - Shows weekly spending bar chart.
+- [x] **Habits Tracking:**
+  - [x] Habits Checklist Widget (`HabitsListWidget.tsx`) - Log daily completion.
+  - [x] Habit Heatmap Widget (`HabitHeatmapWidget.tsx`) - Visualize consistency. **Configurable.**
+  - [x] Habit Streaks Widget (`HabitStreakWidget.tsx`) - Track current/longest streaks. **Configurable.**
 
 ### Progression System
 
@@ -112,7 +117,11 @@ These components handle the interaction and persistence of core application data
   - **Health & Wellness:**
     - [x] Steps Tracker (`StepsTrackerWidget.tsx`)
       - [x] Dynamic mini/full view based on size.
-    - [x] Habit Graph (`HabitGraphWidget.tsx`)
+      - [x] Replaced custom chart with `recharts`, added goal line, week navigation.
+    - [x] Habit Graph (`HabitGraphWidget.tsx`) - _(Deprecated by Heatmap/Streaks?)_
+    - [x] Habits Checklist (`HabitsListWidget.tsx`)
+    - [x] Habit Heatmap (`HabitHeatmapWidget.tsx`)
+    - [x] Habit Streaks (`HabitStreakWidget.tsx`)
     - [ ] Sleep Widget (_Separated from Steps_) (`SleepStepWidget.tsx` needs refactor)
       - [ ] _Upgrade:_ Sleep Analysis
       - [ ] _Upgrade:_ Daily Routine Generator
@@ -171,6 +180,10 @@ These components handle the interaction and persistence of core application data
   - [x] Exiting edit mode always returns to the default desktop view.
   - [x] Attempting to open a panel during edit mode shakes the edit indicator and shows a toast.
   - **[x] Invalid Widget Handling:** Error state with delete button shown for unknown widget types in edit mode.
+  - **[x] Edit State Management:** Refactored to use separate local state (`editItems`) during edit mode. All changes (add, remove, move, resize, config) update this local state only.
+  - **[x] Save on Exit:** Final `editItems` state is saved to the server in a single API call when exiting edit mode.
+  - **[x] Resize/Move Bug Fix:** Corrected logic in `onLayoutChange` to preserve widget dimensions during move operations.
+  - **[x] Save Loader:** Added loading overlay when saving changes upon exiting edit mode.
 - [ ] Emphasis on Positive Reinforcement (Guiding principle).
 - **[x] PWA Update Notifications:** Implemented prompt for app updates & fixed update flow.
 - **[x/✓] PWA Error Handling:** Implemented global Error Boundary (`ErrorBoundary.tsx`, `ErrorFallback.tsx`) to catch rendering errors and offer PWA update if available. **Fixed prop passing.**
@@ -182,6 +195,7 @@ These components handle the interaction and persistence of core application data
 - **[x] Pomodoro Banner:** Banner now pushes content down instead of overlaying.
 - **[x] API Call Refactoring:** Centralized authenticated API calls into `src/lib/apiClient.ts` (`authenticatedFetch` function).
 - **[x] Transient 401 Error Handling:** Implemented automatic retry logic within `authenticatedFetch` to handle transient 401 errors during token refresh, reducing unnecessary error toasts.
+- **[x] Live Resizing:** Widgets now update appearance during resize drag, not just after.
 
 ## LLM Prompting Considerations
 

@@ -23,6 +23,7 @@
     "@types/passport-google-oauth20": "^2.0.16",
     "cors": "^2.8.5",
     "date-fns": "^4.1.0",
+    "dayjs": "^1.11.13",
     "dotenv": "^16.4.7",
     "express": "^5.1.0",
     "express-session": "^1.18.1",

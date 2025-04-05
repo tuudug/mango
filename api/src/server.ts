@@ -13,6 +13,7 @@ import todoRoutes from "./routes/todos";
 import calendarRoutes from "./routes/calendar";
 import healthRoutes from "./routes/health";
 import financeRoutes from "./routes/finance"; // Import new finance routes
+import habitsRoutes from "./routes/habits"; // Import new habits routes
 
 dotenv.config(); // Load environment variables from .env file
 
@@ -75,6 +76,7 @@ app.use("/api/todos", todoRoutes); // Already uses ensureAuthenticated internall
 app.use("/api/calendar", calendarRoutes); // Already uses ensureAuthenticated internally
 app.use("/api/health", healthRoutes); // Already uses ensureAuthenticated internally
 app.use("/api/finance", financeRoutes); // Add finance routes (uses ensureAuthenticated internally)
+app.use("/api/habits", habitsRoutes); // Add habits routes (uses ensureAuthenticated internally)
 
 // Simple root route
 app.get("/api", (req: Request, res: Response) => {

@@ -35,14 +35,15 @@ export const getCachedLayout = (name: DashboardName): GridItem[] | null => {
       const parsedLayout = JSON.parse(savedLayout);
       // Basic validation
       if (Array.isArray(parsedLayout)) {
-        // Ensure minW/minH are added back from defaults if missing
+        // Ensure minW/minH are added back from defaults and config is preserved
         return parsedLayout.map((item: CachedGridItemData) => {
+          // item might have config
           const itemType = item.type as WidgetType;
           const defaults = defaultWidgetLayouts[itemType]
             ? defaultWidgetLayouts[itemType]
             : { w: 6, h: 4, minW: 2, minH: 2 };
           return {
-            ...item,
+            ...item, // This includes id, type, x, y, w, h, and config if present
             minW: defaults.minW,
             minH: defaults.minH,
           };
@@ -59,9 +60,18 @@ export const getCachedLayout = (name: DashboardName): GridItem[] | null => {
 export const setCachedLayout = (name: DashboardName, layout: GridItem[]) => {
   try {
     const key = `${LAYOUT_CACHE_KEY_PREFIX}${name}`;
-    // Filter out minW/minH before saving if they exist, RGL adds them back
+    // Filter out minW/minH but explicitly keep config
     const itemsToCache: CachedGridItemData[] = layout.map(
-      ({ minW, minH, ...rest }) => rest
+      ({ minW, minH, ...rest }) => ({
+        // Destructure minW/minH out
+        id: rest.id,
+        type: rest.type,
+        x: rest.x,
+        y: rest.y,
+        w: rest.w,
+        h: rest.h,
+        config: rest.config, // Explicitly include config
+      })
     );
     localStorage.setItem(key, JSON.stringify(itemsToCache));
     console.log(`Layout for ${name} cached successfully.`);
@@ -134,6 +144,7 @@ export const savePathStateToLocalStorage = (state: SavedPathState) => {
 /**
  * Deeply compares two dashboard layouts (arrays of GridItem).
  * Ignores minW and minH properties as they are derived.
+ * Compares the config object using JSON stringification.
  * Sorts items by ID before comparison to handle potential order differences.
  */
 export const deepCompareLayouts = (
@@ -152,14 +163,16 @@ export const deepCompareLayouts = (
     const item1 = sortedLayout1[i];
     const item2 = sortedLayout2[i];
 
-    // Compare relevant properties
+    // Compare relevant properties including config
     if (
       item1.id !== item2.id ||
       item1.type !== item2.type ||
       item1.x !== item2.x ||
       item1.y !== item2.y ||
       item1.w !== item2.w ||
-      item1.h !== item2.h
+      item1.h !== item2.h ||
+      // Compare config objects using JSON stringify for simple deep comparison
+      JSON.stringify(item1.config || {}) !== JSON.stringify(item2.config || {})
     ) {
       return false; // Found a difference
     }

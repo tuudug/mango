@@ -1,0 +1,37 @@
+/* src/widgets/HabitHeatmapWidget.css */
+
+/* Override default react-calendar-heatmap styles */
+.react-calendar-heatmap text {
+  font-size: 8px; /* Smaller labels */
+  fill: #aaa; /* Lighter label color */
+}
+
+.react-calendar-heatmap .color-empty {
+  fill: #374151; /* Darker empty color (gray-700) */
+}
+
+/* Define custom color scale (adjust colors as desired) */
+/* Using shades of green like GitHub */
+.react-calendar-heatmap .color-scale-1 {
+  fill: #0e4429; /* Darkest green */
+}
+.react-calendar-heatmap .color-scale-2 {
+  fill: #006d32;
+}
+.react-calendar-heatmap .color-scale-3 {
+  fill: #26a641;
+}
+.react-calendar-heatmap .color-scale-4 {
+  fill: #39d353; /* Brightest green */
+}
+
+/* Tooltip styling (optional, if using react-tooltip defaults isn't enough) */
+#heatmap-tooltip {
+  background-color: #1f2937 !important; /* gray-800 */
+  color: #d1d5db !important; /* gray-300 */
+  border-radius: 4px !important;
+  padding: 4px 8px !important;
+  font-size: 12px !important;
+  opacity: 1 !important; /* Ensure it's visible */
+  z-index: 9999 !important; /* Ensure tooltip is on top */
+}

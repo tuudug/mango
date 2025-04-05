@@ -12,6 +12,7 @@ export interface GridItem {
   h: number;
   minW?: number;
   minH?: number;
+  config?: Record<string, any>; // Add optional config object for widget-specific settings
 }
 
 // Mode type - This seems general enough to potentially stay here

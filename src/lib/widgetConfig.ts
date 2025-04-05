@@ -15,6 +15,8 @@ import {
   Timer,
   Volume2,
   Sparkles, // Add icon for Affirmation
+  ListChecks, // Import icon for Habits Checklist
+  TrendingUp, // Import icon for Habit Streaks
 } from "lucide-react";
 
 // Widget Groups
@@ -26,10 +28,10 @@ export type WidgetGroup =
   | "Mindfulness/Focus"
   | "Other";
 
-// Widget types - Add Affirmation
+// Widget types - Add Habit Streaks
 export type WidgetType =
   | "Steps Tracker"
-  | "Habit Graph"
+  | "Habit Graph" // Keep this for now, maybe remove later?
   | "Sleep/Step"
   | "Goal Tracker"
   | "To-do List"
@@ -41,13 +43,16 @@ export type WidgetType =
   | "Expenses Report"
   | "Pomodoro"
   | "Ambience"
-  | "Affirmation Widget" // Add Affirmation Widget type
+  | "Affirmation Widget"
+  | "Habits Checklist"
+  | "Habit Heatmap"
+  | "Habit Streaks" // Add Habit Streaks type
   | "Placeholder";
 
-// Available widgets for the toolbox - Add Affirmation
+// Available widgets for the toolbox - Add Habit Streaks
 export const availableWidgets: WidgetType[] = [
   "Steps Tracker",
-  "Habit Graph",
+  // "Habit Graph", // Maybe hide this old one?
   "Sleep/Step",
   "Goal Tracker",
   "To-do List",
@@ -59,17 +64,20 @@ export const availableWidgets: WidgetType[] = [
   "Expenses Report",
   "Pomodoro",
   "Ambience",
-  "Affirmation Widget", // Add Affirmation to toolbox
+  "Affirmation Widget",
+  "Habits Checklist",
+  "Habit Heatmap",
+  "Habit Streaks", // Add Habit Streaks to toolbox
   // Placeholder is not available in the toolbox
 ];
 
-// Default widget layouts for new widgets - Add Affirmation
+// Default widget layouts for new widgets - Add Habit Streaks
 export const defaultWidgetLayouts: Record<
   WidgetType,
   { w: number; h: number; minW?: number; minH?: number }
 > = {
   "Steps Tracker": { w: 8, h: 5, minW: 3, minH: 2 },
-  "Habit Graph": { w: 8, h: 5, minW: 6, minH: 4 },
+  "Habit Graph": { w: 8, h: 5, minW: 6, minH: 4 }, // Keep old one for now
   "Sleep/Step": { w: 6, h: 5, minW: 4, minH: 4 },
   "Goal Tracker": { w: 8, h: 7, minW: 6, minH: 5 },
   "To-do List": { w: 6, h: 7, minW: 4, minH: 5 },
@@ -81,11 +89,14 @@ export const defaultWidgetLayouts: Record<
   "Expenses Report": { w: 10, h: 7, minW: 8, minH: 5 },
   Pomodoro: { w: 4, h: 4, minW: 3, minH: 3 },
   Ambience: { w: 4, h: 4, minW: 3, minH: 3 },
-  "Affirmation Widget": { w: 6, h: 3, minW: 4, minH: 2 }, // Add Affirmation layout
+  "Affirmation Widget": { w: 6, h: 3, minW: 4, minH: 2 },
+  "Habits Checklist": { w: 4, h: 6, minW: 3, minH: 4 },
+  "Habit Heatmap": { w: 8, h: 4, minW: 6, minH: 3 },
+  "Habit Streaks": { w: 4, h: 4, minW: 3, minH: 3 }, // Add Habit Streaks layout
   Placeholder: { w: 12, h: 7, minW: 8, minH: 5 },
 };
 
-// Widget Metadata: Icon, Accent Color (Left Border), and Group - Add Affirmation
+// Widget Metadata: Icon, Accent Color (Left Border), and Group - Add Habit Streaks
 export const widgetMetadata: Record<
   WidgetType,
   { icon: LucideIcon; colorAccentClass: string; group: WidgetGroup }
@@ -96,6 +107,7 @@ export const widgetMetadata: Record<
     group: "Tracking",
   },
   "Habit Graph": {
+    // Keep old one for now
     icon: CalendarCheck,
     colorAccentClass: "border-l-green-400",
     group: "Tracking",
@@ -156,10 +168,25 @@ export const widgetMetadata: Record<
     group: "Mindfulness/Focus",
   },
   "Affirmation Widget": {
-    // Add Affirmation metadata
     icon: Sparkles,
-    colorAccentClass: "border-l-amber-400", // Choose color
+    colorAccentClass: "border-l-amber-400",
     group: "Mindfulness/Focus",
+  },
+  "Habits Checklist": {
+    icon: ListChecks,
+    colorAccentClass: "border-l-lime-500",
+    group: "Tracking",
+  },
+  "Habit Heatmap": {
+    icon: CalendarCheck, // Reuse icon
+    colorAccentClass: "border-l-teal-500",
+    group: "Tracking",
+  },
+  "Habit Streaks": {
+    // Add Habit Streaks metadata
+    icon: TrendingUp,
+    colorAccentClass: "border-l-orange-500", // Choose color
+    group: "Tracking",
   },
   Placeholder: {
     icon: HelpCircle,

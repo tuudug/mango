@@ -13,10 +13,10 @@ const ResponsiveGridLayout = WidthProvider(Responsive);
 const mobileEditBreakpoints = { mobile: 375 }; // Match container width
 
 interface DashboardGridProps {
-  items: GridItem[];
+  items: GridItem[]; // Already accepts items
   isToolboxOpen: boolean;
   isMobileEditMode: boolean;
-  editTargetDashboard: DashboardName;
+  editTargetDashboard: DashboardName; // Add prop here
   onLayoutChange: (layout: Layout[]) => void;
   // Add the new prop for live resize updates
   onLiveResize: (
@@ -37,7 +37,7 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({
   items,
   isToolboxOpen,
   isMobileEditMode,
-  // editTargetDashboard, // No longer directly needed here
+  editTargetDashboard, // Destructure the prop
   onLayoutChange,
   onLiveResize, // Destructure the new prop
   handleResizeStop, // Use the renamed prop
@@ -94,8 +94,10 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({
             <div key={item.id}>
               <DashboardGridItem
                 item={item}
+                items={items} // Pass the full items array down
                 isEditing={isToolboxOpen}
                 handleDeleteWidget={handleDeleteWidget}
+                editTargetDashboard={editTargetDashboard} // Pass prop down
               />
             </div>
           ))}
@@ -116,8 +118,10 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({
           <div key={item.id}>
             <DashboardGridItem
               item={item}
+              items={items} // Pass the full items array down
               isEditing={isToolboxOpen}
               handleDeleteWidget={handleDeleteWidget}
+              editTargetDashboard={editTargetDashboard} // Pass prop down
             />
           </div>
         ))}
