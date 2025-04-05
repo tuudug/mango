@@ -1,3 +1,31 @@
+# Current Progress: Steps Tracker Refactor & Live Resize Fix (As of 2025-04-05 ~5:53 PM)
+
+## Goal: Improve Steps Tracker widget visualization and fix dashboard resizing behavior.
+
+## Implementation Progress:
+
+1.  **Steps Tracker Widget Refactor (`StepsTrackerWidget.tsx`):**
+    - Replaced the custom div-based bar chart in the larger view with a `recharts` implementation, mirroring the style of `ExpensesReportWidget`.
+    - Added a `ReferenceLine` for the daily step goal (hardcoded at 10,000 steps).
+    - Implemented conditional bar coloring (green if goal met, blue otherwise) using `Cell`.
+    - Added custom `Tooltip` and `XAxis` ticks (highlighting the current day).
+    - Kept the mini view (circular progress bar) unchanged.
+2.  **Steps Tracker Widget Enhancements (`StepsTrackerWidget.tsx`, `HealthContext.tsx`):**
+    - Added week navigation state (`currentStepsWeekStart`) and functions (`goToPreviousStepsWeek`, `goToNextStepsWeek`, `goToCurrentStepsWeek`) to `HealthContext`.
+    - Updated the larger view title to "Weekly Steps".
+    - Replaced the static "Last 7 Days" badge with week navigation controls (Previous/Current/Next buttons) and a dynamic week range display.
+    - The chart now displays data corresponding to the selected week via the context state.
+3.  **Dashboard Live Resizing Fix (`Dashboard.tsx`, `DashboardGrid.tsx`):**
+    - **Issue:** Widgets that change appearance based on size (e.g., Steps Tracker mini/full view) only updated _after_ resizing was complete, not during the drag.
+    - **Diagnosis:** Layout state updates were only triggered by `onResizeStop`.
+    - **Resolution:**
+      - Added a new `handleLiveResize` function in `Dashboard.tsx` to update layout state (`items`) immediately during resize.
+      - Passed `handleLiveResize` to `DashboardGrid.tsx` as a new `onLiveResize` prop.
+      - Connected the `onLiveResize` prop to the `onResize` event handler in `DashboardGrid.tsx`.
+      - Renamed the original `handleResize` function in `Dashboard.tsx` to `handleResizeStop` and updated the corresponding prop in `DashboardGrid.tsx` (`handleResizeStop` connected to `onResizeStop`) to clarify its purpose (final update and triggering save).
+
+---
+
 # Current Progress: API Client Refactor & 401 Retry (As of 2025-04-05 ~3:00 PM)
 
 ## Goal: Centralize API call logic and handle transient 401 errors gracefully.

@@ -5,9 +5,9 @@
 /* Restore original iOS-style wiggle animation for widgets */
 @keyframes wiggle {
   0% { transform: rotate(0deg); }
-  25% { transform: rotate(-0.3deg); }
-  50% { transform: rotate(0.3deg); }
-  75% { transform: rotate(-0.3deg); }
+  25% { transform: rotate(-0.1deg); }
+  50% { transform: rotate(0.1deg); }
+  75% { transform: rotate(-0.1deg); }
   100% { transform: rotate(0deg); }
 }
 

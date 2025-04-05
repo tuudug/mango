@@ -9,6 +9,7 @@ import React, {
 } from "react";
 import { useAuth } from "./AuthContext";
 import { useToast } from "./ToastContext"; // Import useToast
+import { startOfWeek, addWeeks, subWeeks } from "date-fns"; // Import date-fns functions
 
 // Define the structure for health entries from backend
 export interface HealthEntry {
@@ -37,8 +38,13 @@ interface HealthContextType {
   isGoogleHealthConnected: boolean;
   connectGoogleHealth: () => void;
   disconnectGoogleHealth: () => Promise<void>;
-  fetchHealthDataIfNeeded: () => void; // Add throttled fetch
-  lastFetchTime: Date | null; // Expose last fetch time
+  fetchHealthDataIfNeeded: () => void;
+  lastFetchTime: Date | null;
+  // Add week navigation state and functions for steps display
+  currentStepsWeekStart: Date;
+  goToPreviousStepsWeek: () => void;
+  goToNextStepsWeek: () => void;
+  goToCurrentStepsWeek: () => void;
 }
 
 const HealthContext = createContext<HealthContextType | undefined>(undefined);
@@ -53,20 +59,21 @@ export const HealthProvider: React.FC<HealthProviderProps> = ({ children }) => {
   const [error, setError] = useState<string | null>(null);
   const [isGoogleHealthConnected, setIsGoogleHealthConnected] =
     useState<boolean>(false);
-  const [lastFetchTime, setLastFetchTime] = useState<Date | null>(null); // Track last fetch time
+  const [lastFetchTime, setLastFetchTime] = useState<Date | null>(null);
+  // Initialize week start state
+  const [currentStepsWeekStart, setCurrentStepsWeekStart] = useState<Date>(
+    startOfWeek(new Date(), { weekStartsOn: 1 }) // Monday as start
+  );
   const { session } = useAuth();
-  const { showToast } = useToast(); // Get showToast
+  const { showToast } = useToast();
 
   const REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
-
-  // Removed getAuthHeaders helper
 
   const fetchHealthData = useCallback(async () => {
     if (!session) return;
     setIsLoading(true);
     setError(null);
     try {
-      // Use authenticatedFetch
       const data = await authenticatedFetch<{
         healthEntries: HealthEntry[];
         isGoogleHealthConnected: boolean;
@@ -74,7 +81,7 @@ export const HealthProvider: React.FC<HealthProviderProps> = ({ children }) => {
 
       setHealthData(data.healthEntries || []);
       setIsGoogleHealthConnected(data.isGoogleHealthConnected);
-      setLastFetchTime(new Date()); // Update last fetch time
+      setLastFetchTime(new Date());
       console.log(
         "Google Health Connected Status (from backend):",
         data.isGoogleHealthConnected
@@ -94,9 +101,8 @@ export const HealthProvider: React.FC<HealthProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [session, showToast]); // Removed getAuthHeaders dependency
+  }, [session, showToast]);
 
-  // Throttled fetch logic remains the same
   const fetchHealthDataIfNeeded = useCallback(() => {
     if (isLoading) return;
     const now = new Date();
@@ -111,7 +117,6 @@ export const HealthProvider: React.FC<HealthProviderProps> = ({ children }) => {
     }
   }, [isLoading, lastFetchTime, fetchHealthData]);
 
-  // Initial fetch logic remains the same
   useEffect(() => {
     if (session) {
       fetchHealthDataIfNeeded();
@@ -120,9 +125,8 @@ export const HealthProvider: React.FC<HealthProviderProps> = ({ children }) => {
       setIsGoogleHealthConnected(false);
       setLastFetchTime(null);
     }
-  }, [session, fetchHealthDataIfNeeded]); // Added fetchHealthDataIfNeeded dependency
+  }, [session, fetchHealthDataIfNeeded]);
 
-  // Visibility change logic remains the same
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
@@ -152,17 +156,15 @@ export const HealthProvider: React.FC<HealthProviderProps> = ({ children }) => {
       });
       return;
     }
-    setIsLoading(true); // Consider specific loading state
+    setIsLoading(true);
     setError(null);
     try {
-      // Use authenticatedFetch for POST
       await authenticatedFetch<void>(
         "/api/health/manual",
         "POST",
         session,
         entry
       );
-      // Refetch after successful add
       await fetchHealthData();
       showToast({ title: "Health Entry Added", variant: "success" });
     } catch (e) {
@@ -180,7 +182,6 @@ export const HealthProvider: React.FC<HealthProviderProps> = ({ children }) => {
     }
   };
 
-  // connectGoogleHealth remains the same as it's just a redirect
   const connectGoogleHealth = () => {
     window.location.href = "/api/auth/google-health/start";
   };
@@ -198,15 +199,13 @@ export const HealthProvider: React.FC<HealthProviderProps> = ({ children }) => {
     setIsLoading(true);
     setError(null);
     try {
-      // Use authenticatedFetch for POST, sending provider in body
       await authenticatedFetch<void>(
         "/api/auth/google/disconnect",
         "POST",
         session,
-        { provider: "google_health" } // Specify provider
+        { provider: "google_health" }
       );
       console.log("Successfully disconnected Google Health via API.");
-      // Refetch to update status
       await fetchHealthData();
       showToast({ title: "Google Health Disconnected", variant: "success" });
     } catch (e) {
@@ -219,7 +218,6 @@ export const HealthProvider: React.FC<HealthProviderProps> = ({ children }) => {
         description: errorMsg,
         variant: "error",
       });
-      // Refetch even on error to update state
       await fetchHealthData();
     } finally {
       // isLoading will be set by fetchHealthData
@@ -236,17 +234,14 @@ export const HealthProvider: React.FC<HealthProviderProps> = ({ children }) => {
       });
       return;
     }
-    // Consider optimistic update? For now, just loading state.
     setIsLoading(true);
     setError(null);
     try {
-      // Use authenticatedFetch for DELETE
       await authenticatedFetch<void>(
         `/api/health/manual/${entryId}`,
         "DELETE",
         session
       );
-      // Refetch after successful delete
       await fetchHealthData();
       showToast({ title: "Health Entry Deleted", variant: "success" });
     } catch (e) {
@@ -259,11 +254,23 @@ export const HealthProvider: React.FC<HealthProviderProps> = ({ children }) => {
         description: errorMsg,
         variant: "error",
       });
-      // Refetch even on error
       await fetchHealthData();
     } finally {
       // isLoading will be set by fetchHealthData
     }
+  };
+
+  // --- Week Navigation Functions ---
+  const goToPreviousStepsWeek = () => {
+    setCurrentStepsWeekStart((prevDate) => subWeeks(prevDate, 1));
+  };
+
+  const goToNextStepsWeek = () => {
+    setCurrentStepsWeekStart((prevDate) => addWeeks(prevDate, 1));
+  };
+
+  const goToCurrentStepsWeek = () => {
+    setCurrentStepsWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }));
   };
 
   const value = {
@@ -278,6 +285,11 @@ export const HealthProvider: React.FC<HealthProviderProps> = ({ children }) => {
     disconnectGoogleHealth,
     fetchHealthDataIfNeeded,
     lastFetchTime,
+    // Expose week navigation
+    currentStepsWeekStart,
+    goToPreviousStepsWeek,
+    goToNextStepsWeek,
+    goToCurrentStepsWeek,
   };
 
   return (

@@ -95,8 +95,8 @@ export const DailyAllowanceWidget: React.FC<DailyAllowanceWidgetProps> = () => {
       : 0;
 
   // Determine color based on the *target* remainingToday
-  let pathColor = "rgba(59, 130, 246, 1)"; // Default blue
-  let iconColor = "text-blue-400"; // Default icon color
+  let pathColor = "rgba(52, 211, 153, 1)";
+  let iconColor = "text-emerald-400"; // Default icon color
   if (goal && remainingToday !== null) {
     const ratio = remainingToday / goal;
     if (ratio <= 0.1) {

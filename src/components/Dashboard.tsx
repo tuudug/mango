@@ -242,10 +242,12 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
   };
   // --- End Add Widget Logic ---
 
-  // --- Layout Change Handlers (Remain the same) ---
+  // --- Layout Change Handlers ---
   const onLayoutChange = useCallback(
     (layout: Layout[]) => {
       if (!isToolboxOpen) return;
+      // This function handles updates after drag/move operations complete.
+      // We only update if the layout actually changed positionally.
       const newItems = items.map((item) => {
         const layoutItem = layout.find((l) => l.i === item.id);
         return layoutItem
@@ -253,29 +255,22 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
               ...item,
               x: layoutItem.x,
               y: layoutItem.y,
-              w: layoutItem.w,
-              h: layoutItem.h,
+              // Keep w/h from state, as onResizeStop handles size changes
             }
           : item;
       });
-      let changed = items.length !== newItems.length;
-      if (!changed) {
-        for (let i = 0; i < items.length; i++) {
-          const oldItem = items[i];
-          const newItem = newItems.find((ni) => ni.id === oldItem.id);
-          if (
-            !newItem ||
-            oldItem.x !== newItem.x ||
-            oldItem.y !== newItem.y ||
-            oldItem.w !== newItem.w ||
-            oldItem.h !== newItem.h
-          ) {
-            changed = true;
-            break;
-          }
+
+      let positionChanged = false;
+      for (let i = 0; i < items.length; i++) {
+        const oldItem = items[i];
+        const newItem = newItems.find((ni) => ni.id === oldItem.id);
+        if (!newItem || oldItem.x !== newItem.x || oldItem.y !== newItem.y) {
+          positionChanged = true;
+          break;
         }
       }
-      if (changed) {
+
+      if (positionChanged) {
         setItems(newItems);
         saveLayoutToServer(newItems, editTargetDashboard);
       }
@@ -283,7 +278,26 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
     [items, setItems, saveLayoutToServer, isToolboxOpen, editTargetDashboard]
   );
 
-  const handleResize = useCallback(
+  // NEW: Handler for live resize updates (updates state only)
+  const handleLiveResize = useCallback(
+    (_layout: Layout[], _oldItem: Layout, newItemLayout: Layout) => {
+      if (!isToolboxOpen) return;
+      // Update the state immediately during resize
+      setItems((currentItems) =>
+        currentItems.map((item) =>
+          item.id === newItemLayout.i
+            ? { ...item, w: newItemLayout.w, h: newItemLayout.h }
+            : item
+        )
+      );
+      // DO NOT save to server here, only onResizeStop
+    },
+    [isToolboxOpen, setItems] // Removed items dependency to avoid potential loops if setItems causes re-render
+  );
+
+  // Renamed old handleResize to handleResizeStop
+  // This handles updates AFTER resize is complete (triggers save)
+  const handleResizeStop = useCallback(
     (_layout: Layout[], _oldItem: Layout, newItemLayout: Layout) => {
       if (!isToolboxOpen) return;
       const newItems = items.map((item) =>
@@ -291,13 +305,17 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
           ? { ...item, w: newItemLayout.w, h: newItemLayout.h }
           : item
       );
+      // Check if size actually changed compared to the last saved state (items)
+      // This prevents saving if the live resize already updated state but user didn't change size further
       const originalItem = items.find((item) => item.id === newItemLayout.i);
       if (
         originalItem &&
         (originalItem.w !== newItemLayout.w ||
           originalItem.h !== newItemLayout.h)
       ) {
+        // State might already be updated by handleLiveResize, but we ensure it's final
         setItems(newItems);
+        // Save the final size to the server
         saveLayoutToServer(newItems, editTargetDashboard);
       }
     },
@@ -368,7 +386,8 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
               isMobileEditMode={isMobileEditMode}
               editTargetDashboard={editTargetDashboard}
               onLayoutChange={onLayoutChange}
-              handleResize={handleResize}
+              onLiveResize={handleLiveResize} // Pass the new handler
+              handleResizeStop={handleResizeStop} // Pass the renamed handler for resize end
               handleDeleteWidget={handleDeleteWidget}
             />
             {isSwitchingEditMode && (

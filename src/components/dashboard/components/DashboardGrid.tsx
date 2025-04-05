@@ -5,7 +5,6 @@ import { DashboardGridItem } from "@/components/DashboardGridItem";
 import { cn } from "@/lib/utils";
 import { standardBreakpoints, standardCols, mobileCols } from "../constants";
 import { DashboardName } from "../types";
-// Removed: import { motion, AnimatePresence } from "framer-motion"; // Revert import
 
 // Create responsive grid layout
 const ResponsiveGridLayout = WidthProvider(Responsive);
@@ -19,7 +18,14 @@ interface DashboardGridProps {
   isMobileEditMode: boolean;
   editTargetDashboard: DashboardName;
   onLayoutChange: (layout: Layout[]) => void;
-  handleResize: (
+  // Add the new prop for live resize updates
+  onLiveResize: (
+    layout: Layout[],
+    oldItem: Layout,
+    newItemLayout: Layout
+  ) => void;
+  // Rename handleResize to handleResizeStop for clarity
+  handleResizeStop: (
     layout: Layout[],
     oldItem: Layout,
     newItemLayout: Layout
@@ -33,7 +39,8 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({
   isMobileEditMode,
   // editTargetDashboard, // No longer directly needed here
   onLayoutChange,
-  handleResize,
+  onLiveResize, // Destructure the new prop
+  handleResizeStop, // Use the renamed prop
   handleDeleteWidget,
 }) => {
   // Generate layout for grid (used by RGL)
@@ -58,7 +65,8 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({
     margin: [10, 10] as [number, number],
     containerPadding: [15, 15] as [number, number],
     onLayoutChange: onLayoutChange,
-    onResizeStop: handleResize,
+    onResize: onLiveResize, // Connect the live resize handler
+    onResizeStop: handleResizeStop, // Connect the stop handler
     style: { minHeight: "100%" },
     isDraggable: isToolboxOpen,
     isResizable: isToolboxOpen,
@@ -66,8 +74,6 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({
     preventCollision: true,
     draggableCancel: ".widget-controls-cancel-drag",
   };
-
-  // Removed animation props
 
   // Render the appropriate grid based on edit mode
   if (isMobileEditMode) {
@@ -84,9 +90,7 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({
           cols={mobileCols}
           layouts={{ mobile: generateLayout() }} // RGL needs layouts prop
         >
-          {/* Removed AnimatePresence wrapper */}
           {items.map((item) => (
-            // Removed motion.div wrapper
             <div key={item.id}>
               <DashboardGridItem
                 item={item}
@@ -108,9 +112,7 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({
         cols={standardCols}
         layouts={{ lg: generateLayout() }} // RGL needs layouts prop
       >
-        {/* Removed AnimatePresence wrapper */}
         {items.map((item) => (
-          // Removed motion.div wrapper
           <div key={item.id}>
             <DashboardGridItem
               item={item}
