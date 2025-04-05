@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area"; // Import ScrollArea
 import { useTodos } from "@/contexts/TodosContext";
 import { ListChecks, X, Trash2 } from "lucide-react";
 import React, { useState, useEffect } from "react";
@@ -105,106 +106,110 @@ export function TodosDataSource({ onClose }: TodosDataSourceProps) {
         )}
       </CardHeader>
 
-      <CardContent className="flex-1 p-4 overflow-y-auto space-y-6">
-        {/* Add Todo Form */}
-        <form onSubmit={handleAddTodo} className="space-y-3">
-          <h3 className="text-base font-medium">Add New Todo</h3>
-          <div className="flex gap-3">
-            <Input
-              type="text"
-              placeholder="Todo text..."
-              value={newTodoText}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                setNewTodoText(e.target.value)
-              }
-              required
-              className="flex-grow p-2"
-              disabled={isLoading} // Disable when loading
-            />
-            {/* Optional: Add Due Date Input Here */}
-            <Button type="submit" size="sm" disabled={isLoading}>
-              {isLoading ? "Adding..." : "Add Todo"}
-            </Button>
-          </div>
-        </form>
+      {/* Reverted: Added flex-1 and overflow-hidden back to CardContent */}
+      <CardContent className="flex-1 p-4 space-y-6 overflow-hidden">
+        {/* Reverted: Removed flex-1 from ScrollArea */}
+        <ScrollArea className="h-full pr-3">
+          {/* Add Todo Form */}
+          <form onSubmit={handleAddTodo} className="space-y-3">
+            <h3 className="text-base font-medium">Add New Todo</h3>
+            <div className="flex gap-3">
+              <Input
+                type="text"
+                placeholder="Todo text..."
+                value={newTodoText}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setNewTodoText(e.target.value)
+                }
+                required
+                className="flex-grow p-2"
+                disabled={isLoading} // Disable when loading
+              />
+              {/* Optional: Add Due Date Input Here */}
+              <Button type="submit" size="sm" disabled={isLoading}>
+                {isLoading ? "Adding..." : "Add Todo"}
+              </Button>
+            </div>
+          </form>
 
-        {/* Display Error if any */}
-        {error && <p className="text-sm text-red-400">Error: {error}</p>}
+          {/* Display Error if any */}
+          {error && <p className="text-sm text-red-400">Error: {error}</p>}
 
-        {/* Existing Todos List */}
-        <div className="space-y-3">
-          <h3 className="text-base font-medium">Existing Todos</h3>
-          {isLoading && todos.length === 0 && (
-            <p className="text-sm text-gray-500">Loading todos...</p>
-          )}
-          {!isLoading && todos.length === 0 && !error && (
-            <p className="text-sm text-gray-400 italic">
-              No todos found. Add one above.
-            </p>
-          )}
-          {todos.length > 0 && (
-            <ul className="space-y-2">
-              {todos.map((todo) => (
-                <li
-                  key={todo.id} // Use ID from backend
-                  className="flex items-center justify-between p-2.5 bg-gray-700/50 rounded border border-gray-700 shadow-sm gap-2" // Added gap
-                >
-                  {/* Checkbox and Label */}
-                  <div className="flex items-center space-x-3 flex-grow mr-2">
-                    <Checkbox
-                      id={`todo-${todo.id}`}
-                      checked={todo.is_completed} // Use is_completed
-                      onCheckedChange={() => handleToggleTodo(todo.id)} // Use handler
-                      aria-label={`Mark ${todo.title} as ${
-                        // Use title
-                        todo.is_completed ? "incomplete" : "complete"
-                      }`}
-                      disabled={isLoading} // Disable when loading
-                    />
-                    <Label
-                      htmlFor={`todo-${todo.id}`}
-                      className={`text-sm flex-grow ${
-                        todo.is_completed // Use is_completed
-                          ? "line-through text-gray-400"
-                          : ""
-                      }`}
-                    >
-                      {todo.title} {/* Use title */}
-                      {/* Optional: Display due date */}
-                      {/* {todo.due_date && <span className="text-xs ml-2 text-gray-400">({todo.due_date})</span>} */}
-                    </Label>
-                  </div>
-                  {/* Delete Button */}
-                  <Button
-                    variant="ghost" // Changed to ghost
-                    size="icon"
-                    className="h-6 w-6 text-red-600 hover:bg-red-900/50 flex-shrink-0" // Smaller icon button
-                    onClick={() => handleDeleteTodo(todo.id)} // Use handler
-                    disabled={isLoading}
-                    aria-label="Delete todo"
+          {/* Existing Todos List */}
+          <div className="space-y-3">
+            <h3 className="text-base font-medium">Existing Todos</h3>
+            {isLoading && todos.length === 0 && (
+              <p className="text-sm text-gray-500">Loading todos...</p>
+            )}
+            {!isLoading && todos.length === 0 && !error && (
+              <p className="text-sm text-gray-400 italic">
+                No todos found. Add one above.
+              </p>
+            )}
+            {todos.length > 0 && (
+              <ul className="space-y-2">
+                {todos.map((todo) => (
+                  <li
+                    key={todo.id} // Use ID from backend
+                    className="flex items-center justify-between p-2.5 bg-gray-700/50 rounded border border-gray-700 shadow-sm gap-2" // Added gap
                   >
-                    <Trash2 size={14} />
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+                    {/* Checkbox and Label */}
+                    <div className="flex items-center space-x-3 flex-grow mr-2">
+                      <Checkbox
+                        id={`todo-${todo.id}`}
+                        checked={todo.is_completed} // Use is_completed
+                        onCheckedChange={() => handleToggleTodo(todo.id)} // Use handler
+                        aria-label={`Mark ${todo.title} as ${
+                          // Use title
+                          todo.is_completed ? "incomplete" : "complete"
+                        }`}
+                        disabled={isLoading} // Disable when loading
+                      />
+                      <Label
+                        htmlFor={`todo-${todo.id}`}
+                        className={`text-sm flex-grow ${
+                          todo.is_completed // Use is_completed
+                            ? "line-through text-gray-400"
+                            : ""
+                        }`}
+                      >
+                        {todo.title} {/* Use title */}
+                        {/* Optional: Display due date */}
+                        {/* {todo.due_date && <span className="text-xs ml-2 text-gray-400">({todo.due_date})</span>} */}
+                      </Label>
+                    </div>
+                    {/* Delete Button */}
+                    <Button
+                      variant="ghost" // Changed to ghost
+                      size="icon"
+                      className="h-6 w-6 text-red-600 hover:bg-red-900/50 flex-shrink-0" // Smaller icon button
+                      onClick={() => handleDeleteTodo(todo.id)} // Use handler
+                      disabled={isLoading}
+                      aria-label="Delete todo"
+                    >
+                      <Trash2 size={14} />
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
 
-        {/* Sync Status Footer */}
-        <div className="mt-auto pt-2 border-t border-gray-700 text-center">
-          {isLoading ? (
-            <p className="text-xs text-gray-400">Syncing...</p>
-          ) : lastFetchTime && nextSyncCountdown ? (
-            <p className="text-xs text-gray-400">
-              Next sync in: {nextSyncCountdown}
-            </p>
-          ) : (
-            <p className="text-xs text-gray-400">Not synced yet.</p>
-          )}
-          {/* Optional Refresh Button */}
-          {/* <Button variant="link" size="sm" onClick={fetchTodosIfNeeded} disabled={isLoading}>Refresh</Button> */}
-        </div>
+          {/* Sync Status Footer */}
+          <div className="mt-auto pt-2 border-t border-gray-700 text-center">
+            {isLoading ? (
+              <p className="text-xs text-gray-400">Syncing...</p>
+            ) : lastFetchTime && nextSyncCountdown ? (
+              <p className="text-xs text-gray-400">
+                Next sync in: {nextSyncCountdown}
+              </p>
+            ) : (
+              <p className="text-xs text-gray-400">Not synced yet.</p>
+            )}
+            {/* Optional Refresh Button */}
+            {/* <Button variant="link" size="sm" onClick={fetchTodosIfNeeded} disabled={isLoading}>Refresh</Button> */}
+          </div>
+        </ScrollArea>
       </CardContent>
     </Card>
   );

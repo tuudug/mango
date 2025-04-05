@@ -195,11 +195,17 @@ export function LeftSidebar({
   const isAnyPanelOpen = Object.values(panelOpenState).some((isOpen) => isOpen);
 
   // Helper function to get panel class names
-  const getPanelClasses = (panelId: PanelId, maxWidthClass = "max-w-md") =>
+  // Updated to handle responsive width
+  const getPanelClasses = (
+    panelId: PanelId,
+    maxWidthClass = "md:max-w-md" // Default max-width applied at md breakpoint
+  ) =>
     cn(
       "absolute top-0 left-16 bottom-0 transition-transform duration-300 ease-in-out z-20",
-      maxWidthClass,
-      "w-full bg-gray-800 shadow-lg",
+      "w-[calc(100vw-4rem)]", // Full width minus sidebar on mobile/small screens
+      "md:w-auto", // Allow content width on medium screens and up
+      maxWidthClass, // Apply max-width constraint on medium screens and up (e.g., md:max-w-md)
+      "bg-gray-800 shadow-lg",
       panelOpenState[panelId] ? "translate-x-0" : "-translate-x-full"
     );
 
@@ -211,14 +217,20 @@ export function LeftSidebar({
         <button
           onClick={handleLogoClick}
           title="View Changelog"
-          className={cn(
-            "relative mb-6 flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg bg-gradient-to-br from-orange-400 to-pink-500 transition-transform hover:scale-105",
-            hasNewChangelog && "widget-shake"
-          )}
+          // Removed overflow-hidden
+          className={`relative mb-6 h-10 w-10 cursor-pointer rounded-lg transition-transform hover:scale-105 p-0 ${
+            hasNewChangelog ? "widget-shake" : ""
+          }`}
         >
-          <span className="text-2xl">🥭</span>
+          <img
+            src="/icon.png"
+            alt="Mango Logo"
+            // Make image fill the button using object-cover
+            className="h-full w-full object-cover rounded-lg" // Added rounded-lg to match button
+          />
           {hasNewChangelog && (
-            <span className="absolute -top-1 -right-1 flex h-3 w-3">
+            // Kept badge styling, including z-20
+            <span className="absolute -top-1 -right-1 flex h-3 w-3 z-20">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
             </span>
@@ -348,13 +360,14 @@ export function LeftSidebar({
       />
 
       {/* Render Panels Conditionally */}
-      <div className={getPanelClasses("gameMaster")}>
+      {/* Updated panel rendering to use modified getPanelClasses with explicit breakpoints */}
+      <div className={getPanelClasses("gameMaster", "md:max-w-md")}>
         <GameMasterPanel onClose={() => handleTogglePanel("gameMaster")} />
       </div>
-      <div className={getPanelClasses("userProfile")}>
+      <div className={getPanelClasses("userProfile", "md:max-w-md")}>
         <UserProfilePanel onClose={() => handleTogglePanel("userProfile")} />
       </div>
-      <div className={getPanelClasses("paths")}>
+      <div className={getPanelClasses("paths", "md:max-w-md")}>
         <PathsPage
           onClose={() => handleTogglePanel("paths")}
           activePathName={activePathName}
@@ -365,16 +378,16 @@ export function LeftSidebar({
         />
       </div>
       {/* Data Source Panels */}
-      <div className={getPanelClasses("calendar", "max-w-sm")}>
+      <div className={getPanelClasses("calendar", "md:max-w-sm")}>
         <CalendarDataSource onClose={() => handleTogglePanel("calendar")} />
       </div>
-      <div className={getPanelClasses("health", "max-w-sm")}>
+      <div className={getPanelClasses("health", "md:max-w-sm")}>
         <HealthDataSource onClose={() => handleTogglePanel("health")} />
       </div>
-      <div className={getPanelClasses("todos", "max-w-sm")}>
+      <div className={getPanelClasses("todos", "md:max-w-sm")}>
         <TodosDataSource onClose={() => handleTogglePanel("todos")} />
       </div>
-      <div className={getPanelClasses("finance", "max-w-sm")}>
+      <div className={getPanelClasses("finance", "md:max-w-sm")}>
         <FinanceDataSource onClose={() => handleTogglePanel("finance")} />{" "}
         {/* Updated component name */}
       </div>

@@ -111,10 +111,10 @@ export const FinanceDataSource: React.FC<FinanceDataSourceProps> = ({
         )}
       </CardHeader>
 
-      <CardContent className="flex-1 p-4 overflow-y-auto">
+      {/* Reverted: Added flex-1 and overflow-hidden back to CardContent */}
+      <CardContent className="flex-1 p-4 overflow-hidden">
+        {/* Reverted: Removed flex-1 from ScrollArea */}
         <ScrollArea className="h-full pr-3">
-          {" "}
-          {/* Apply ScrollArea here */}
           {/* Settings Form */}
           <div className="space-y-4 mb-6 pb-4 border-b border-gray-700">
             {/* Currency */}
