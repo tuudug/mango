@@ -210,14 +210,22 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({
     [token]
   );
 
-  // --- Initial Fetches ---
+  // --- Initial Fetches based on Auth State ---
   useEffect(() => {
+    // This effect should run ONLY when auth state changes
+    console.log("FinanceDataSource: Auth Effect Triggered", {
+      isAuthLoading,
+      tokenExists: !!token,
+    });
     if (!isAuthLoading && token) {
+      console.log("FinanceDataSource: Fetching initial data...");
       fetchSettings();
       fetchTodaysEntries();
-      fetchWeeklyExpenses(currentReportWeekStart); // Fetch initial week
+      // Fetch initial week based on the current state value
+      fetchWeeklyExpenses(currentReportWeekStart);
     } else if (!isAuthLoading && !token) {
       // Clear all data on logout
+      console.log("FinanceDataSource: Clearing data on logout");
       setSettings(null);
       setTodaysExpenses([]);
       setWeeklyExpensesData([]);
@@ -225,7 +233,8 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({
       setIsLoadingEntries(false);
       setIsLoadingWeeklyEntries(false);
       setError(null);
-      setCurrentReportWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 })); // Reset week
+      // DO NOT reset currentReportWeekStart here to avoid potential loops
+      // setCurrentReportWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }));
     }
   }, [
     isAuthLoading,
@@ -233,8 +242,21 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({
     fetchSettings,
     fetchTodaysEntries,
     fetchWeeklyExpenses,
-    currentReportWeekStart, // Refetch if week changes externally (though unlikely here)
+    // currentReportWeekStart was removed previously, keep it removed
   ]);
+
+  // --- Effect to fetch weekly data when week changes ---
+  // Separate effect specifically for week changes
+  useEffect(() => {
+    // Only fetch if logged in
+    if (!isAuthLoading && token) {
+      console.log(
+        "FinanceDataSource: Week changed, fetching weekly expenses for:",
+        currentReportWeekStart
+      );
+      fetchWeeklyExpenses(currentReportWeekStart);
+    }
+  }, [currentReportWeekStart, token, isAuthLoading, fetchWeeklyExpenses]); // Depend on week start and auth
 
   // --- Action Functions ---
 
@@ -460,23 +482,23 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({
   );
 
   // --- Week Navigation Functions ---
+  // These now only update the state, the new useEffect handles the fetch
   const goToPreviousWeek = useCallback(() => {
     const previousWeekStart = subWeeks(currentReportWeekStart, 1);
     setCurrentReportWeekStart(previousWeekStart);
-    fetchWeeklyExpenses(previousWeekStart);
-  }, [currentReportWeekStart, fetchWeeklyExpenses]);
+  }, [currentReportWeekStart]);
 
   const goToNextWeek = useCallback(() => {
     const nextWeekStart = addWeeks(currentReportWeekStart, 1);
     setCurrentReportWeekStart(nextWeekStart);
-    fetchWeeklyExpenses(nextWeekStart);
-  }, [currentReportWeekStart, fetchWeeklyExpenses]);
+  }, [currentReportWeekStart]);
 
   const goToCurrentWeek = useCallback(() => {
     const currentWeekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
-    setCurrentReportWeekStart(currentWeekStart);
-    fetchWeeklyExpenses(currentWeekStart);
-  }, [fetchWeeklyExpenses]);
+    if (currentWeekStart.getTime() !== currentReportWeekStart.getTime()) {
+      setCurrentReportWeekStart(currentWeekStart);
+    }
+  }, [currentReportWeekStart]);
 
   // --- Context Value ---
   // Define remainingToday here so it's available for the context value

@@ -1,5 +1,12 @@
 [
   {
+    "version": "0.1.12",
+    "date": "2025-04-05",
+    "data": [
+      "Login page positioning fixed"
+    ]
+  },
+  {
     "version": "0.1.11",
     "date": "2025-04-04",
     "data": [

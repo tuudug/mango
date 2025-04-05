@@ -43,7 +43,12 @@ function App() {
 
   if (isLoading) {
     // You might want a more sophisticated loading screen later
-    return <div>Loading...</div>;
+    // Add centering styles to the loading indicator as well
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-950 text-white">
+        Loading...
+      </div>
+    );
   }
 
   return (
@@ -64,11 +69,29 @@ function App() {
           />
           <Route
             path="/login"
-            element={!session ? <LoginForm /> : <Navigate to="/" replace />}
+            element={
+              !session ? (
+                // Wrap LoginForm with centering div
+                <div className="flex items-center justify-center min-h-screen bg-gray-950">
+                  <LoginForm />
+                </div>
+              ) : (
+                <Navigate to="/" replace />
+              )
+            }
           />
           <Route
             path="/signup"
-            element={!session ? <SignupForm /> : <Navigate to="/" replace />}
+            element={
+              !session ? (
+                // Wrap SignupForm as well for consistency
+                <div className="flex items-center justify-center min-h-screen bg-gray-950">
+                  <SignupForm />
+                </div>
+              ) : (
+                <Navigate to="/" replace />
+              )
+            }
           />
           <Route path="/auth/success" element={<AuthSuccessPage />} />
           <Route path="/auth/failure" element={<AuthFailurePage />} />
