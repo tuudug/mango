@@ -9,7 +9,7 @@ import { HealthProvider } from "./contexts/HealthContext.tsx";
 import { TodosProvider } from "./contexts/TodosContext.tsx";
 import { ToastProvider } from "./contexts/ToastContext.tsx";
 // Correct the import path for FinanceProvider
-import { FinanceProvider } from "./components/datasources/FinanceDataSource.tsx";
+import { FinanceProvider } from "./contexts/FinanceContext.tsx"; // Updated import path
 import { PomodoroProvider } from "./contexts/PomodoroContext.tsx";
 import { AmbienceProvider } from "./contexts/AmbienceContext.tsx"; // Import AmbienceProvider
 

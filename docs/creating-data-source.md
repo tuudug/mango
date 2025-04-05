@@ -14,10 +14,10 @@ Various widgets and features throughout the application can then tap into these 
 
 - Create a new React Context to manage the state and logic for your data source. Place this in the `src/contexts/` directory (e.g., `src/contexts/MyDataSourceContext.tsx`).
 - This context should handle:
-  - Fetching data from the relevant backend API.
+  - Fetching data from the relevant backend API **using the `authenticatedFetch` utility from `src/lib/apiClient.ts`**. This utility handles adding the auth token and retrying on transient 401 errors.
   - Storing the data (e.g., using `useState`).
-  - Providing functions to interact with the data (e.g., add, update, delete).
-  - Managing loading and error states.
+  - Providing functions to interact with the data (e.g., add, update, delete), which should also use `authenticatedFetch` for API calls.
+  - Managing loading and error states (catching errors thrown by `authenticatedFetch`).
   - Handling connection/disconnection logic if it connects to an external service (like Google).
 - Export the provider component and a custom hook (e.g., `useMyDataSource`) for easy consumption.
 
@@ -32,6 +32,8 @@ import React, {
   useCallback,
 } from "react";
 import { useAuth } from "./AuthContext"; // Assuming auth is needed
+import { useToast } from "./ToastContext"; // For showing errors
+import { authenticatedFetch, ApiError } from "@/lib/apiClient"; // Import the utility
 
 // Define data structure
 interface MyData {
@@ -58,29 +60,38 @@ export const MyDataSourceProvider: React.FC<{ children: ReactNode }> = ({
   const [myData, setMyData] = useState<MyData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { session } = useAuth(); // Get session if API calls need auth
+  const { session } = useAuth(); // Get session for authenticatedFetch
+  const { showToast } = useToast(); // Get toast function
 
   const fetchData = useCallback(async () => {
-    if (!session) return;
+    if (!session) return; // Need session for authenticatedFetch
     setIsLoading(true);
     setError(null);
     try {
-      // Replace with your actual API call
-      const response = await fetch("/api/my-data-source", {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
-      if (!response.ok) throw new Error("Failed to fetch data");
-      const data = await response.json();
+      // Use authenticatedFetch
+      const data = await authenticatedFetch<{ items: MyData[] }>(
+        "/api/my-data-source", // Your API endpoint
+        "GET",
+        session
+      );
       setMyData(data.items || []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Unknown error");
-      setMyData([]);
+      console.error("Failed to fetch my data:", e);
+      const errorMsg =
+        e instanceof Error ? e.message : "Unknown error fetching data";
+      setError(errorMsg);
+      showToast({
+        title: "Data Fetch Error",
+        description: errorMsg,
+        variant: "error",
+      });
+      setMyData([]); // Clear data on error
     } finally {
       setIsLoading(false);
     }
-  }, [session]);
+  }, [session, showToast]); // Dependencies updated
 
-  // Add other functions (add, delete, etc.) here
+  // Add other functions (add, delete, etc.) here, using authenticatedFetch similarly
 
   const value = { myData, isLoading, error, fetchData };
 
@@ -104,13 +115,13 @@ export const useMyDataSource = (): MyDataSourceContextType => {
 
 ## 2. Create the Panel Component
 
-- Create a new `.tsx` file for your panel component within `src/components/datasources/` or a relevant subdirectory (e.g., `src/components/datasources/MyDataSourcePanel.tsx`).
+- Create a new `.tsx` file for your panel component within `src/components/datasources/` (e.g., `src/components/datasources/MyDataSource.tsx`). **Note:** Name the component file to match the data source (e.g., `FinanceDataSource.tsx`, not `FinanceSettingsPanel.tsx`).
 - This component will display the data fetched by the context and provide UI elements for interaction (forms, buttons, lists).
 - It **must** accept an optional `onClose?: () => void;` prop.
 - Include a header section with the data source title, an icon, and a close button (`X`) that calls the `onClose` prop when clicked. Use Shadcn UI's `Card`, `CardHeader`, `CardTitle`, `CardContent` for consistency.
 - Use the custom hook created in Step 1 (e.g., `useMyDataSource()`) to access the data, loading state, error state, and action functions.
 
-**Example (`src/components/datasources/MyDataSourcePanel.tsx`):**
+**Example (`src/components/datasources/MyDataSource.tsx`):**
 
 ```tsx
 import React from "react";
@@ -120,11 +131,13 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { X, DatabaseZap } from "lucide-react"; // Choose an icon
 
-interface MyDataSourcePanelProps {
+interface MyDataSourceProps {
+  // Renamed props interface
   onClose?: () => void;
 }
 
-export function MyDataSourcePanel({ onClose }: MyDataSourcePanelProps) {
+// Renamed component export
+export function MyDataSource({ onClose }: MyDataSourceProps) {
   const { myData, isLoading, error, fetchData } = useMyDataSource();
 
   return (
@@ -206,7 +219,7 @@ export function MyDataSourcePanel({ onClose }: MyDataSourcePanelProps) {
 ## 4. Integrate into `LeftSidebar.tsx`
 
 - Open `src/components/LeftSidebar.tsx`.
-- **Import Panel Component:** Import your new panel component (e.g., `MyDataSourcePanel`).
+- **Import Panel Component:** Import your new panel component (e.g., `MyDataSource`).
 - **Update `PanelId` Type:** Add your new data source ID string literal to the `PanelId` union type.
   ```typescript
   type PanelId =
@@ -230,7 +243,8 @@ export function MyDataSourcePanel({ onClose }: MyDataSourcePanelProps) {
     /* ... other panels ... */
   }
   <div className={getPanelClasses("myData", "max-w-sm")}>
-    <MyDataSourcePanel onClose={() => handleTogglePanel("myData")} />
+    <MyDataSource onClose={() => handleTogglePanel("myData")} />{" "}
+    {/* Use updated component name */}
   </div>;
   ```
 - The `LeftSidebar` will now automatically render the button for your data source based on the `dataSourceConfig` and handle its visibility using the consolidated state and generic toggle handler.

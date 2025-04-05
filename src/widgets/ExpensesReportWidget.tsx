@@ -1,4 +1,4 @@
-import { useFinance } from "@/components/datasources/FinanceDataSource";
+import { useFinance } from "@/contexts/FinanceContext"; // Updated import path
 import { Button } from "@/components/ui/button";
 import { formatCurrency, getCurrencySymbol } from "@/lib/currencies"; // Import getCurrencySymbol
 import { eachDayOfInterval, endOfWeek, format, startOfWeek } from "date-fns";

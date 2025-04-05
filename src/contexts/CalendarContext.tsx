@@ -8,6 +8,8 @@ import React, {
 } from "react";
 import { CalendarItem } from "@/types/datasources"; // Import the new type
 import { useAuth } from "./AuthContext"; // Import useAuth to get session token
+import { useToast } from "./ToastContext"; // Import useToast
+import { authenticatedFetch, ApiError } from "@/lib/apiClient"; // Import the new utility and error class
 
 // Define the context shape using CalendarItem
 interface CalendarContextType {
@@ -46,19 +48,11 @@ export const CalendarProvider: React.FC<CalendarProviderProps> = ({
   const [isGoogleConnected, setIsGoogleConnected] = useState<boolean>(false);
   const [lastFetchTime, setLastFetchTime] = useState<Date | null>(null); // Track last fetch time
   const { session } = useAuth(); // Get session from AuthContext
+  const { showToast } = useToast(); // Get showToast
 
   const REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
-  // Helper to get auth headers
-  const getAuthHeaders = useCallback(() => {
-    const headers: HeadersInit = {
-      "Content-Type": "application/json",
-    };
-    if (session?.access_token) {
-      headers["Authorization"] = `Bearer ${session.access_token}`;
-    }
-    return headers;
-  }, [session]);
+  // Removed getAuthHeaders helper
 
   // Function to fetch events from the backend API
   const fetchEvents = useCallback(async () => {
@@ -67,17 +61,13 @@ export const CalendarProvider: React.FC<CalendarProviderProps> = ({
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch("/api/calendar", {
-        headers: getAuthHeaders(), // Add auth header
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      // Expect response format: { events: CalendarItem[], isGoogleConnected: boolean }
-      const data: { events: CalendarItem[]; isGoogleConnected: boolean } =
-        await response.json();
-      setEvents(data.events);
-      // Set connection status directly from backend response
+      // Use authenticatedFetch
+      const data = await authenticatedFetch<{
+        events: CalendarItem[];
+        isGoogleConnected: boolean;
+      }>("/api/calendar", "GET", session);
+
+      setEvents(data.events || []); // Ensure events is always an array
       setIsGoogleConnected(data.isGoogleConnected);
       setLastFetchTime(new Date()); // Update last fetch time on success
       console.log(
@@ -86,17 +76,24 @@ export const CalendarProvider: React.FC<CalendarProviderProps> = ({
       );
     } catch (e) {
       console.error("Failed to fetch calendar events:", e);
-      setError(e instanceof Error ? e.message : "An unknown error occurred");
+      const errorMsg =
+        e instanceof Error ? e.message : "Failed to fetch calendar data";
+      setError(errorMsg);
+      showToast({
+        title: "Calendar Error",
+        description: errorMsg,
+        variant: "error",
+      });
       setEvents([]); // Clear events on error
       setIsGoogleConnected(false); // Assume disconnected on error
     } finally {
       setIsLoading(false);
     }
-  }, [session, getAuthHeaders]); // Add session and getAuthHeaders to dependencies
+  }, [session, showToast]); // Removed getAuthHeaders from dependencies
 
-  // Throttled fetch function
+  // Throttled fetch function - logic remains the same
   const fetchEventsIfNeeded = useCallback(() => {
-    if (isLoading) return; // Don't fetch if already loading
+    if (isLoading) return;
 
     const now = new Date();
     if (
@@ -108,23 +105,20 @@ export const CalendarProvider: React.FC<CalendarProviderProps> = ({
     } else {
       console.log("Skipping fetch, refresh interval not elapsed.");
     }
-  }, [isLoading, lastFetchTime, fetchEvents]); // Add dependencies
+  }, [isLoading, lastFetchTime, fetchEvents]);
 
-  // Fetch events (if needed) on initial mount or when session changes
+  // Initial fetch logic remains the same
   useEffect(() => {
     if (session) {
-      // Only fetch if session exists and needed
       fetchEventsIfNeeded();
     } else {
-      setEvents([]); // Clear events if logged out
-      setLastFetchTime(null); // Reset last fetch time on logout
-      setIsGoogleConnected(false); // Reset connection status on logout
+      setEvents([]);
+      setLastFetchTime(null);
+      setIsGoogleConnected(false);
     }
-    // Intentionally not depending on fetchEventsIfNeeded to avoid loop,
-    // but depend on session to trigger check on login/logout.
-  }, [session]); // fetchEventsIfNeeded is intentionally omitted from deps
+  }, [session, fetchEventsIfNeeded]); // Added fetchEventsIfNeeded dependency
 
-  // Effect to refetch data when window becomes visible (throttled)
+  // Visibility change logic remains the same
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
@@ -132,46 +126,45 @@ export const CalendarProvider: React.FC<CalendarProviderProps> = ({
         fetchEventsIfNeeded();
       }
     };
-
     document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    // Cleanup listener on unmount
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [fetchEventsIfNeeded]); // Depend on the throttled fetch function
+  }, [fetchEventsIfNeeded]);
 
   // Function to add a new manual event via backend
   const addManualEvent = async (eventData: { title: string; date: string }) => {
     if (!session) {
       setError("You must be logged in to add events.");
+      showToast({
+        title: "Auth Error",
+        description: "Please log in.",
+        variant: "error",
+      });
       return;
     }
-    setIsLoading(true);
+    setIsLoading(true); // Consider specific loading state?
     setError(null);
     try {
-      const response = await fetch("/api/calendar/manual", {
-        method: "POST",
-        headers: getAuthHeaders(), // Add auth header
-        body: JSON.stringify(eventData),
-      });
-      if (!response.ok) {
-        // Try to get error message from backend response body
-        let errorMsg = `HTTP error! status: ${response.status}`;
-        try {
-          const errorBody = await response.json();
-          errorMsg = errorBody.message || errorMsg;
-        } catch {
-          // Removed unused '_'
-          /* Ignore parsing error */
-        }
-        throw new Error(errorMsg);
-      }
+      // Use authenticatedFetch for POST
+      await authenticatedFetch<void>(
+        "/api/calendar/manual",
+        "POST",
+        session,
+        eventData
+      );
       // Re-fetch events to get the updated list including the new one
       await fetchEvents();
+      showToast({ title: "Event Added", variant: "success" });
     } catch (e) {
       console.error("Failed to add manual event:", e);
-      setError(e instanceof Error ? e.message : "An unknown error occurred");
+      const errorMsg = e instanceof Error ? e.message : "Failed to add event";
+      setError(errorMsg);
+      showToast({
+        title: "Add Event Error",
+        description: errorMsg,
+        variant: "error",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -181,40 +174,45 @@ export const CalendarProvider: React.FC<CalendarProviderProps> = ({
   const deleteManualEvent = async (eventId: string) => {
     if (!session) {
       setError("You must be logged in to delete events.");
+      showToast({
+        title: "Auth Error",
+        description: "Please log in.",
+        variant: "error",
+      });
       return;
     }
+    // Consider optimistic update? For now, just loading state.
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/calendar/manual/${eventId}`, {
-        method: "DELETE",
-        headers: getAuthHeaders(), // Add auth header
-      });
-      if (!response.ok) {
-        let errorMsg = `HTTP error! status: ${response.status}`;
-        try {
-          const errorBody = await response.json();
-          errorMsg = errorBody.message || errorMsg;
-        } catch {
-          // Removed unused '_'
-          /* Ignore parsing error */
-        }
-        throw new Error(errorMsg);
-      }
+      // Use authenticatedFetch for DELETE
+      await authenticatedFetch<void>(
+        `/api/calendar/manual/${eventId}`,
+        "DELETE",
+        session
+      );
       // Re-fetch events to get the updated list
       await fetchEvents();
+      showToast({ title: "Event Deleted", variant: "success" });
     } catch (e) {
       console.error("Failed to delete manual event:", e);
-      setError(e instanceof Error ? e.message : "An unknown error occurred");
+      const errorMsg =
+        e instanceof Error ? e.message : "Failed to delete event";
+      setError(errorMsg);
+      showToast({
+        title: "Delete Event Error",
+        description: errorMsg,
+        variant: "error",
+      });
+      // Refetch even on error?
+      await fetchEvents();
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Function to initiate Google Calendar connection
+  // Function to initiate Google Calendar connection - remains the same
   const connectGoogleCalendar = () => {
-    // Redirect the browser to the backend endpoint that starts the OAuth flow
-    // The backend route needs ensureAuthenticated to link the session
     window.location.href = "/api/auth/google/start";
   };
 
@@ -222,44 +220,43 @@ export const CalendarProvider: React.FC<CalendarProviderProps> = ({
   const disconnectGoogleCalendar = async () => {
     if (!session) {
       setError("You must be logged in to disconnect.");
+      showToast({
+        title: "Auth Error",
+        description: "Please log in.",
+        variant: "error",
+      });
       return;
     }
     setIsLoading(true); // Indicate loading state
     setError(null);
     try {
-      const response = await fetch("/api/auth/google/disconnect", {
-        method: "POST",
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) {
-        let errorMsg = `HTTP error! status: ${response.status}`;
-        try {
-          const errorBody = await response.json();
-          errorMsg = errorBody.message || errorMsg;
-        } catch {
-          // Removed unused '_'
-          /* Ignore parsing error */
-        }
-        throw new Error(errorMsg);
-      }
-      // On successful disconnect, refetch events
+      // Use authenticatedFetch for POST (no body needed for this endpoint)
+      await authenticatedFetch<void>(
+        "/api/auth/google/disconnect",
+        "POST",
+        session
+      );
+      // On successful disconnect, refetch events which will update connection status
       await fetchEvents();
+      showToast({ title: "Google Calendar Disconnected", variant: "success" });
     } catch (e) {
       console.error("Failed to disconnect Google Calendar:", e);
-      setError(
-        e instanceof Error
-          ? e.message
-          : "An unknown error occurred during disconnect"
-      );
-      // Optionally refetch events even on error to see if state changed partially
+      const errorMsg =
+        e instanceof Error ? e.message : "Failed to disconnect Google Calendar";
+      setError(errorMsg);
+      showToast({
+        title: "Disconnect Error",
+        description: errorMsg,
+        variant: "error",
+      });
+      // Refetch events even on error to get latest state
       await fetchEvents();
     } finally {
-      // Intentionally keep isLoading true until fetchEvents finishes if successful
-      // setIsLoading(false); // fetchEvents will set this
+      // isLoading will be set to false by the final fetchEvents call
     }
   };
 
-  // Function called after successful OAuth redirect to optimistically update UI
+  // Function called after successful OAuth redirect - remains the same
   const confirmGoogleConnection = () => {
     console.log("Confirming Google Connection - setting state and fetching.");
     setIsGoogleConnected(true); // Optimistically set state
@@ -274,13 +271,12 @@ export const CalendarProvider: React.FC<CalendarProviderProps> = ({
     fetchEvents,
     addManualEvent,
     deleteManualEvent,
-    // Add new state and functions
     isGoogleConnected,
     connectGoogleCalendar,
     disconnectGoogleCalendar,
     confirmGoogleConnection,
     fetchEventsIfNeeded,
-    lastFetchTime, // Expose last fetch time
+    lastFetchTime,
   };
 
   return (

@@ -1,571 +1,256 @@
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  useCallback,
-  useMemo,
-} from "react";
-import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/contexts/ToastContext";
-import { startOfWeek, endOfWeek, addWeeks, subWeeks, format } from "date-fns"; // Import date-fns functions
+import React, { useState, useEffect } from "react";
+import { useFinance } from "@/contexts/FinanceContext"; // Updated import path
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Loader2, Save, Trash2, X, Landmark } from "lucide-react"; // Import X and Landmark
+import { getCurrencySymbol, formatCurrency } from "@/lib/currencies"; // Import helpers
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"; // Import Card components
 
-// --- Types ---
-
+// Define specific type for salary schedule entries (can be shared)
 interface SalaryPayment {
   dayOfMonth: number;
   amount: number;
 }
 
-interface FinanceSettings {
-  currency: string | null;
-  daily_allowance_goal: number | null;
-  salary_schedule: SalaryPayment[] | null;
-  current_balance: number | null;
+// Type for the form state
+interface SettingsFormState {
+  currency: string;
+  daily_allowance_goal: string; // Use string for input
+  salary_schedule: SalaryPayment[]; // Keep as array for now
 }
 
-interface FinanceEntry {
-  id: string;
-  entry_date: string;
-  amount: number;
-  description: string | null;
-  created_at: string;
+// Define props including onClose
+interface FinanceDataSourceProps {
+  // Renamed props interface
+  onClose?: () => void; // Make onClose optional
 }
 
-// Type for weekly summary data from API
-interface WeeklyExpenseSummary {
-  date: string; // YYYY-MM-DD
-  totalAmount: number;
-}
-
-interface FinanceContextType {
-  settings: Omit<FinanceSettings, "current_balance"> | null;
-  todaysExpenses: FinanceEntry[];
-  remainingToday: number | null;
-  isLoadingSettings: boolean;
-  isLoadingEntries: boolean;
-  error: string | null;
-  // Update addExpense signature
-  addExpense: (
-    amount: number,
-    description?: string | null,
-    entryDate?: string | null // Add optional date string (YYYY-MM-DD)
-  ) => Promise<boolean>;
-  deleteExpense: (entryId: string) => Promise<boolean>;
-  updateSettings: (
-    newSettings: Partial<Omit<FinanceSettings, "current_balance">>
-  ) => Promise<boolean>;
-  // New state and functions for weekly report
-  currentReportWeekStart: Date;
-  weeklyExpensesData: WeeklyExpenseSummary[];
-  isLoadingWeeklyEntries: boolean;
-  goToPreviousWeek: () => void;
-  goToNextWeek: () => void;
-  goToCurrentWeek: () => void;
-}
-
-const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
-
-// --- Provider Component ---
-
-interface FinanceProviderProps {
-  children: React.ReactNode;
-}
-
-export const FinanceProvider: React.FC<FinanceProviderProps> = ({
-  children,
+// Renamed component export
+export const FinanceDataSource: React.FC<FinanceDataSourceProps> = ({
+  onClose,
 }) => {
-  const { session, isLoading: isAuthLoading } = useAuth();
-  const { showToast } = useToast();
-  const token = session?.access_token;
+  // Destructure onClose
+  const {
+    settings,
+    todaysExpenses, // Get today's expenses
+    deleteExpense, // Get delete function
+    updateSettings,
+    isLoadingSettings,
+    isLoadingEntries, // Get entries loading state
+  } = useFinance();
+  const [formState, setFormState] = useState<SettingsFormState>({
+    currency: "",
+    daily_allowance_goal: "",
+    salary_schedule: [],
+  });
+  const [isSaving, setIsSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null); // State to track deleting
 
-  const [settings, setSettings] = useState<Omit<
-    FinanceSettings,
-    "current_balance"
-  > | null>(null);
-  const [todaysExpenses, setTodaysExpenses] = useState<FinanceEntry[]>([]);
-  const [isLoadingSettings, setIsLoadingSettings] = useState(true);
-  const [isLoadingEntries, setIsLoadingEntries] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // State for weekly report
-  const [currentReportWeekStart, setCurrentReportWeekStart] = useState<Date>(
-    startOfWeek(new Date(), { weekStartsOn: 1 }) // Default to current week, starting Monday
-  );
-  const [weeklyExpensesData, setWeeklyExpensesData] = useState<
-    WeeklyExpenseSummary[]
-  >([]);
-  const [isLoadingWeeklyEntries, setIsLoadingWeeklyEntries] = useState(true);
-
-  // --- Fetch Functions ---
-
-  const fetchSettings = useCallback(async () => {
-    // ... (fetchSettings implementation remains the same) ...
-    if (!token) {
-      setIsLoadingSettings(false);
-      return;
-    }
-    setIsLoadingSettings(true);
-    setError(null);
-    try {
-      const response = await fetch("/api/finance/settings", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!response.ok) {
-        throw new Error(
-          `Failed to fetch finance settings: ${response.statusText}`
-        );
-      }
-      const data: FinanceSettings = await response.json();
-      const { current_balance: _current_balance, ...relevantSettings } = data;
-      setSettings(relevantSettings);
-      console.log("Finance settings loaded:", relevantSettings);
-    } catch (err) {
-      console.error("Error fetching finance settings:", err);
-      setError(
-        err instanceof Error ? err.message : "Failed to load finance settings"
-      );
-      setSettings(null);
-    } finally {
-      setIsLoadingSettings(false);
-    }
-  }, [token]);
-
-  const fetchTodaysEntries = useCallback(async () => {
-    // ... (fetchTodaysEntries implementation remains the same) ...
-    if (!token) {
-      setIsLoadingEntries(false);
-      return;
-    }
-    setIsLoadingEntries(true);
-    try {
-      const response = await fetch("/api/finance/entries/today", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!response.ok) {
-        throw new Error(
-          `Failed to fetch today's finance entries: ${response.statusText}`
-        );
-      }
-      const data: FinanceEntry[] = await response.json();
-      setTodaysExpenses(data);
-      console.log("Today's finance entries loaded:", data);
-    } catch (err) {
-      console.error("Error fetching today's finance entries:", err);
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Failed to load today's finance entries"
-      );
-      setTodaysExpenses([]);
-    } finally {
-      setIsLoadingEntries(false);
-    }
-  }, [token]);
-
-  // Fetch Weekly Entries
-  const fetchWeeklyExpenses = useCallback(
-    async (weekStartDate: Date) => {
-      if (!token) {
-        setIsLoadingWeeklyEntries(false);
-        return;
-      }
-      setIsLoadingWeeklyEntries(true);
-      setError(null); // Clear previous errors specific to weekly fetch?
-
-      const startDateStr = format(weekStartDate, "yyyy-MM-dd");
-      const endDateStr = format(
-        endOfWeek(weekStartDate, { weekStartsOn: 1 }),
-        "yyyy-MM-dd"
-      );
-
-      try {
-        const response = await fetch(
-          `/api/finance/entries/weekly?startDate=${startDateStr}&endDate=${endDateStr}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-        if (!response.ok) {
-          throw new Error(
-            `Failed to fetch weekly expenses: ${response.statusText}`
-          );
-        }
-        const data: WeeklyExpenseSummary[] = await response.json();
-        setWeeklyExpensesData(data);
-        console.log(
-          `Weekly expenses loaded for week starting ${startDateStr}:`,
-          data
-        );
-      } catch (err) {
-        console.error("Error fetching weekly expenses:", err);
-        setError(
-          err instanceof Error ? err.message : "Failed to load weekly expenses"
-        );
-        setWeeklyExpensesData([]); // Reset on error
-      } finally {
-        setIsLoadingWeeklyEntries(false);
-      }
-    },
-    [token]
-  );
-
-  // --- Initial Fetches based on Auth State ---
+  // Update form state when settings load from context
   useEffect(() => {
-    // This effect should run ONLY when auth state changes
-    console.log("FinanceDataSource: Auth Effect Triggered", {
-      isAuthLoading,
-      tokenExists: !!token,
-    });
-    if (!isAuthLoading && token) {
-      console.log("FinanceDataSource: Fetching initial data...");
-      fetchSettings();
-      fetchTodaysEntries();
-      // Fetch initial week based on the current state value
-      fetchWeeklyExpenses(currentReportWeekStart);
-    } else if (!isAuthLoading && !token) {
-      // Clear all data on logout
-      console.log("FinanceDataSource: Clearing data on logout");
-      setSettings(null);
-      setTodaysExpenses([]);
-      setWeeklyExpensesData([]);
-      setIsLoadingSettings(false);
-      setIsLoadingEntries(false);
-      setIsLoadingWeeklyEntries(false);
-      setError(null);
-      // DO NOT reset currentReportWeekStart here to avoid potential loops
-      // setCurrentReportWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }));
+    if (settings) {
+      setFormState({
+        currency: settings.currency || "USD", // Default if null
+        daily_allowance_goal: settings.daily_allowance_goal?.toString() || "", // Convert number to string for input
+        salary_schedule: settings.salary_schedule || [],
+      });
     }
-  }, [
-    isAuthLoading,
-    token,
-    fetchSettings,
-    fetchTodaysEntries,
-    fetchWeeklyExpenses,
-    // currentReportWeekStart was removed previously, keep it removed
-  ]);
+  }, [settings]);
 
-  // --- Effect to fetch weekly data when week changes ---
-  // Separate effect specifically for week changes
-  useEffect(() => {
-    // Only fetch if logged in
-    if (!isAuthLoading && token) {
-      console.log(
-        "FinanceDataSource: Week changed, fetching weekly expenses for:",
-        currentReportWeekStart
-      );
-      fetchWeeklyExpenses(currentReportWeekStart);
-    }
-  }, [currentReportWeekStart, token, isAuthLoading, fetchWeeklyExpenses]); // Depend on week start and auth
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+    setFormState((prev) => ({ ...prev, [name]: value }));
+  };
 
-  // --- Action Functions ---
+  const handleSaveSettings = async () => {
+    setIsSaving(true);
+    const goal = parseFloat(formState.daily_allowance_goal);
+    const settingsToSave = {
+      currency: formState.currency || null,
+      daily_allowance_goal: !isNaN(goal) ? goal : null,
+      salary_schedule: formState.salary_schedule,
+    };
+    await updateSettings(settingsToSave);
+    setIsSaving(false);
+  };
 
-  // Update addExpense signature and body
-  const addExpense = useCallback(
-    async (
-      amount: number,
-      description?: string | null,
-      entryDate?: string | null // Add optional date
-    ): Promise<boolean> => {
-      if (!token) {
-        setError("Authentication required to add expense.");
-        return false;
-      }
-      try {
-        const body: {
-          amount: number;
-          description: string | null;
-          entry_date?: string; // Make date optional in body
-        } = {
-          amount,
-          description: description || null,
-        };
-        // Only include entry_date if it's provided
-        if (entryDate) {
-          body.entry_date = entryDate;
-        }
+  const handleDeleteEntry = async (id: string) => {
+    setDeletingId(id); // Indicate which item is being deleted
+    await deleteExpense(id);
+    setDeletingId(null); // Reset deleting state
+  };
 
-        const response = await fetch("/api/finance/entries", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(body), // Send updated body
-        });
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(
-            errorData.message || `Failed to add expense: ${response.statusText}`
-          );
-        }
-
-        // Determine if the added expense affects today's or the current report week's data
-        const todayStr = format(new Date(), "yyyy-MM-dd");
-        const addedDateStr = entryDate || todayStr;
-        const weekStartStr = format(currentReportWeekStart, "yyyy-MM-dd");
-        const weekEndStr = format(
-          endOfWeek(currentReportWeekStart, { weekStartsOn: 1 }),
-          "yyyy-MM-dd"
-        );
-
-        const fetchesToRun = [];
-        if (addedDateStr === todayStr) {
-          fetchesToRun.push(fetchTodaysEntries());
-        }
-        if (addedDateStr >= weekStartStr && addedDateStr <= weekEndStr) {
-          fetchesToRun.push(fetchWeeklyExpenses(currentReportWeekStart));
-        }
-
-        if (fetchesToRun.length > 0) {
-          await Promise.all(fetchesToRun);
-        }
-
-        showToast({
-          title: "Expense Recorded",
-          description: `${
-            description || `Amount: ${amount}`
-          } on ${addedDateStr}`,
-        });
-        return true;
-      } catch (err) {
-        console.error("Error adding expense:", err);
-        const message =
-          err instanceof Error ? err.message : "Failed to add expense";
-        setError(message);
-        showToast({
-          title: "Error",
-          description: message,
-          variant: "destructive",
-        });
-        return false;
-      }
-    },
-    [
-      token,
-      fetchTodaysEntries,
-      fetchWeeklyExpenses,
-      currentReportWeekStart,
-      showToast,
-    ]
-  );
-
-  const deleteExpense = useCallback(
-    async (entryId: string): Promise<boolean> => {
-      if (!token) {
-        setError("Authentication required to delete expense.");
-        return false;
-      }
-      const originalExpenses = [...todaysExpenses];
-      // Find the entry being deleted to check its date
-      const entryToDelete = todaysExpenses.find(
-        (entry) => entry.id === entryId
-      );
-
-      // Optimistic UI updates
-      setTodaysExpenses((prev) => prev.filter((entry) => entry.id !== entryId));
-
-      try {
-        const response = await fetch(`/api/finance/entries/${entryId}`, {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        if (!response.ok) {
-          setTodaysExpenses(originalExpenses); // Revert
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(
-            errorData.message ||
-              `Failed to delete expense: ${response.status} ${response.statusText}`
-          );
-        }
-
-        const deletedDateStr = entryToDelete?.entry_date; // Date of the deleted entry
-        const weekStartStr = format(currentReportWeekStart, "yyyy-MM-dd");
-        const weekEndStr = format(
-          endOfWeek(currentReportWeekStart, { weekStartsOn: 1 }),
-          "yyyy-MM-dd"
-        );
-
-        const fetchesToRun = [];
-        // No need to refetch today's as optimistic update handles it
-        // if (deletedDateStr === todayStr) {
-        //     fetchesToRun.push(fetchTodaysEntries());
-        // }
-        if (
-          deletedDateStr &&
-          deletedDateStr >= weekStartStr &&
-          deletedDateStr <= weekEndStr
-        ) {
-          fetchesToRun.push(fetchWeeklyExpenses(currentReportWeekStart));
-        }
-        if (fetchesToRun.length > 0) {
-          await Promise.all(fetchesToRun);
-        }
-
-        showToast({ title: "Expense Deleted" });
-        return true;
-      } catch (err) {
-        console.error("Error deleting expense:", err);
-        setTodaysExpenses(originalExpenses); // Ensure revert on error
-        // Refetch weekly data on error as well to be safe
-        await fetchWeeklyExpenses(currentReportWeekStart);
-        const message =
-          err instanceof Error ? err.message : "Failed to delete expense";
-        setError(message);
-        showToast({
-          title: "Error",
-          description: message,
-          variant: "destructive",
-        });
-        return false;
-      }
-    },
-    [
-      token,
-      todaysExpenses, // Need this for optimistic revert and getting date
-      fetchWeeklyExpenses,
-      currentReportWeekStart,
-      showToast,
-    ]
-  );
-
-  const updateSettings = useCallback(
-    async (
-      newSettings: Partial<Omit<FinanceSettings, "current_balance">>
-    ): Promise<boolean> => {
-      // ... (updateSettings implementation remains the same) ...
-      if (!token) {
-        setError("Authentication required to update settings.");
-        return false;
-      }
-      setIsLoadingSettings(true);
-      try {
-        const response = await fetch("/api/finance/settings", {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(newSettings),
-        });
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(
-            errorData.message ||
-              `Failed to update settings: ${response.statusText}`
-          );
-        }
-        const updatedSettings: FinanceSettings = await response.json();
-        const { current_balance: _current_balance, ...relevantSettings } =
-          updatedSettings;
-        setSettings(relevantSettings);
-        showToast({ title: "Finance Settings Updated" });
-        return true;
-      } catch (err) {
-        console.error("Error updating finance settings:", err);
-        const message =
-          err instanceof Error ? err.message : "Failed to update settings";
-        setError(message);
-        showToast({
-          title: "Error",
-          description: message,
-          variant: "destructive",
-        });
-        return false;
-      } finally {
-        setIsLoadingSettings(false);
-      }
-    },
-    [token, showToast]
-  );
-
-  // --- Week Navigation Functions ---
-  // These now only update the state, the new useEffect handles the fetch
-  const goToPreviousWeek = useCallback(() => {
-    const previousWeekStart = subWeeks(currentReportWeekStart, 1);
-    setCurrentReportWeekStart(previousWeekStart);
-  }, [currentReportWeekStart]);
-
-  const goToNextWeek = useCallback(() => {
-    const nextWeekStart = addWeeks(currentReportWeekStart, 1);
-    setCurrentReportWeekStart(nextWeekStart);
-  }, [currentReportWeekStart]);
-
-  const goToCurrentWeek = useCallback(() => {
-    const currentWeekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
-    if (currentWeekStart.getTime() !== currentReportWeekStart.getTime()) {
-      setCurrentReportWeekStart(currentWeekStart);
-    }
-  }, [currentReportWeekStart]);
-
-  // --- Context Value ---
-  // Define remainingToday here so it's available for the context value
-  const calculatedRemainingToday = useMemo(() => {
-    if (
-      settings?.daily_allowance_goal === null ||
-      settings?.daily_allowance_goal === undefined
-    ) {
-      return null; // No goal set
-    }
-    const totalSpent = todaysExpenses.reduce(
-      (sum, entry) => sum + entry.amount,
-      0
-    );
-    return settings.daily_allowance_goal - totalSpent;
-  }, [settings, todaysExpenses]);
-
-  const value = useMemo(
-    () => ({
-      settings,
-      todaysExpenses,
-      remainingToday: calculatedRemainingToday, // Use the calculated value
-      isLoadingSettings,
-      isLoadingEntries,
-      error,
-      addExpense,
-      deleteExpense,
-      updateSettings,
-      // Add weekly report state and functions
-      currentReportWeekStart,
-      weeklyExpensesData,
-      isLoadingWeeklyEntries,
-      goToPreviousWeek,
-      goToNextWeek,
-      goToCurrentWeek,
-    }),
-    [
-      settings,
-      todaysExpenses,
-      calculatedRemainingToday, // Use calculated value in dependency array
-      isLoadingSettings,
-      isLoadingEntries,
-      error,
-      addExpense,
-      deleteExpense,
-      updateSettings,
-      // Add dependencies
-      currentReportWeekStart,
-      weeklyExpensesData,
-      isLoadingWeeklyEntries,
-      goToPreviousWeek,
-      goToNextWeek,
-      goToCurrentWeek,
-    ]
-  );
+  const currencySymbol = getCurrencySymbol(formState.currency);
 
   return (
-    <FinanceContext.Provider value={value}>{children}</FinanceContext.Provider>
+    // Use Card structure for consistency
+    <Card className="h-full flex flex-col shadow-lg border-l bg-gray-800 rounded-none">
+      <CardHeader className="flex flex-row items-center justify-between p-4 border-b flex-shrink-0 border-gray-700">
+        <div className="flex items-center gap-2">
+          <Landmark className="w-5 h-5 text-emerald-400" />{" "}
+          {/* Use finance icon */}
+          <CardTitle className="text-lg font-semibold">
+            Finance Settings{" "}
+            {/* Keep title as Settings for now, can change later if needed */}
+          </CardTitle>
+        </div>
+        {onClose && ( // Conditionally render close button
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            className="h-7 w-7"
+          >
+            <X size={16} />
+            <span className="sr-only">Close Panel</span>
+          </Button>
+        )}
+      </CardHeader>
+
+      <CardContent className="flex-1 p-4 overflow-y-auto">
+        <ScrollArea className="h-full pr-3">
+          {" "}
+          {/* Apply ScrollArea here */}
+          {/* Settings Form */}
+          <div className="space-y-4 mb-6 pb-4 border-b border-gray-700">
+            {/* Currency */}
+            <div>
+              <Label htmlFor="currency" className="text-sm text-gray-400">
+                Currency Code
+              </Label>
+              <Input
+                id="currency"
+                name="currency"
+                value={formState.currency}
+                onChange={handleInputChange}
+                placeholder="e.g., USD, MNT"
+                className="mt-1 bg-gray-700 border-gray-600 text-gray-100"
+                maxLength={3}
+                disabled={isLoadingSettings || isSaving}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Enter the 3-letter currency code (e.g., USD, EUR, MNT). Symbol:{" "}
+                {currencySymbol || "?"}
+              </p>
+            </div>
+
+            {/* Daily Allowance Goal */}
+            <div>
+              <Label
+                htmlFor="daily_allowance_goal"
+                className="text-sm text-gray-400"
+              >
+                Daily Allowance Goal ({currencySymbol || formState.currency})
+              </Label>
+              <Input
+                id="daily_allowance_goal"
+                name="daily_allowance_goal"
+                type="number"
+                value={formState.daily_allowance_goal}
+                onChange={handleInputChange}
+                placeholder="e.g., 50.00"
+                className="mt-1 bg-gray-700 border-gray-600 text-gray-100"
+                step="0.01"
+                min="0"
+                disabled={isLoadingSettings || isSaving}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Set a daily spending limit. Leave blank for no limit.
+              </p>
+            </div>
+
+            {/* Salary Schedule (Display Only for now) */}
+            <div>
+              <Label className="text-sm text-gray-400 block mb-1">
+                Salary Schedule (Read-only)
+              </Label>
+              <div className="p-3 bg-gray-700 rounded-md border border-gray-600 text-gray-300 text-sm min-h-[50px]">
+                {formState.salary_schedule.length > 0 ? (
+                  <ul className="list-disc list-inside space-y-1">
+                    {formState.salary_schedule.map((payment, index) => (
+                      <li key={index}>
+                        Day {payment.dayOfMonth}:{" "}
+                        {formatCurrency(payment.amount, formState.currency)}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-gray-500 italic">No schedule set.</p>
+                )}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Editing salary schedule coming soon.
+              </p>
+            </div>
+            {/* Save Settings Button */}
+            <Button
+              onClick={handleSaveSettings}
+              disabled={isSaving || isLoadingSettings}
+              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white"
+            >
+              {isSaving ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="mr-2 h-4 w-4" />
+              )}
+              Save Settings
+            </Button>
+          </div>
+          {/* Today's Expenses List */}
+          <div>
+            <h3 className="text-md font-semibold mb-2 text-gray-200">
+              Today's Expenses
+            </h3>
+            {isLoadingEntries ? (
+              <div className="flex justify-center items-center h-20">
+                <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+              </div>
+            ) : todaysExpenses.length === 0 ? (
+              <p className="text-sm text-gray-500 italic">
+                No expenses recorded today.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {todaysExpenses.map((entry) => (
+                  <li
+                    key={entry.id}
+                    className="flex items-center justify-between p-2 bg-gray-700 rounded-md border border-gray-600"
+                  >
+                    <div className="flex-1 overflow-hidden mr-2">
+                      <p className="text-sm text-gray-100 truncate">
+                        {formatCurrency(entry.amount, formState.currency)}
+                      </p>
+                      {entry.description && (
+                        <p className="text-xs text-gray-400 truncate">
+                          {entry.description}
+                        </p>
+                      )}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-gray-400 hover:text-red-400 flex-shrink-0"
+                      onClick={() => handleDeleteEntry(entry.id)}
+                      disabled={deletingId === entry.id} // Disable while deleting this specific item
+                      title="Delete Expense"
+                    >
+                      {deletingId === entry.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 size={14} />
+                      )}
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </ScrollArea>
+      </CardContent>
+    </Card>
   );
-};
-
-// --- Hook ---
-
-export const useFinance = (): FinanceContextType => {
-  const context = useContext(FinanceContext);
-  if (context === undefined) {
-    throw new Error("useFinance must be used within a FinanceProvider");
-  }
-  return context;
 };

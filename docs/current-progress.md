@@ -1,3 +1,40 @@
+# Current Progress: API Client Refactor & 401 Retry (As of 2025-04-05 ~3:00 PM)
+
+## Goal: Centralize API call logic and handle transient 401 errors gracefully.
+
+## Implementation Progress:
+
+1.  **Finance Context/Panel Reorganization:**
+    - Moved finance context logic from `src/components/datasources/FinanceDataSource.tsx` to `src/contexts/FinanceContext.tsx`.
+    - Renamed the finance UI panel component from `FinanceSettingsPanel` to `FinanceDataSource` and moved the file to `src/components/datasources/FinanceDataSource.tsx` for consistency.
+    - Moved `ExpenseEntryModal.tsx` from `src/components/finance/` to `src/components/`.
+    - Updated all relevant import paths.
+2.  **API Client Utility (`src/lib/apiClient.ts`):**
+    - Created a centralized `authenticatedFetch` function to handle common API call logic (adding auth headers, checking response status, parsing JSON/errors).
+    - Created a custom `ApiError` class to standardize error information passed from `authenticatedFetch`.
+3.  **Context Refactoring:**
+    - Refactored `TodosContext`, `FinanceContext`, `CalendarContext`, and `HealthContext` to use the new `authenticatedFetch` utility, removing duplicated fetch logic and standardizing error handling.
+4.  **Transient 401 Error Handling:**
+    - Modified `authenticatedFetch` to automatically retry a request once after a short delay (750ms) if the initial response status is 401 (Unauthorized).
+    - This prevents unnecessary error toasts caused by brief delays during Supabase token refreshes. Persistent 401 errors will still be thrown and handled by the contexts.
+
+---
+
+# Current Progress: Login Bug Fix (As of 2025-04-05 ~2:18 PM)
+
+## Goal: Resolve critical bug causing infinite loop on login page.
+
+## Implementation Progress:
+
+1.  **Login Page Loop Fix:**
+    - **Issue:** Login page sometimes showed a black screen or rapidly logged "Clearing data on logout", indicating an infinite re-render loop ("Maximum update depth exceeded").
+    - **Diagnosis:** Identified that the main `useEffect` hook in `FinanceDataSource.tsx` (responsible for fetching data based on auth state) had dependencies (`fetch*` functions, `currentReportWeekStart`) that were causing it to re-run unnecessarily, even when logged out. Specifically, resetting `currentReportWeekStart` on logout likely triggered the loop.
+    - **Resolution:** Refactored the `useEffect` hooks in `FinanceDataSource.tsx`. Separated the initial auth-based fetch from the effect that fetches weekly data when the `currentReportWeekStart` changes. Removed problematic dependencies (`fetch*` functions, `currentReportWeekStart`) from the auth effect and stopped resetting the week on logout within that effect.
+
+---
+
+## _Previous entries below this line_
+
 # Current Progress: New Widgets & UX Refinements (As of 2025-04-04 ~8:05 PM)
 
 ## Goal: Add new widgets and improve existing widget UX/functionality.
@@ -33,8 +70,6 @@
 7.  **Error Handling:** Fixed issues with `ErrorBoundary` prop passing (`App.tsx`, `ErrorBoundary.tsx`).
 
 ---
-
-## _Previous entries below this line_
 
 # Current Progress: Refactoring & Bug Fixes (As of 2025-04-04 ~3:38 PM)
 
@@ -93,8 +128,6 @@ Focused on fixing Google authentication/token issues in production, improving PW
       - Updated `Dashboard.tsx` to use the same utility function for determining the initial layout ('default' or 'mobile') to load.
 
 ---
-
-## _Previous entries below this line_
 
 # Current Progress: Finance Data Source & Widgets (As of 2025-04-03 ~9:24 PM)
 

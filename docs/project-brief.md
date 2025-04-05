@@ -10,7 +10,7 @@ Here's a checklist based on the project brief ideas:
 
 ## Data Sources & Management
 
-These components handle the interaction and persistence of core application data via React Contexts. **Configuration for data source sidebar buttons (icon, label) is now centralized in `src/lib/dataSourceConfig.ts`.**
+These components handle the interaction and persistence of core application data via React Contexts. **Configuration for data source sidebar buttons (icon, label) is now centralized in `src/lib/dataSourceConfig.ts`.** **API calls within data source contexts are now centralized using `src/lib/apiClient.ts`.**
 
 - [x] **Calendar Data Source (`CalendarDataSource.tsx`):** Manages calendar events (add, delete, view) using `CalendarContext`.
   - **[x] Backend:** Fix token decryption errors. (**Resolved: Incorrect ENV VAR**)
@@ -24,10 +24,10 @@ These components handle the interaction and persistence of core application data
   - **[x] Reordering:** Top-level items use drag-and-drop; nested items use Move Up/Down buttons.
   - **[x] Sub-items:** Added support for nested sub-items (up to 2 levels).
   - **[x] AI Breakdown:** Added "magic" button to generate sub-tasks using Gemini. **Now includes parent context.**
-- [x] **Finance Data Source (`FinanceDataSource.tsx`):** Manages manual finance entries and settings.
+- [x] **Finance Data Source (`FinanceDataSource.tsx`):** Manages manual finance entries and settings using `FinanceContext`. **Context logic moved to `src/contexts/FinanceContext.tsx`. Panel component renamed/moved.**
   - **[x] Database:** Added `manual_finance_settings` and `manual_finance_entries` tables.
   - **[x] Backend:** Added API routes (`/api/finance`) for settings and entries (GET, PUT, POST, DELETE).
-  - **[x] Frontend:** Created context, settings panel (in sidebar), expense entry modal.
+  - **[x] Frontend:** Created context, settings panel (in sidebar), expense entry modal. **Modal moved to `src/components/`.**
 - [x] **Pomodoro Context (`PomodoroContext.tsx`):** Manages global Pomodoro state (idle, work, break).
 - [x] **Ambience Context (`AmbienceContext.tsx`):** Manages background audio playback state and volume using Web Audio API.
 
@@ -180,6 +180,8 @@ These components handle the interaction and persistence of core application data
 - **[x] Dark Mode:** Forced dark mode via CSS, ignoring device preference.
 - **[x] Development Aids:** Added widget coordinate display in dev mode.
 - **[x] Pomodoro Banner:** Banner now pushes content down instead of overlaying.
+- **[x] API Call Refactoring:** Centralized authenticated API calls into `src/lib/apiClient.ts` (`authenticatedFetch` function).
+- **[x] Transient 401 Error Handling:** Implemented automatic retry logic within `authenticatedFetch` to handle transient 401 errors during token refresh, reducing unnecessary error toasts.
 
 ## LLM Prompting Considerations
 

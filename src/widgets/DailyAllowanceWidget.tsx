@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from "react"; // Added useEffect, useRef
-import { useFinance } from "@/components/datasources/FinanceDataSource";
+import { useFinance } from "@/contexts/FinanceContext"; // Updated import path
 import { Button } from "@/components/ui/button";
 import { PiggyBank, PlusCircle } from "lucide-react"; // Removed Loader2
 import { formatCurrency } from "@/lib/currencies";
 import { CircularProgressbar, buildStyles } from "react-circular-progressbar";
 import "react-circular-progressbar/dist/styles.css";
-import { ExpenseEntryModal } from "@/components/finance/ExpenseEntryModal";
+import { ExpenseEntryModal } from "@/components/ExpenseEntryModal"; // Updated import path
 import {
   Tooltip,
   TooltipContent,

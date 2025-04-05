@@ -9,6 +9,7 @@ import React, {
 } from "react";
 import { useAuth } from "./AuthContext";
 import { useToast } from "./ToastContext"; // Import useToast
+import { authenticatedFetch, ApiError } from "@/lib/apiClient"; // Import the new utility and error class
 
 // Define the structure of a todo item from backend
 export interface TodoItem {
@@ -99,35 +100,36 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
 
   const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
-  const getAuthHeaders = useCallback(() => {
-    const headers: HeadersInit = { "Content-Type": "application/json" };
-    if (session?.access_token) {
-      headers["Authorization"] = `Bearer ${session.access_token}`;
-    }
-    return headers;
-  }, [session]);
+  // Removed getAuthHeaders as it's handled by authenticatedFetch
 
   const fetchTodos = useCallback(async () => {
     if (!session) return;
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch("/api/todos", { headers: getAuthHeaders() });
-      if (!response.ok)
-        throw new Error(`HTTP error! status: ${response.status}`);
-      const data: { todoItems: TodoItem[] } = await response.json();
+      // Use authenticatedFetch
+      const data = await authenticatedFetch<{ todoItems: TodoItem[] }>(
+        "/api/todos",
+        "GET",
+        session
+      );
       setTodos(data.todoItems || []);
       setLastFetchTime(new Date());
     } catch (e) {
       console.error("Failed to fetch todos:", e);
+      // ApiError has a message property, other errors might too
       const errorMsg = e instanceof Error ? e.message : "Failed to fetch todos";
       setError(errorMsg);
-      showToast({ title: errorMsg, variant: "error" });
+      showToast({
+        title: "Fetch Error",
+        description: errorMsg,
+        variant: "error",
+      });
       setTodos([]);
     } finally {
       setIsLoading(false);
     }
-  }, [session, getAuthHeaders, showToast]);
+  }, [session, showToast]); // Removed getAuthHeaders from dependencies
 
   const fetchTodosIfNeeded = useCallback(() => {
     if (isLoading) return;
@@ -150,7 +152,7 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
       setTodos([]);
       setLastFetchTime(null);
     }
-  }, [session]);
+  }, [session, fetchTodosIfNeeded]); // Added fetchTodosIfNeeded dependency
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -177,34 +179,26 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
       });
       return;
     }
-    setIsLoading(true);
+    setIsLoading(true); // Consider a more specific loading state if needed
     setError(null);
     try {
-      const response = await fetch("/api/todos/manual", {
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
-          title,
-          parent_id: parentId,
-          due_date: dueDate || null,
-        }),
+      // Use authenticatedFetch - assuming API returns nothing significant on success (or refetch covers it)
+      await authenticatedFetch<void>("/api/todos/manual", "POST", session, {
+        title,
+        parent_id: parentId,
+        due_date: dueDate || null,
       });
-      if (!response.ok) {
-        let errorMsg = `HTTP error! status: ${response.status}`;
-        try {
-          const errorBody = await response.json();
-          errorMsg = errorBody.message || errorMsg;
-        } catch {
-          /* Ignore */
-        }
-        throw new Error(errorMsg);
-      }
+      // Refetch after successful add
       await fetchTodos();
     } catch (e) {
       console.error("Failed to add todo:", e);
       const errorMsg = e instanceof Error ? e.message : "Failed to add todo";
       setError(errorMsg);
-      showToast({ title: errorMsg, variant: "error" });
+      showToast({
+        title: "Add Error",
+        description: errorMsg,
+        variant: "error",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -219,6 +213,7 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
       return;
     }
     const originalTodos = [...todos];
+    // Optimistic update logic remains the same
     const itemsToRemove = new Set<string>([id]);
     const findDescendants = (parentId: string) => {
       originalTodos.forEach((item) => {
@@ -230,33 +225,33 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
     };
     findDescendants(id);
     setTodos((prev) => prev.filter((item) => !itemsToRemove.has(item.id)));
-    setIsLoading(true);
+
+    // Consider a more specific loading state?
+    // setIsLoading(true); // Maybe not needed for delete? Or use a specific deleting state?
     setError(null);
     try {
-      const response = await fetch(`/api/todos/manual/${id}`, {
-        method: "DELETE",
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) {
-        setTodos(originalTodos);
-        let errorMsg = `HTTP error! status: ${response.status}`;
-        try {
-          const errorBody = await response.json();
-          errorMsg = errorBody.message || errorMsg;
-        } catch {
-          /* Ignore */
-        }
-        throw new Error(errorMsg);
-      }
+      // Use authenticatedFetch for the DELETE request
+      await authenticatedFetch<void>(
+        `/api/todos/manual/${id}`,
+        "DELETE",
+        session
+      );
+      // No need to refetch if optimistic update is sufficient and API confirms success
     } catch (e) {
+      // Revert optimistic update on error
       setTodos(originalTodos);
       console.error("Failed to delete todo:", e);
       const errorMsg = e instanceof Error ? e.message : "Failed to delete todo";
       setError(errorMsg);
-      showToast({ title: errorMsg, variant: "error" });
-      await fetchTodos();
+      showToast({
+        title: "Delete Error",
+        description: errorMsg,
+        variant: "error",
+      });
+      // Optionally refetch here if needed to ensure consistency after error
+      // await fetchTodos();
     } finally {
-      setIsLoading(false);
+      // setIsLoading(false);
     }
   };
 
@@ -269,6 +264,7 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
       return;
     }
     const originalTodos = [...todos];
+    // Optimistic update logic remains the same
     const todoIndex = originalTodos.findIndex((t) => t.id === id);
     if (todoIndex === -1) return;
     const originalTodo = originalTodos[todoIndex];
@@ -277,33 +273,30 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
       is_completed: !originalTodo.is_completed,
     };
     setTodos((prev) => prev.map((t) => (t.id === id ? updatedTodo : t)));
-    setTogglingTodoId(id);
+    setTogglingTodoId(id); // Keep specific loading state for UI feedback
     setError(null);
     try {
-      const response = await fetch(`/api/todos/manual/${id}/toggle`, {
-        method: "PUT",
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) {
-        setTodos(originalTodos);
-        let errorMsg = `HTTP error! status: ${response.status}`;
-        try {
-          const errorBody = await response.json();
-          errorMsg = errorBody.message || errorMsg;
-        } catch {
-          /* Ignore */
-        }
-        throw new Error(errorMsg);
-      }
+      // Use authenticatedFetch for the PUT request
+      await authenticatedFetch<void>(
+        `/api/todos/manual/${id}/toggle`,
+        "PUT",
+        session
+      );
       console.log(`Successfully toggled todo ${id}`);
+      // API confirmed success, optimistic update is now the source of truth
     } catch (e) {
+      // Revert optimistic update on error
       setTodos(originalTodos);
       console.error("Failed to toggle todo:", e);
       const errorMsg = e instanceof Error ? e.message : "Failed to toggle todo";
       setError(errorMsg);
-      showToast({ title: errorMsg, variant: "error" });
+      showToast({
+        title: "Toggle Error",
+        description: errorMsg,
+        variant: "error",
+      });
     } finally {
-      setTogglingTodoId(null);
+      setTogglingTodoId(null); // Clear specific loading state
     }
   };
 
@@ -316,45 +309,42 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
       return;
     }
     const originalTodos = [...todos];
+    // Optimistic update logic remains the same
     const todoIndex = originalTodos.findIndex((t) => t.id === id);
     if (todoIndex === -1) return;
     const originalTodo = originalTodos[todoIndex];
     const updatedTodo = { ...originalTodo, title: newTitle.trim() };
     setTodos((prev) => prev.map((t) => (t.id === id ? updatedTodo : t)));
-    setEditingTodoId(id);
+    setEditingTodoId(id); // Keep specific loading state
     setError(null);
     try {
-      const response = await fetch(`/api/todos/manual/${id}`, {
-        method: "PUT",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ title: newTitle.trim() }),
-      });
-      if (!response.ok) {
-        setTodos(originalTodos);
-        let errorMsg = `HTTP error! status: ${response.status}`;
-        try {
-          const errorBody = await response.json();
-          errorMsg = errorBody.message || errorMsg;
-        } catch {
-          /* Ignore */
-        }
-        throw new Error(errorMsg);
-      }
+      // Use authenticatedFetch for the PUT request, expecting the updated TodoItem
+      const confirmedTodo = await authenticatedFetch<TodoItem>(
+        `/api/todos/manual/${id}`,
+        "PUT",
+        session,
+        { title: newTitle.trim() }
+      );
       console.log(`Successfully edited todo ${id}`);
-      const confirmedTodo = await response.json();
+      // Update state with the confirmed data from the server
       setTodos((prev) =>
         prev.map((t) =>
           t.id === id ? { ...confirmedTodo, sourceProvider: "manual" } : t
         )
       );
     } catch (e) {
+      // Revert optimistic update on error
       setTodos(originalTodos);
       console.error("Failed to edit todo:", e);
       const errorMsg = e instanceof Error ? e.message : "Failed to edit todo";
       setError(errorMsg);
-      showToast({ title: errorMsg, variant: "error" });
+      showToast({
+        title: "Edit Error",
+        description: errorMsg,
+        variant: "error",
+      });
     } finally {
-      setEditingTodoId(null);
+      setEditingTodoId(null); // Clear specific loading state
     }
   };
 
@@ -370,6 +360,7 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
       return;
     }
     const originalTodos = [...todos];
+    // Optimistic update logic remains the same
     const newOptimisticTodos = originalTodos
       .map((todo) => {
         const newIndex = orderedIds.indexOf(todo.id);
@@ -381,41 +372,40 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
       .sort((a, b) => {
         if (a.level !== b.level) return a.level - b.level;
         if (a.parent_id !== b.parent_id) {
+          // Should not happen if filtering by parentId correctly, but safe fallback
           return 0;
         }
         return a.position - b.position;
       });
     setTodos(newOptimisticTodos);
-    setIsLoading(true);
+    setIsLoading(true); // Use general loading state for reorder
     setError(null);
     try {
-      const response = await fetch(`/api/todos/manual/reorder`, {
-        method: "PUT",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ parentId, orderedIds }),
-      });
-      if (!response.ok) {
-        setTodos(originalTodos);
-        let errorMsg = `HTTP error! status: ${response.status}`;
-        try {
-          const errorBody = await response.json();
-          errorMsg = errorBody.message || errorMsg;
-        } catch {
-          /* Ignore */
-        }
-        throw new Error(errorMsg);
-      }
+      // Use authenticatedFetch for the PUT request
+      await authenticatedFetch<void>(
+        `/api/todos/manual/reorder`,
+        "PUT",
+        session,
+        { parentId, orderedIds }
+      );
       console.log(
         `Successfully reordered todos under parent ${parentId || "NULL"}`
       );
+      // Refetch after successful reorder to ensure consistency
       await fetchTodos();
     } catch (e) {
+      // Revert optimistic update on error
       setTodos(originalTodos);
       console.error("Failed to reorder todos:", e);
       const errorMsg =
         e instanceof Error ? e.message : "Failed to reorder todos";
       setError(errorMsg);
-      showToast({ title: errorMsg, variant: "error" });
+      showToast({
+        title: "Reorder Error",
+        description: errorMsg,
+        variant: "error",
+      });
+      // Refetch needed after failed reorder to get correct state
       await fetchTodos();
     } finally {
       setIsLoading(false);
@@ -431,9 +421,10 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
       });
       return;
     }
-    setIsLoading(true);
+    setIsLoading(true); // Use general loading state
     setError(null);
 
+    // Parent title logic remains the same
     let parentTitle: string | undefined = undefined;
     if (todo.level === 1 && todo.parent_id) {
       const parent = todos.find((t) => t.id === todo.parent_id);
@@ -453,70 +444,66 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
         requestBody.parentTitle = parentTitle;
       }
 
-      const response = await fetch(`/api/todos/manual/${id}/breakdown`, {
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify(requestBody),
-      });
+      // Use authenticatedFetch for the POST request
+      const result = await authenticatedFetch<{ createdSubItems: TodoItem[] }>(
+        `/api/todos/manual/${id}/breakdown`,
+        "POST",
+        session,
+        requestBody
+      );
 
-      if (!response.ok) {
-        let errorMsg = `HTTP error! status: ${response.status}`;
-        let errorCode = null;
-        try {
-          const errorBody = await response.json();
-          errorMsg = errorBody.message || errorMsg;
-          errorCode = errorBody.code;
-        } catch {
-          /* Ignore */
-        }
-
-        if (response.status === 422 && errorCode === "NEED_MORE_CONTEXT") {
-          showToast({
-            title: "Task too ambiguous",
-            description:
-              "Please refine the task title for automatic breakdown.",
-            variant: "warning",
-          });
-        } else {
-          throw new Error(errorMsg);
-        }
-      } else {
-        const result = await response.json();
-        const createdCount = result.createdSubItems?.length || 0;
-        if (createdCount > 0) {
-          showToast({
-            title: `Generated ${createdCount} sub-tasks!`,
-            variant: "success",
-          });
-          const newItemsWithFlag = result.createdSubItems.map(
-            (item: TodoItem) => ({ ...item, isNew: true })
-          );
-          setTodos((prev) =>
-            [...prev, ...newItemsWithFlag].sort((a, b) =>
-              a.level === b.level ? a.position - b.position : a.level - b.level
+      // Success handling remains the same
+      const createdCount = result.createdSubItems?.length || 0;
+      if (createdCount > 0) {
+        showToast({
+          title: `Generated ${createdCount} sub-tasks!`,
+          variant: "success",
+        });
+        const newItemsWithFlag = result.createdSubItems.map(
+          (item: TodoItem) => ({ ...item, isNew: true })
+        );
+        setTodos((prev) =>
+          [...prev, ...newItemsWithFlag].sort((a, b) =>
+            a.level === b.level ? a.position - b.position : a.level - b.level
+          )
+        );
+        // Animation flag removal logic remains the same
+        setTimeout(() => {
+          setTodos((currentTodos) =>
+            currentTodos.map((t) =>
+              newItemsWithFlag.find((newItem: TodoItem) => newItem.id === t.id)
+                ? { ...t, isNew: false }
+                : t
             )
           );
-          setTimeout(() => {
-            setTodos((currentTodos) =>
-              currentTodos.map((t) =>
-                newItemsWithFlag.find(
-                  (newItem: TodoItem) => newItem.id === t.id
-                )
-                  ? { ...t, isNew: false }
-                  : t
-              )
-            );
-          }, 1000);
-        } else {
-          showToast({ title: "No sub-tasks generated.", variant: "info" });
-        }
+        }, 1000);
+      } else {
+        showToast({ title: "No sub-tasks generated.", variant: "info" });
       }
     } catch (e) {
-      console.error("Failed to break down todo:", e);
-      const errorMsg =
-        e instanceof Error ? e.message : "Failed to break down task";
-      setError(errorMsg);
-      showToast({ title: errorMsg, variant: "error" });
+      // Specific error handling for 422 / NEED_MORE_CONTEXT
+      if (
+        e instanceof ApiError &&
+        e.status === 422 &&
+        e.errorBody?.code === "NEED_MORE_CONTEXT"
+      ) {
+        showToast({
+          title: "Task too ambiguous",
+          description: "Please refine the task title for automatic breakdown.",
+          variant: "warning",
+        });
+      } else {
+        // General error handling
+        console.error("Failed to break down todo:", e);
+        const errorMsg =
+          e instanceof Error ? e.message : "Failed to break down task";
+        setError(errorMsg);
+        showToast({
+          title: "Breakdown Error",
+          description: errorMsg,
+          variant: "error",
+        });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -531,8 +518,7 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
       });
       return;
     }
-    // Optimistic update (optional but good UX)
-    // Find the item and its siblings
+    // Optimistic update logic remains the same
     const itemToMove = todos.find((t) => t.id === id);
     if (!itemToMove) return;
     const siblings = todos
@@ -540,54 +526,55 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
       .sort((a, b) => a.position - b.position);
     const currentIndex = siblings.findIndex((t) => t.id === id);
 
+    let canMove = false;
     if (direction === "up" && currentIndex > 0) {
-      // Swap positions optimistically
       const targetIndex = currentIndex - 1;
       const tempPos = siblings[targetIndex].position;
       siblings[targetIndex].position = siblings[currentIndex].position;
       siblings[currentIndex].position = tempPos;
-      setTodos([...todos]); // Trigger re-render
+      canMove = true;
     } else if (direction === "down" && currentIndex < siblings.length - 1) {
-      // Swap positions optimistically
       const targetIndex = currentIndex + 1;
       const tempPos = siblings[targetIndex].position;
       siblings[targetIndex].position = siblings[currentIndex].position;
       siblings[currentIndex].position = tempPos;
-      setTodos([...todos]); // Trigger re-render
-    } else {
-      return; // Cannot move further
+      canMove = true;
     }
+
+    if (!canMove) return; // Cannot move further
+
+    const originalTodos = [...todos]; // Store state before optimistic update
+    setTodos([...todos]); // Trigger re-render with optimistic update
 
     setIsLoading(true); // Consider a different loading state?
     setError(null);
     try {
-      const response = await fetch(`/api/todos/manual/${id}/move`, {
-        method: "PUT",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ direction }),
-      });
-      if (!response.ok) {
-        // Revert optimistic update on error
-        await fetchTodos(); // Simplest way to revert is refetch
-        let errorMsg = `HTTP error! status: ${response.status}`;
-        try {
-          const errorBody = await response.json();
-          errorMsg = errorBody.message || errorMsg;
-        } catch {
-          /* Ignore */
+      // Use authenticatedFetch for the PUT request
+      await authenticatedFetch<void>(
+        `/api/todos/manual/${id}/move`,
+        "PUT",
+        session,
+        {
+          direction,
         }
-        throw new Error(errorMsg);
-      }
+      );
       console.log(`Successfully moved todo ${id} ${direction}`);
       // Refetch to confirm final order from DB
       await fetchTodos();
     } catch (e) {
+      // Revert optimistic update on error
+      setTodos(originalTodos);
       console.error(`Failed to move todo ${direction}:`, e);
       const errorMsg =
         e instanceof Error ? e.message : `Failed to move todo ${direction}`;
       setError(errorMsg);
-      showToast({ title: errorMsg, variant: "error" });
-      await fetchTodos(); // Refetch on error
+      showToast({
+        title: "Move Error",
+        description: errorMsg,
+        variant: "error",
+      });
+      // Refetch needed after failed move to get correct state
+      await fetchTodos();
     } finally {
       setIsLoading(false);
     }

@@ -19,7 +19,7 @@ import { UserProfilePanel } from "./UserProfilePanel";
 import { CalendarDataSource } from "./datasources/CalendarDataSource";
 import { HealthDataSource } from "./datasources/HealthDataSource";
 import { TodosDataSource } from "./datasources/TodosDataSource";
-import { FinanceSettingsPanel } from "./finance/FinanceSettingsPanel"; // Import finance panel
+import { FinanceDataSource } from "./datasources/FinanceDataSource"; // Updated import path and name
 // Import the changelog data
 import changelogData from "../../public/changelog.json";
 // Import types and constants needed for PathsPage
@@ -375,7 +375,8 @@ export function LeftSidebar({
         <TodosDataSource onClose={() => handleTogglePanel("todos")} />
       </div>
       <div className={getPanelClasses("finance", "max-w-sm")}>
-        <FinanceSettingsPanel onClose={() => handleTogglePanel("finance")} />
+        <FinanceDataSource onClose={() => handleTogglePanel("finance")} />{" "}
+        {/* Updated component name */}
       </div>
 
       {/* Render the changelog modal */}
