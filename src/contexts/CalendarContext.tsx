@@ -1,15 +1,15 @@
+import { authenticatedFetch } from "@/lib/apiClient"; // Import the new utility and error class
+import { CalendarItem } from "@/types/datasources"; // Import the new type
 import React, {
   createContext,
-  useState,
-  useContext,
   ReactNode,
-  useEffect,
   useCallback,
+  useContext,
+  useEffect,
+  useState,
 } from "react";
-import { CalendarItem } from "@/types/datasources"; // Import the new type
 import { useAuth } from "./AuthContext"; // Import useAuth to get session token
 import { useToast } from "./ToastContext"; // Import useToast
-import { authenticatedFetch, ApiError } from "@/lib/apiClient"; // Import the new utility and error class
 
 // Define the context shape using CalendarItem
 interface CalendarContextType {

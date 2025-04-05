@@ -1,15 +1,15 @@
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  useCallback,
-  useMemo,
-} from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
-import { startOfWeek, endOfWeek, addWeeks, subWeeks, format } from "date-fns"; // Import date-fns functions
-import { authenticatedFetch, ApiError } from "@/lib/apiClient"; // Import the new utility and error class
+import { authenticatedFetch } from "@/lib/apiClient"; // Import the new utility and error class
+import { addWeeks, endOfWeek, format, startOfWeek, subWeeks } from "date-fns"; // Import date-fns functions
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 // --- Types ---
 

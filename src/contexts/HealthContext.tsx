@@ -1,14 +1,14 @@
+import { authenticatedFetch } from "@/lib/apiClient"; // Import the new utility and error class
 import React, {
   createContext,
-  useState,
-  useEffect,
-  useContext,
   ReactNode,
   useCallback,
+  useContext,
+  useEffect,
+  useState,
 } from "react";
 import { useAuth } from "./AuthContext";
 import { useToast } from "./ToastContext"; // Import useToast
-import { authenticatedFetch, ApiError } from "@/lib/apiClient"; // Import the new utility and error class
 
 // Define the structure for health entries from backend
 export interface HealthEntry {
