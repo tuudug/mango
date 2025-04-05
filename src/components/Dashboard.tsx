@@ -42,7 +42,6 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
   const {
     items, // Display items
     editItems, // Items being edited (or null)
-    setItems, // Only used internally by hook now? Or after save?
     setEditItems, // Function to update edit state
     isLoadingLayout,
     fetchLayout,
@@ -51,6 +50,8 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
   } = useDashboardLayout();
 
   const [isToolboxOpen, setIsToolboxOpen] = useState(false); // True if in edit mode
+  // --- NEW: State to track if any config modal is active ---
+  const [isConfigModalActive, setIsConfigModalActive] = useState(false);
 
   const [currentViewDashboardName, setCurrentViewDashboardName] =
     useState<DashboardName>("default");
@@ -66,7 +67,7 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
   const [isSwitchingEditMode, setIsSwitchingEditMode] = useState(false);
   const [isSavingLayout, setIsSavingLayout] = useState(false); // <-- Add state for saving loader
 
-  // --- Initial Load & Focus Handling ---
+  // --- Initial Load & Focus Handling (remains the same) ---
   useEffect(() => {
     const loadInitial = async () => {
       const isMobile = isMobileView();
@@ -153,6 +154,7 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
         setEditTargetDashboard(viewTarget); // Reset edit target for next time
         setIsToolboxOpen(false); // Update state after async operation
         setIsSavingLayout(false); // <-- Set saving state back to false
+        setIsConfigModalActive(false); // Ensure config modal state is reset on exit
       }
     } else if (nextIsOpen) {
       // --- Opening Toolbox ---
@@ -165,6 +167,7 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
     } else {
       // Closing toolbox when editItems is already null (e.g., implicit close)
       setIsToolboxOpen(false);
+      setIsConfigModalActive(false); // Ensure config modal state is reset
     }
   };
 
@@ -176,8 +179,13 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
   };
   // --- End Toolbox Toggle Logic ---
 
-  // --- Add Widget Logic ---
-  // Updates editItems state directly
+  // --- NEW: Callback for config modal open/close ---
+  const handleConfigModalToggle = (isOpen: boolean) => {
+    setIsConfigModalActive(isOpen);
+  };
+  // --- End Callback ---
+
+  // --- Add Widget Logic (remains the same) ---
   const handleAddWidget = (widgetType: WidgetType) => {
     if (!isToolboxOpen || editItems === null) return; // Only run in edit mode
 
@@ -275,13 +283,12 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
   };
   // --- End Add Widget Logic ---
 
-  // --- Layout Change Handlers ---
+  // --- Layout Change Handlers (remain the same) ---
   // Updates editItems state directly
   const onLayoutChange = useCallback(
     (layout: Layout[]) => {
       if (!isToolboxOpen || editItems === null) return; // Only run in edit mode
 
-      // --- Add Logging ---
       console.log("[onLayoutChange] Triggered.");
       console.log(
         "[onLayoutChange] Current editItems state (before update):",
@@ -295,13 +302,10 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
           layout.map((l) => ({ i: l.i, x: l.x, y: l.y, w: l.w, h: l.h }))
         )
       );
-      // --- End Logging ---
 
-      // Calculate new layout based on RGL's layout output
       const newEditItems = editItems.map((editItem) => {
         const layoutItem = layout.find((l) => l.i === editItem.id);
 
-        // --- Add Logging ---
         if (layoutItem) {
           console.log(
             `[onLayoutChange] Processing item ${editItem.id}: Found layoutItem (x:${layoutItem.x}, y:${layoutItem.y}, w:${layoutItem.w}, h:${layoutItem.h}). Current editItem (w:${editItem.w}, h:${editItem.h})`
@@ -311,20 +315,18 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
             `[onLayoutChange] Processing item ${editItem.id}: Corresponding layoutItem NOT FOUND in RGL output!`
           );
         }
-        // --- End Logging ---
 
         return layoutItem
           ? {
-              ...editItem, // Keep existing properties (like config, type, minW/H)
-              x: layoutItem.x, // Update position from RGL
-              y: layoutItem.y, // Update position from RGL
-              w: layoutItem.w, // Update width from RGL
-              h: layoutItem.h, // Update height from RGL
+              ...editItem,
+              x: layoutItem.x,
+              y: layoutItem.y,
+              w: layoutItem.w,
+              h: layoutItem.h,
             }
-          : editItem; // Should not happen if RGL includes all items
+          : editItem;
       });
 
-      // --- Add Logging ---
       console.log(
         "[onLayoutChange] Calculated newEditItems (x,y,w,h updated):",
         JSON.stringify(
@@ -337,12 +339,10 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
           }))
         )
       );
-      // --- End Logging ---
 
-      // Check if layout actually changed (position or size)
       let layoutChanged = false;
       if (newEditItems.length !== editItems.length) {
-        layoutChanged = true; // Should not happen
+        layoutChanged = true;
         console.warn(
           "[onLayoutChange] Mismatch in item count between editItems and newEditItems!"
         );
@@ -354,8 +354,8 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
             !newItem ||
             oldItem.x !== newItem.x ||
             oldItem.y !== newItem.y ||
-            oldItem.w !== newItem.w || // Check width
-            oldItem.h !== newItem.h // Check height
+            oldItem.w !== newItem.w ||
+            oldItem.h !== newItem.h
           ) {
             layoutChanged = true;
             break;
@@ -367,14 +367,14 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
         console.log(
           "[onLayoutChange] Layout changed (pos or size). Updating editItems state."
         );
-        setEditItems(newEditItems); // Update local edit state ONLY
+        setEditItems(newEditItems);
       } else {
         console.log(
           "[onLayoutChange] No layout change detected. Skipping state update."
         );
       }
     },
-    [editItems, setEditItems, isToolboxOpen] // Depend on editItems
+    [editItems, setEditItems, isToolboxOpen]
   );
 
   // Updates editItems state directly during resize
@@ -382,39 +382,33 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
     (_layout: Layout[], _oldItem: Layout, newItemLayout: Layout) => {
       if (!isToolboxOpen || editItems === null) return; // Only run in edit mode
 
-      // Update the edit state immediately during resize
       setEditItems((currentEditItems) => {
-        if (!currentEditItems) return null; // Should not happen if isToolboxOpen is true
+        if (!currentEditItems) return null;
         return currentEditItems.map((item) =>
           item.id === newItemLayout.i
             ? { ...item, w: newItemLayout.w, h: newItemLayout.h }
             : item
         );
       });
-      // NO server save
     },
-    [isToolboxOpen, setEditItems] // editItems not needed as dependency for setter fn
+    [isToolboxOpen, setEditItems]
   );
 
   // Updates editItems state directly after resize stops
-  // This might be redundant now if onLayoutChange handles size correctly, but keep for safety/clarity
   const handleResizeStop = useCallback(
     (_layout: Layout[], _oldItem: Layout, newItemLayout: Layout) => {
       if (!isToolboxOpen || editItems === null) return; // Only run in edit mode
 
-      // Ensure the final size is set in the edit state
       setEditItems((currentEditItems) => {
         if (!currentEditItems) return null;
         const itemExists = currentEditItems.some(
           (item) => item.id === newItemLayout.i
         );
-        if (!itemExists) return currentEditItems; // Avoid update if item somehow disappeared
+        if (!itemExists) return currentEditItems;
 
-        // --- Add Logging ---
         console.log(
           `[handleResizeStop] Updating item ${newItemLayout.i} size to w:${newItemLayout.w}, h:${newItemLayout.h}`
         );
-        // --- End Logging ---
 
         return currentEditItems.map((item) =>
           item.id === newItemLayout.i
@@ -422,9 +416,8 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
             : item
         );
       });
-      // NO server save
     },
-    [isToolboxOpen, setEditItems] // editItems not needed as dependency for setter fn
+    [isToolboxOpen, setEditItems]
   );
 
   // Updates editItems state directly
@@ -434,16 +427,14 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
     const newEditItems = editItems.filter((item) => item.id !== idToDelete);
 
     if (newEditItems.length === 0) {
-      // If last item deleted, set edit state to default placeholder layout
       setEditItems(getDefaultLayout());
     } else {
       setEditItems(newEditItems);
     }
-    // NO server save
   };
   // --- End Layout Change Handlers ---
 
-  // --- Panel Behavior & Styling ---
+  // --- Panel Behavior & Styling (remains the same) ---
   const mainContentPaddingLeft = isToolboxOpen ? "pl-64" : "pl-0";
   const isMobileEditMode = isToolboxOpen && editTargetDashboard === "mobile";
 
@@ -490,6 +481,7 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
             )}
           >
             {/* Pass itemsToDisplay (either items or editItems) */}
+            {/* --- Pass NEW props to DashboardGrid --- */}
             <DashboardGrid
               items={itemsToDisplay}
               isToolboxOpen={isToolboxOpen}
@@ -499,6 +491,8 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
               onLiveResize={handleLiveResize}
               handleResizeStop={handleResizeStop}
               handleDeleteWidget={handleDeleteWidget}
+              isConfigModalActive={isConfigModalActive} // Pass state down
+              onConfigModalToggle={handleConfigModalToggle} // Pass callback down
             />
             {/* Loader specifically for switching edit targets */}
             {isSwitchingEditMode && (

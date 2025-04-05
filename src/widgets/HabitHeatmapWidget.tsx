@@ -1,13 +1,13 @@
-import React, { useState, useEffect, useMemo } from "react";
+import { useHabits } from "@/contexts/HabitsContext";
+import dayjs from "dayjs";
+import { Loader2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import CalendarHeatmap, {
   ReactCalendarHeatmapValue,
   TooltipDataAttrs, // Keep the import for casting
 } from "react-calendar-heatmap"; // Import the value type
 import "react-calendar-heatmap/dist/styles.css"; // Import default styles
-import { useHabits, HabitEntry, Habit } from "@/contexts/HabitsContext";
-import dayjs from "dayjs";
 import { Tooltip as ReactTooltip } from "react-tooltip"; // Use renamed import for clarity
-import { Loader2 } from "lucide-react";
 import "./HabitHeatmapWidget.css"; // We'll create this for custom styles
 
 // Define the props your widget expects, including config
@@ -32,10 +32,6 @@ export function HabitHeatmapWidget({ id, w: _w, h: _h, config }: WidgetProps) {
 
   // Read selectedHabitId directly from the config prop
   const selectedHabitId = config?.habitId;
-
-  // --- Add Logging ---
-  console.log(`[HabitHeatmapWidget ${id}] Rendering. config:`, config);
-  // --- End Logging ---
 
   // Find the selected habit object based on ID (memoized)
   const selectedHabit = useMemo(() => {
@@ -71,6 +67,7 @@ export function HabitHeatmapWidget({ id, w: _w, h: _h, config }: WidgetProps) {
       );
       setHeatmapData([]); // Clear data
       setError(null); // Clear error
+      setIsLoadingData(false); // Ensure loading is off if no ID
       return;
     }
 
@@ -84,6 +81,7 @@ export function HabitHeatmapWidget({ id, w: _w, h: _h, config }: WidgetProps) {
       );
       setHeatmapData([]);
       setError(null); // Don't show error, just show "Select Habit" state
+      setIsLoadingData(false); // Ensure loading is off
       return;
     }
 
@@ -150,7 +148,7 @@ export function HabitHeatmapWidget({ id, w: _w, h: _h, config }: WidgetProps) {
     };
 
     loadData();
-    // Depend directly on the ID from props and habit loading state
+    // Restore dependencies: selectedHabitId, habits, isLoadingHabits, fetchHabitEntries
   }, [selectedHabitId, habits, isLoadingHabits, fetchHabitEntries, id]); // Added id for logging uniqueness
 
   const endDate = dayjs().format("YYYY-MM-DD");

@@ -1,3 +1,40 @@
+# Current Progress: Centralized Widget Configuration (As of 2025-04-05 ~9:57 PM)
+
+## Goal: Refactor widget configuration to use a central modal system for better scalability and maintainability.
+
+## Implementation Progress:
+
+1.  **Central Modal (`WidgetConfigModal.tsx`):**
+    - Created a single modal component triggered by the pencil icon in `DashboardGridItem` during edit mode.
+    - Manages temporary config state (`tempConfig`) internally.
+    - Uses a registry (`widgetConfigComponents` in `widgetConfig.ts`) to dynamically load specific config UI.
+    - Displays a default message if no specific config component is registered for a widget type.
+    - Handles Save/Cancel actions, calling back to `DashboardGridItem` on save.
+2.  **Specific Config Components (`src/components/widget-configs/`):**
+    - Created a new directory `src/components/widget-configs/`.
+    - Created `HabitSelectionConfig.tsx` containing the UI (radio buttons) for selecting a habit.
+    - This component receives the current `config` and an `onChange` callback to update the `tempConfig` in the parent modal.
+3.  **Configuration Registry (`widgetConfig.ts`):**
+    - Added a new exported map `widgetConfigComponents` linking `WidgetType` to its specific config component (e.g., `HabitSelectionConfig`) or `null`.
+4.  **Integration (`DashboardGridItem.tsx`):**
+    - Removed the old `HabitSelectionModal`.
+    - Imports and renders the central `WidgetConfigModal`.
+    - Passes necessary props (`widgetId`, `widgetType`, `currentConfig`, `onSave`) to the modal.
+    - The `onSave` callback (`handleSaveConfig`) triggers the `updateWidgetConfig` hook function.
+5.  **Edit Mode Interaction:**
+    - Added state (`isConfigModalActive`) and callback (`handleConfigModalToggle`) to `Dashboard.tsx` to track modal visibility.
+    - Passed state/callback down through `DashboardGrid` to `DashboardGridItem`.
+    - `DashboardGrid` now uses `isConfigModalActive` to disable drag/resize operations when the config modal is open.
+    - `DashboardGridItem` calls `onConfigModalToggle` when the modal opens/closes.
+6.  **State Propagation Fix (`useDashboardLayout.ts`):**
+    - Modified `updateWidgetConfig` to ensure it creates a new object reference for the updated `GridItem` in the `editItems` array, intended to help trigger `useEffect` in widgets.
+
+## Urgent Fix Needed:
+
+- **Widget Config Update Rendering:** Despite the state update propagating correctly to the `useDashboardLayout` hook and `DashboardGridItem` receiving the updated config prop (verified via logs), the `HabitHeatmapWidget` and `HabitStreakWidget` are **not** visually updating immediately after saving the configuration in edit mode. Their internal `useEffect` hooks (dependent on `config.habitId`) are not re-running as expected. Further investigation is required.
+
+---
+
 # Current Progress: Dashboard Edit Mode Refactor & Fixes (As of 2025-04-05 ~8:17 PM)
 
 ## Goal: Improve dashboard edit mode stability and user experience.
@@ -11,7 +48,7 @@
       - Introduced separate local state (`editItems`) in `useDashboardLayout` to hold the layout being edited.
       - Modified `fetchLayout` to populate `editItems` when entering edit mode (`forEditing: true`).
       - Modified layout change handlers (`onLayoutChange`, `handleLiveResize`, `handleResizeStop`, `handleAddWidget`, `handleDeleteWidget`) in `Dashboard.tsx` to update _only_ the `editItems` state via `setEditItems` when in edit mode.
-      - Modified `updateWidgetConfig` in `useDashboardLayout` to accept an `isEditing` flag and update `editItems` (without saving) or `items` (with immediate save) accordingly. Passed `isEditing` flag down from `Dashboard` -> `DashboardGrid` -> `DashboardGridItem`.
+      - Modified `updateWidgetConfig` in `useDashboardLayout` to accept an `isEditing` flag and update `editItems` (without saving) or `items` (with immediate save) accordingly. Passed `isEditing` flag down from `Dashboard` -> `DashboardGrid` -> `DashboardGridItem`. **(Later modified again to ensure new object reference)**.
       - Created `saveEditLayout` function in `useDashboardLayout` to handle saving the final `editItems` state to the server API.
       - Modified `toggleToolbox` in `Dashboard.tsx` to call `saveEditLayout` only when closing the toolbox (exiting edit mode).
       - Corrected `onLayoutChange` in `Dashboard.tsx` to update `w` and `h` based on the layout provided by `react-grid-layout`, fixing the resize+move bug.
@@ -21,10 +58,10 @@
       - Added `isSavingLayout` state to `Dashboard.tsx`.
       - Set `isSavingLayout` to `true` before calling `saveEditLayout` in `toggleToolbox` and `false` afterwards in a `finally` block.
       - Added a conditional loading overlay (spinner and "Saving Layout..." text) that displays when `isSavingLayout` is true.
-3.  **Widget Update Refactor (Heatmap/Streaks - Partial):**
-    - **Issue:** Habit Heatmap/Streaks widgets didn't update immediately after config change even with correct state update.
-    - **Diagnosis:** Widgets used an intermediate local state derived from props, causing a delay.
-    - **Resolution (Attempted):** Refactored `HabitHeatmapWidget` and `HabitStreakWidget` to remove intermediate state and trigger data fetching directly based on `config.habitId` prop change using `useEffect`. (Note: User reported this didn't fully resolve the issue, further investigation needed).
+3.  **~~Widget Update Refactor (Heatmap/Streaks - Partial):~~** (Superseded by Central Config Refactor & Outstanding Bug)
+    - ~~**Issue:** Habit Heatmap/Streaks widgets didn't update immediately after config change even with correct state update.~~
+    - ~~**Diagnosis:** Widgets used an intermediate local state derived from props, causing a delay.~~
+    - ~~**Resolution (Attempted):** Refactored `HabitHeatmapWidget` and `HabitStreakWidget` to remove intermediate state and trigger data fetching directly based on `config.habitId` prop change using `useEffect`. (Note: User reported this didn't fully resolve the issue, further investigation needed).~~
 
 ---
 
@@ -71,10 +108,10 @@
     - Updated backend API (`GET/PUT /api/dashboards/:name`) to handle the `config` field within the `layout` array.
     - Updated frontend caching utils (`getCachedLayout`, `setCachedLayout`) and comparison util (`deepCompareLayouts`) to handle the `config` field (`src/components/dashboard/utils.ts`).
     - Added `updateWidgetConfig` function to `useDashboardLayout` hook to update a specific widget's config and trigger a save.
-    - Created `HabitSelectionModal.tsx` for selecting a habit, including UI refinements.
+    - ~~Created `HabitSelectionModal.tsx` for selecting a habit, including UI refinements.~~ (Removed, replaced by central modal system)
     - Updated `DashboardGridItem.tsx` to:
       - Accept `editTargetDashboard` prop.
-      - Render `HabitSelectionModal` when the pencil icon is clicked for Heatmap/Streaks widgets.
+      - ~~Render `HabitSelectionModal` when the pencil icon is clicked for Heatmap/Streaks widgets.~~ (Replaced with `WidgetConfigModal`)
       - Call `updateWidgetConfig` with the selected habit ID and correct `dashboardName`.
       - Pass the `config` prop down to the rendered widget component.
     - Updated `HabitHeatmapWidget` and `HabitStreakWidget` to accept and use the `config` prop to determine which habit's data to display.
@@ -325,4 +362,4 @@ Added a new data source for manual finance tracking, including settings manageme
   - Implement UI for editing `salary_schedule` in `FinanceSettingsPanel`.
   - Enhance `useAnimatedCounter` for a true slot-machine effect (optional).
   - Improve robustness of `CustomXAxisTick` highlighting for `ExpensesReportWidget` if needed.
-  - **Investigate widget config update rendering issue.**
+  - **Investigate widget config update rendering issue.** **(URGENT)**

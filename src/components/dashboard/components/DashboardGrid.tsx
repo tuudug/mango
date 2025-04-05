@@ -12,25 +12,26 @@ const ResponsiveGridLayout = WidthProvider(Responsive);
 // Define mobile breakpoint specifically for the edit preview
 const mobileEditBreakpoints = { mobile: 375 }; // Match container width
 
+// --- Update Props Interface ---
 interface DashboardGridProps {
   items: GridItem[]; // Already accepts items
   isToolboxOpen: boolean;
   isMobileEditMode: boolean;
   editTargetDashboard: DashboardName; // Add prop here
   onLayoutChange: (layout: Layout[]) => void;
-  // Add the new prop for live resize updates
   onLiveResize: (
     layout: Layout[],
     oldItem: Layout,
     newItemLayout: Layout
   ) => void;
-  // Rename handleResize to handleResizeStop for clarity
   handleResizeStop: (
     layout: Layout[],
     oldItem: Layout,
     newItemLayout: Layout
   ) => void;
   handleDeleteWidget: (idToDelete: string) => void;
+  isConfigModalActive: boolean; // Add prop for modal state
+  onConfigModalToggle: (isOpen: boolean) => void; // Add callback prop
 }
 
 export const DashboardGrid: React.FC<DashboardGridProps> = ({
@@ -42,7 +43,12 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({
   onLiveResize, // Destructure the new prop
   handleResizeStop, // Use the renamed prop
   handleDeleteWidget,
+  isConfigModalActive, // Destructure new prop
+  onConfigModalToggle, // Destructure new prop
 }) => {
+  // --- Determine if grid interaction should be enabled ---
+  const enableGridInteraction = isToolboxOpen && !isConfigModalActive;
+
   // Generate layout for grid (used by RGL)
   const generateLayout = (): Layout[] => {
     return items.map((item) => ({
@@ -53,8 +59,9 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({
       h: item.h,
       minW: item.minW,
       minH: item.minH,
-      isDraggable: isToolboxOpen,
-      isResizable: isToolboxOpen,
+      // Use the combined state to control dragging/resizing
+      isDraggable: enableGridInteraction,
+      isResizable: enableGridInteraction,
     }));
   };
 
@@ -68,8 +75,9 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({
     onResize: onLiveResize, // Connect the live resize handler
     onResizeStop: handleResizeStop, // Connect the stop handler
     style: { minHeight: "100%" },
-    isDraggable: isToolboxOpen,
-    isResizable: isToolboxOpen,
+    // Use the combined state to control dragging/resizing
+    isDraggable: enableGridInteraction,
+    isResizable: enableGridInteraction,
     compactType: null,
     preventCollision: true,
     draggableCancel: ".widget-controls-cancel-drag",
@@ -95,9 +103,10 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({
               <DashboardGridItem
                 item={item}
                 items={items} // Pass the full items array down
-                isEditing={isToolboxOpen}
+                isEditing={isToolboxOpen} // Still pass isToolboxOpen for general edit state
                 handleDeleteWidget={handleDeleteWidget}
                 editTargetDashboard={editTargetDashboard} // Pass prop down
+                onConfigModalToggle={onConfigModalToggle} // Pass callback down
               />
             </div>
           ))}
@@ -119,9 +128,10 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({
             <DashboardGridItem
               item={item}
               items={items} // Pass the full items array down
-              isEditing={isToolboxOpen}
+              isEditing={isToolboxOpen} // Still pass isToolboxOpen for general edit state
               handleDeleteWidget={handleDeleteWidget}
               editTargetDashboard={editTargetDashboard} // Pass prop down
+              onConfigModalToggle={onConfigModalToggle} // Pass callback down
             />
           </div>
         ))}

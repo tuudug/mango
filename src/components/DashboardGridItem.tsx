@@ -1,45 +1,47 @@
-import React, { useState } from "react"; // Import useState
+import React, { useState } from "react"; // Import useEffect
 import { WidgetErrorBoundary } from "./WidgetErrorBoundary";
 // Update imports to use widgetConfig.ts
+import { Button } from "@/components/ui/button"; // Import Button
+import { GridItem } from "@/lib/dashboardConfig"; // Keep GridItem import
 import {
   WidgetType,
-  widgetMetadata,
   defaultWidgetLayouts,
+  widgetMetadata,
 } from "@/lib/widgetConfig";
-import { GridItem } from "@/lib/dashboardConfig"; // Keep GridItem import
-import { X, Pencil, AlertTriangle } from "lucide-react"; // Import AlertTriangle for error
-import { Button } from "@/components/ui/button"; // Import Button
 import { motion } from "framer-motion"; // Import motion
+import { AlertTriangle, Pencil, X } from "lucide-react"; // Import AlertTriangle for error
 import { useDashboardLayout } from "./dashboard/hooks/useDashboardLayout"; // Import the hook
-import { HabitSelectionModal } from "./dashboard/components/HabitSelectionModal"; // Import the new modal
 import { DashboardName } from "./dashboard/types"; // Import DashboardName type
+import { WidgetConfigModal } from "./WidgetConfigModal"; // Import the new central modal
 
-// Widget component imports
-import { StepsTrackerWidget } from "../widgets/StepsTrackerWidget"; // Renamed import
-import { HabitGraphWidget } from "../widgets/HabitGraphWidget";
-import TodoListWidget from "../widgets/TodoList/index"; // Updated path
-import { MonthCalendarWidget } from "../widgets/MonthCalendarWidget"; // Renamed import and path
-import { DailyCalendarWidget } from "../widgets/DailyCalendarWidget"; // New import
-import { SleepStepWidget } from "../widgets/SleepStepWidget";
+// Widget component imports (remain the same)
+import { AffirmationWidget } from "../widgets/AffirmationWidget";
+import { AmbienceWidget } from "../widgets/AmbienceWidget";
+import { DailyAllowanceWidget } from "../widgets/DailyAllowanceWidget";
+import { DailyCalendarWidget } from "../widgets/DailyCalendarWidget";
+import { DailySummaryWidget } from "../widgets/DailySummaryWidget";
+import { ExpensesReportWidget } from "../widgets/ExpensesReportWidget";
 import { GoalTrackerWidget } from "../widgets/GoalTrackerWidget";
+import { HabitGraphWidget } from "../widgets/HabitGraphWidget";
+import { HabitHeatmapWidget } from "../widgets/HabitHeatmapWidget";
+import { HabitsListWidget } from "../widgets/HabitsListWidget";
+import { HabitStreakWidget } from "../widgets/HabitStreakWidget";
 import { JournalWidget } from "../widgets/JournalWidget";
+import { MonthCalendarWidget } from "../widgets/MonthCalendarWidget";
 import { PlaceholderWidget } from "../widgets/PlaceholderWidget";
-import { DailySummaryWidget } from "../widgets/DailySummaryWidget"; // Import the new widget
-import { DailyAllowanceWidget } from "../widgets/DailyAllowanceWidget"; // Import Daily Allowance widget
-import { ExpensesReportWidget } from "../widgets/ExpensesReportWidget"; // Import Expenses Report widget
-import { PomodoroWidget } from "../widgets/PomodoroWidget"; // Import Pomodoro Widget
-import { AmbienceWidget } from "../widgets/AmbienceWidget"; // Import Ambience Widget
-import { AffirmationWidget } from "../widgets/AffirmationWidget"; // Import Affirmation Widget
-import { HabitsListWidget } from "../widgets/HabitsListWidget"; // Import Habits Checklist Widget
-import { HabitHeatmapWidget } from "../widgets/HabitHeatmapWidget"; // Import Habit Heatmap Widget
-import { HabitStreakWidget } from "../widgets/HabitStreakWidget"; // Import Habit Streak Widget
+import { PomodoroWidget } from "../widgets/PomodoroWidget";
+import { SleepStepWidget } from "../widgets/SleepStepWidget";
+import { StepsTrackerWidget } from "../widgets/StepsTrackerWidget";
+import TodoListWidget from "../widgets/TodoList/index";
 
+// --- Update Props Interface ---
 interface DashboardGridItemProps {
   item: GridItem;
   items: GridItem[]; // The array this item belongs to (either display items or edit items)
   isEditing: boolean;
   handleDeleteWidget: (id: string) => void;
   editTargetDashboard: DashboardName;
+  onConfigModalToggle: (isOpen: boolean) => void; // Add callback prop
 }
 
 // Define common props for widget components including optional config
@@ -47,15 +49,15 @@ interface WidgetProps {
   id: string;
   w: number; // Add width
   h: number; // Add height
-  config?: Record<string, any>; // Add optional config prop
+  config?: GridItem["config"]; // Use GridItem['config'] type
 }
 
-// Map widget types to their components using the defined props interface - Add Habit Streaks
+// Map widget types to their components using the defined props interface
 const widgetComponentMap: Record<
   WidgetType,
   React.ComponentType<WidgetProps> // Ensure components accept WidgetProps
 > = {
-  "Steps Tracker": StepsTrackerWidget, // Renamed mapping
+  "Steps Tracker": StepsTrackerWidget,
   "Habit Graph": HabitGraphWidget,
   "Sleep/Step": SleepStepWidget,
   "Goal Tracker": GoalTrackerWidget,
@@ -64,14 +66,14 @@ const widgetComponentMap: Record<
   "Month Calendar": MonthCalendarWidget,
   "Daily Calendar": DailyCalendarWidget,
   "Daily Summary": DailySummaryWidget,
-  "Daily Allowance": DailyAllowanceWidget, // Corrected key with space
-  "Expenses Report": ExpensesReportWidget, // Corrected key with space
-  Pomodoro: PomodoroWidget, // Renamed key
-  Ambience: AmbienceWidget, // Renamed key
-  "Affirmation Widget": AffirmationWidget, // Add Affirmation Widget mapping
-  "Habits Checklist": HabitsListWidget, // Add Habits Checklist mapping
-  "Habit Heatmap": HabitHeatmapWidget, // Add Habit Heatmap mapping
-  "Habit Streaks": HabitStreakWidget, // Add Habit Streaks mapping
+  "Daily Allowance": DailyAllowanceWidget,
+  "Expenses Report": ExpensesReportWidget,
+  Pomodoro: PomodoroWidget,
+  Ambience: AmbienceWidget,
+  "Affirmation Widget": AffirmationWidget,
+  "Habits Checklist": HabitsListWidget,
+  "Habit Heatmap": HabitHeatmapWidget,
+  "Habit Streaks": HabitStreakWidget,
   Placeholder: PlaceholderWidget,
 };
 
@@ -81,15 +83,19 @@ export function DashboardGridItem({
   isEditing,
   handleDeleteWidget,
   editTargetDashboard,
+  onConfigModalToggle, // Destructure new prop
 }: DashboardGridItemProps) {
-  // Get updateWidgetConfig from the hook (it knows whether to update items or editItems)
+  // Get updateWidgetConfig from the hook
   const { updateWidgetConfig } = useDashboardLayout();
+  // State for the new central config modal
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
 
   const metadata = widgetMetadata[item.type as WidgetType];
   const WidgetContentComponent = widgetComponentMap[item.type as WidgetType];
+  // Check if there's a specific config component registered for this widget type
+  //const hasConfigComponent = !!widgetConfigComponents[item.type as WidgetType];
 
-  // --- Error Handling ---
+  // --- Error Handling (remains the same) ---
   if (!WidgetContentComponent || !metadata) {
     const errorType = !WidgetContentComponent ? "Component" : "Metadata";
     console.error(
@@ -135,32 +141,47 @@ export function DashboardGridItem({
     transition: { duration: 0.3, ease: "easeOut", delay: 0.1 },
   };
 
-  const requiresConfig =
-    item.type === "Habit Heatmap" || item.type === "Habit Streaks";
-
+  // --- Event Handlers ---
   const handleEditClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (requiresConfig) {
-      setIsConfigModalOpen(true);
-    } else {
-      alert(`Edit functionality not implemented for ${item.type}`);
-    }
+    // Open the central config modal regardless of whether a specific config exists
+    setIsConfigModalOpen(true);
+    // Call the callback to notify Dashboard that a modal is open
+    onConfigModalToggle(true);
   };
 
-  const handleSelectHabit = (habitId: string) => {
+  // This function is passed to WidgetConfigModal's onSave prop
+  const handleSaveConfig = (newConfig: GridItem["config"]) => {
     console.log(
-      `[DashboardGridItem] handleSelectHabit called for item.id: ${item.id}, habitId: ${habitId}, dashboard: ${editTargetDashboard}, isEditing: ${isEditing}`
+      `[DashboardGridItem] handleSaveConfig called for item.id: ${item.id}, newConfig:`,
+      newConfig,
+      `dashboard: ${editTargetDashboard}, isEditing: ${isEditing}`
     );
     // Pass the correct layout array (items prop) AND the isEditing flag to updateWidgetConfig
     updateWidgetConfig(
       item.id,
-      { habitId: habitId },
+      newConfig ?? {}, // Ensure newConfig is an object, even if undefined was passed back
       editTargetDashboard,
       items, // Pass the received items array (which is either display items or edit items)
       isEditing // Pass the explicit editing flag
     );
-    // Modal closes itself
+    // Modal closes itself via onOpenChange, which will trigger handleOpenChange below
   };
+
+  // --- NEW: Handle modal open/close state change ---
+  const handleOpenChange = (isOpen: boolean) => {
+    setIsConfigModalOpen(isOpen);
+    // Call the callback to notify Dashboard about the modal state change
+    onConfigModalToggle(isOpen);
+  };
+  // --- End Event Handlers ---
+
+  // --- Add Logging ---
+  console.log(
+    `[DashboardGridItem] Rendering widget ${item.id} (${item.type}). Config being passed:`,
+    JSON.stringify(item.config) // Log the config prop
+  );
+  // --- End Logging ---
 
   return (
     <>
@@ -189,13 +210,15 @@ export function DashboardGridItem({
             </div>
             {isEditing && (
               <div className="flex items-center gap-1 widget-controls-cancel-drag flex-shrink-0">
+                {/* Updated Edit Button */}
                 <button
                   onClick={handleEditClick}
                   className="p-0.5 text-gray-400 hover:text-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-400"
-                  title={requiresConfig ? "Configure Widget" : "Edit Widget"}
+                  title="Configure Widget" // Generic title
                 >
                   <Pencil size={12} />
                 </button>
+                {/* Delete Button remains the same */}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -220,21 +243,21 @@ export function DashboardGridItem({
               id={item.id}
               w={item.w}
               h={item.h}
-              config={item.config}
+              config={item.config} // Pass config down to the actual widget
             />
           </WidgetErrorBoundary>
         </motion.div>
       </div>
 
-      {requiresConfig && (
-        <HabitSelectionModal
-          isOpen={isConfigModalOpen}
-          onOpenChange={setIsConfigModalOpen}
-          onSelectHabit={handleSelectHabit}
-          currentHabitId={item.config?.habitId}
-          widgetType={item.type}
-        />
-      )}
+      {/* Render the central config modal */}
+      <WidgetConfigModal
+        isOpen={isConfigModalOpen}
+        onOpenChange={handleOpenChange} // Use the new handler
+        widgetId={item.id}
+        widgetType={item.type as WidgetType} // Cast item.type to WidgetType
+        currentConfig={item.config ?? {}} // Provide default empty object if config is undefined
+        onSave={handleSaveConfig} // Pass the save handler
+      />
     </>
   );
 }

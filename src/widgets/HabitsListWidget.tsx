@@ -1,22 +1,22 @@
-import React, { useState } from "react";
-import { useHabits, Habit } from "@/contexts/HabitsContext";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  CheckCircle2,
-  Circle,
-  MinusCircle,
-  PlusCircle,
-  Loader2,
-} from "lucide-react"; // Icons
-import dayjs from "dayjs";
-import { cn } from "@/lib/utils";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Habit, useHabits } from "@/contexts/HabitsContext";
+import { cn } from "@/lib/utils";
+import dayjs from "dayjs";
+import {
+  CheckCircle2,
+  Circle,
+  Loader2,
+  MinusCircle,
+  PlusCircle,
+} from "lucide-react"; // Icons
+import { useState } from "react";
 
 // Define the props your widget expects (must include id, w, h)
 interface WidgetProps {

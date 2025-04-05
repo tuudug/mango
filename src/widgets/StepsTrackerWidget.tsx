@@ -1,21 +1,15 @@
-import React, { useMemo } from "react";
+import { Button } from "@/components/ui/button"; // Import Button
+import { useHealth } from "@/contexts/HealthContext"; // Import useHealth hook
+import { eachDayOfInterval, endOfWeek, format, startOfWeek } from "date-fns";
 import {
-  Footprints,
-  CheckCircle,
+  CalendarCheck2,
   ChevronLeft,
   ChevronRight,
-  CalendarCheck2,
+  Footprints,
 } from "lucide-react";
+import React, { useMemo } from "react";
 import { CircularProgressbar, buildStyles } from "react-circular-progressbar";
 import "react-circular-progressbar/dist/styles.css";
-import { useHealth } from "@/contexts/HealthContext"; // Import useHealth hook
-import {
-  format,
-  subDays,
-  startOfWeek,
-  endOfWeek,
-  eachDayOfInterval,
-} from "date-fns";
 import {
   Bar,
   BarChart,
@@ -29,7 +23,6 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Button } from "@/components/ui/button"; // Import Button
 
 interface StepsTrackerWidgetProps {
   id: string;

@@ -1,16 +1,15 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { GridItem } from "@/lib/dashboardConfig";
 import { WidgetType, defaultWidgetLayouts } from "@/lib/widgetConfig";
-import { useCallback, useState, useRef, useEffect } from "react";
-import { useDebouncedCallback } from "use-debounce"; // Keep for potential future use?
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CACHE_STALE_DURATION, getDefaultLayout } from "../constants";
 import { CachedGridItemData, DashboardName } from "../types";
 import {
+  deepCompareLayouts,
   getCachedLastSyncTime,
   getCachedLayout,
   setCachedLastSyncTime,
   setCachedLayout,
-  deepCompareLayouts,
 } from "../utils";
 
 export function useDashboardLayout() {
@@ -287,20 +286,32 @@ export function useDashboardLayout() {
       return;
     }
 
-    const itemIndex = currentLayout.findIndex((item) => item.id === itemId);
-    if (itemIndex === -1) {
+    // --- MODIFICATION START ---
+    // Create a new array with updated item object reference
+    const updatedLayout = currentLayout.map((item) => {
+      if (item.id === itemId) {
+        // Create a completely new object for the updated item
+        return {
+          ...item, // Copy all existing properties
+          config: newConfig, // Set the new config
+        };
+      }
+      return item; // Return unchanged items as they are
+    });
+    // --- MODIFICATION END ---
+
+    // Check if the item was actually found and updated (optional sanity check)
+    const itemFound = updatedLayout.some(
+      (item, index) =>
+        item.id === itemId && currentLayout[index].config !== newConfig
+    );
+    if (!itemFound) {
       console.error(
-        `[UpdateConfig] Item ${itemId} NOT FOUND in provided layout. Aborting. Layout IDs:`,
+        `[UpdateConfig] Item ${itemId} NOT FOUND or config unchanged in provided layout. Aborting. Layout IDs:`,
         currentLayout.map((i) => i.id)
       );
       return;
     }
-
-    const updatedLayout = [...currentLayout];
-    updatedLayout[itemIndex] = {
-      ...updatedLayout[itemIndex],
-      config: newConfig,
-    };
 
     // Use the explicit isEditing flag
     if (isEditing) {
@@ -319,18 +330,18 @@ export function useDashboardLayout() {
     }
   };
 
-  // Debounced save - keep it around? Maybe useful for other things later.
-  const saveLayoutDebounced = useDebouncedCallback(
-    (layout: GridItem[], name: DashboardName) => {
-      if (editItems === null) {
-        // Only save debounced if NOT in edit mode
-        saveLayoutToServerInternal(layout, name);
-      } else {
-        console.log("[DebounceSave] In edit mode, debounced save skipped.");
-      }
-    },
-    1000
-  );
+  // // Debounced save - keep it around? Maybe useful for other things later.
+  // const saveLayoutDebounced = useDebouncedCallback(
+  //   (layout: GridItem[], name: DashboardName) => {
+  //     if (editItems === null) {
+  //       // Only save debounced if NOT in edit mode
+  //       saveLayoutToServerInternal(layout, name);
+  //     } else {
+  //       console.log("[DebounceSave] In edit mode, debounced save skipped.");
+  //     }
+  //   },
+  //   1000
+  // );
 
   return {
     items, // Currently displayed items

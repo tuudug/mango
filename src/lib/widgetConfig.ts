@@ -1,3 +1,4 @@
+import React from "react"; // Import React for component types
 import {
   LucideIcon,
   CalendarCheck,
@@ -18,6 +19,10 @@ import {
   ListChecks, // Import icon for Habits Checklist
   TrendingUp, // Import icon for Habit Streaks
 } from "lucide-react";
+import { GridItem } from "./dashboardConfig"; // Import GridItem for config type
+
+// Import the specific config component
+import { HabitSelectionConfig } from "@/components/widget-configs/HabitSelectionConfig";
 
 // Widget Groups
 export type WidgetGroup =
@@ -193,4 +198,37 @@ export const widgetMetadata: Record<
     colorAccentClass: "border-l-gray-700",
     group: "Other",
   },
+};
+
+// --- NEW: Widget Configuration Component Mapping ---
+
+// Define the props expected by specific config components
+export interface WidgetConfigComponentProps {
+  config: GridItem["config"];
+  onChange: (newConfig: GridItem["config"]) => void;
+}
+
+// Map WidgetType to its specific configuration component (or null if none)
+export const widgetConfigComponents: Record<
+  WidgetType,
+  React.ComponentType<WidgetConfigComponentProps> | null
+> = {
+  "Steps Tracker": null,
+  "Habit Graph": null, // No config planned
+  "Sleep/Step": null,
+  "Goal Tracker": null,
+  "To-do List": null,
+  Journal: null,
+  "Month Calendar": null,
+  "Daily Calendar": null,
+  "Daily Summary": null,
+  "Daily Allowance": null,
+  "Expenses Report": null,
+  Pomodoro: null,
+  Ambience: null,
+  "Affirmation Widget": null,
+  "Habits Checklist": null,
+  "Habit Heatmap": HabitSelectionConfig, // Use the new component
+  "Habit Streaks": HabitSelectionConfig, // Use the new component
+  Placeholder: null,
 };

@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { useHabits, HabitEntry, Habit } from "@/contexts/HabitsContext";
+import { HabitEntry, useHabits } from "@/contexts/HabitsContext";
 import dayjs from "dayjs";
-import { Loader2, TrendingUp, Medal } from "lucide-react";
+import { Loader2, Medal, TrendingUp } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
 // Define the props your widget expects, including config
 interface WidgetProps {
@@ -91,10 +91,20 @@ export function HabitStreakWidget({ id, w: _w, h: _h, config }: WidgetProps) {
 
   // Fetch data when the selected habit ID changes (or habits load)
   useEffect(() => {
+    // --- Add Logging ---
+    console.log(
+      `[HabitStreakWidget ${id}] useEffect fetch data running. selectedHabitId: ${selectedHabitId}, isLoadingHabits: ${isLoadingHabits}`
+    );
+    // --- End Logging ---
+
     // Don't fetch if habits are loading or no ID is selected
     if (isLoadingHabits || !selectedHabitId) {
+      console.log(
+        `[HabitStreakWidget ${id}] Skipping fetch: isLoadingHabits=${isLoadingHabits}, selectedHabitId=${selectedHabitId}`
+      );
       setHabitEntries([]); // Clear data
       setError(null); // Clear error
+      setIsLoadingData(false); // Ensure loading is off if no ID
       return;
     }
 
@@ -103,14 +113,18 @@ export function HabitStreakWidget({ id, w: _w, h: _h, config }: WidgetProps) {
 
     if (!habitToFetch) {
       // Habit ID is set in config, but habit not found (maybe deleted?)
+      console.warn(
+        `[HabitStreakWidget ${id}]: Habit ${selectedHabitId} not found during fetch trigger. Clearing data.`
+      );
       setHabitEntries([]);
       setError(null); // Don't show error, just show "Select Habit" state
-      console.warn(
-        `HabitStreakWidget: Habit ${selectedHabitId} not found during fetch trigger.`
-      );
+      setIsLoadingData(false); // Ensure loading is off
       return;
     }
 
+    console.log(
+      `[HabitStreakWidget ${id}] Found habit to fetch: ${habitToFetch.name}. Starting loadData.`
+    );
     const loadData = async () => {
       setIsLoadingData(true);
       setError(null);
@@ -121,10 +135,16 @@ export function HabitStreakWidget({ id, w: _w, h: _h, config }: WidgetProps) {
 
       try {
         // Use selectedHabitId directly
+        console.log(
+          `[HabitStreakWidget ${id}] Calling fetchHabitEntries for ${selectedHabitId}`
+        );
         const entries = await fetchHabitEntries(
           startDate.format("YYYY-MM-DD"),
           endDate.format("YYYY-MM-DD"),
           selectedHabitId // Use the ID from props
+        );
+        console.log(
+          `[HabitStreakWidget ${id}] Received ${entries.length} entries.`
         );
         // Filter only completed entries for streak calculation
         setHabitEntries(entries.filter((e) => e.completed));
@@ -138,17 +158,23 @@ export function HabitStreakWidget({ id, w: _w, h: _h, config }: WidgetProps) {
     };
 
     loadData();
-    // Depend directly on the ID from props and habit loading state
-  }, [selectedHabitId, habits, isLoadingHabits, fetchHabitEntries]);
+    // Restore dependencies: selectedHabitId, habits, isLoadingHabits, fetchHabitEntries
+  }, [selectedHabitId, habits, isLoadingHabits, fetchHabitEntries, id]); // Added id for logging uniqueness
 
   // Calculate streaks using useMemo
   const streaks = useMemo(() => calculateStreaks(habitEntries), [habitEntries]);
 
-  // Determine display state based on loading states and selectedHabit object
-  const showLoading = isLoadingData || isLoadingHabits;
-  const showSelectHabitMessage = !showLoading && !selectedHabit;
-  const showError = !showLoading && !!error;
-  const showStreaks = !showLoading && !showError && !!selectedHabit;
+  // --- Refined Display Logic ---
+  const isFetchingSpecificHabitData = !!selectedHabitId && isLoadingData;
+  const showLoading = isLoadingHabits || isFetchingSpecificHabitData;
+  // Show select message only if no ID is configured AND we are not initially loading the habits list
+  const showSelectHabitMessage = !isLoadingHabits && !selectedHabitId;
+  // Show error only if an ID is selected, we are not loading, and an error exists
+  const showError = !!selectedHabitId && !showLoading && !!error;
+  // Show streaks only if an ID is selected, not loading, no error, and the habit object is resolved
+  const showStreaks =
+    !!selectedHabitId && !showLoading && !showError && !!selectedHabit;
+  // --- End Refined Display Logic ---
 
   return (
     <div className="p-4 h-full flex flex-col items-center justify-center text-center">

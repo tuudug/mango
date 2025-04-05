@@ -1,12 +1,12 @@
-import React, { useState } from "react"; // Import useState
-import { useHabits, Habit } from "@/contexts/HabitsContext";
-import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { X, ListChecks, PlusCircle, Edit, Trash2, Loader2 } from "lucide-react"; // Added Loader2
 import { Badge } from "@/components/ui/badge";
-import { HabitFormModal } from "./HabitFormModal"; // Import the modal
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Habit, useHabits } from "@/contexts/HabitsContext";
 import { useToast } from "@/contexts/ToastContext"; // Import useToast for confirmation
+import { Edit, ListChecks, Loader2, PlusCircle, Trash2, X } from "lucide-react"; // Added Loader2
+import { useState } from "react"; // Import useState
+import { HabitFormModal } from "./HabitFormModal"; // Import the modal
 
 // Define the type for the form data used by the modal
 // Match the Zod schema output (reminder_time can be undefined)
