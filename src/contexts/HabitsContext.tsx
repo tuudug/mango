@@ -61,6 +61,7 @@ interface HabitsContextType {
   deleteHabitEntry: (entryId: string) => Promise<boolean>;
   getEntriesForDate: (date: string) => HabitEntry[]; // Helper to get entries for a specific date
   hasEntryForDate: (habitId: string, date: string) => boolean; // Helper to check if entry exists
+  fetchInitialDataIfNeeded: () => Promise<void>; // Expose the interval-checking fetch function
 }
 
 const HabitsContext = createContext<HabitsContextType | undefined>(undefined);
@@ -73,8 +74,11 @@ export const HabitsProvider: React.FC<{ children: ReactNode }> = ({
   const [isLoadingHabits, setIsLoadingHabits] = useState(false);
   const [isLoadingEntries, setIsLoadingEntries] = useState(false); // Separate loading for entries
   const [error, setError] = useState<string | null>(null);
+  const [lastFetchTime, setLastFetchTime] = useState<Date | null>(null); // Track last fetch time
   const { session } = useAuth();
   const { showToast } = useToast();
+
+  const REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
   const handleError = useCallback(
     (operation: string, error: unknown) => {
@@ -108,11 +112,12 @@ export const HabitsProvider: React.FC<{ children: ReactNode }> = ({
         session
       );
       setHabits(data || []);
+      // Timestamp will be set after both fetches complete in fetchInitialDataIfNeeded
     } catch (e) {
       handleError("fetchHabits", e);
       setHabits([]);
     } finally {
-      setIsLoadingHabits(false);
+      setIsLoadingHabits(false); // Ensure loading state is always reset
     }
   }, [session, handleError]);
 
@@ -328,23 +333,80 @@ export const HabitsProvider: React.FC<{ children: ReactNode }> = ({
     [habitEntries]
   );
 
-  // Fetch initial habits on login
+  // Fetch initial habits and recent entries if needed
+  const fetchInitialDataIfNeeded = useCallback(async () => {
+    // Make async
+    if (!session || isLoadingHabits || isLoadingEntries) return; // Don't fetch if loading or not logged in
+
+    const now = new Date();
+    if (
+      !lastFetchTime ||
+      now.getTime() - lastFetchTime.getTime() > REFRESH_INTERVAL_MS
+    ) {
+      console.log("Habits refresh interval elapsed, fetching initial data...");
+      try {
+        // Fetch recent entries arguments
+        const today = dayjs().format("YYYY-MM-DD");
+        const weekAgo = dayjs().subtract(7, "day").format("YYYY-MM-DD");
+
+        // Wait for both fetches to settle
+        await Promise.allSettled([
+          fetchHabits(),
+          fetchHabitEntries(weekAgo, today),
+        ]);
+
+        // Update timestamp ONLY after both fetches are done
+        setLastFetchTime(new Date());
+        console.log("Habits data fetch complete, timestamp updated.");
+      } catch (error) {
+        // Although Promise.allSettled doesn't throw, good practice to have a catch
+        console.error("Error during habits data fetch:", error);
+        // Don't update timestamp on error
+      }
+    } else {
+      console.log(
+        "Skipping habits initial data fetch, refresh interval not elapsed."
+      );
+    }
+  }, [
+    session,
+    isLoadingHabits,
+    isLoadingEntries,
+    lastFetchTime,
+    fetchHabits,
+    fetchHabitEntries,
+  ]);
+
+  // Effect to trigger initial fetch based on session
   useEffect(() => {
     if (session) {
-      fetchHabits();
-      // Fetch recent entries? e.g., last 7 days
-      const today = dayjs().format("YYYY-MM-DD");
-      const weekAgo = dayjs().subtract(7, "day").format("YYYY-MM-DD");
-      fetchHabitEntries(weekAgo, today);
+      fetchInitialDataIfNeeded();
     } else {
       // Clear data on logout
       setHabits([]);
       setHabitEntries([]);
       setError(null);
+      setLastFetchTime(null); // Clear timestamp on logout
       setIsLoadingHabits(false);
       setIsLoadingEntries(false);
     }
-  }, [session, fetchHabits, fetchHabitEntries]); // Added fetchHabitEntries
+  }, [session, fetchInitialDataIfNeeded]);
+
+  // Optional: Add effect for window visibility change like in TodosContext
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        console.log(
+          "Habits Window became visible, checking if fetch needed..."
+        );
+        fetchInitialDataIfNeeded();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [fetchInitialDataIfNeeded]);
 
   const value = {
     habits,
@@ -361,6 +423,7 @@ export const HabitsProvider: React.FC<{ children: ReactNode }> = ({
     deleteHabitEntry,
     getEntriesForDate,
     hasEntryForDate,
+    fetchInitialDataIfNeeded, // Add the function to the provided value
   };
 
   return (

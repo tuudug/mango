@@ -26,12 +26,18 @@ interface ProcessedEntry {
 }
 
 export function HabitHeatmapWidget({ id, w: _w, h: _h }: WidgetProps) {
-  const { habits, fetchHabitEntries, isLoadingHabits } = useHabits();
+  const {
+    habits,
+    habitEntries, // Get entries from context
+    fetchInitialDataIfNeeded, // Get the interval-checking function
+    isLoadingHabits,
+    isLoadingEntries, // Get entry loading state
+  } = useHabits();
   const { widgetConfigs } = useDashboardConfig();
   const [processedEntries, setProcessedEntries] = useState<
     Record<string, ProcessedEntry>
   >({});
-  const [isLoadingData, setIsLoadingData] = useState(false);
+  // isLoadingData is now derived from context loading states
   const [error, setError] = useState<string | null>(null);
 
   const currentWidgetConfig = widgetConfigs[id];
@@ -42,59 +48,63 @@ export function HabitHeatmapWidget({ id, w: _w, h: _h }: WidgetProps) {
     return habits.find((h) => h.id === selectedHabitId) || null;
   }, [habits, selectedHabitId, isLoadingHabits]);
 
-  // Fetch and process data
+  // Effect to trigger data fetch if needed when selected habit changes
   useEffect(() => {
-    if (isLoadingHabits || !selectedHabitId) {
+    // Only trigger fetch if a habit is selected and habits are loaded
+    if (selectedHabitId && !isLoadingHabits) {
+      console.log(
+        `[HabitHeatmapWidget ${id}] Selected habit changed to ${selectedHabitId}, triggering fetchIfNeeded.`
+      );
+      fetchInitialDataIfNeeded(); // Call the interval-aware fetch function
+    }
+    // Clear processed data if no habit is selected or habits are loading
+    if (!selectedHabitId || isLoadingHabits) {
       setProcessedEntries({});
       setError(null);
-      setIsLoadingData(false);
+    }
+  }, [selectedHabitId, fetchInitialDataIfNeeded, isLoadingHabits, id]); // Depend on selected ID and the fetch function
+
+  // Effect to process entries whenever they change in the context or selected habit changes
+  useEffect(() => {
+    if (!selectedHabitId || !habitEntries) {
+      setProcessedEntries({}); // Clear if no selection or no entries
       return;
     }
 
-    const habitToFetch = habits.find((h) => h.id === selectedHabitId);
-    if (!habitToFetch) {
+    console.log(
+      `[HabitHeatmapWidget ${id}] Processing ${habitEntries.length} entries from context for habit ${selectedHabitId}`
+    );
+    setError(null); // Clear previous errors before processing
+
+    try {
+      const entriesMap: Record<string, ProcessedEntry> = {};
+      const relevantEntries = habitEntries.filter(
+        (entry) => entry.habit_id === selectedHabitId
+      );
+
+      // Process only the relevant entries for the selected habit
+      relevantEntries.forEach((entry) => {
+        const dateStr = entry.entry_date;
+        if (!entriesMap[dateStr]) {
+          entriesMap[dateStr] = { date: dateStr, completed: false, count: 0 };
+        }
+        // Ensure we only count completed entries towards the count/status
+        if (entry.completed) {
+          entriesMap[dateStr].completed = true;
+          entriesMap[dateStr].count += 1;
+        }
+      });
+      setProcessedEntries(entriesMap);
+    } catch (err) {
+      console.error(
+        `[HabitHeatmapWidget ${id}] Error processing habit entries:`,
+        err
+      );
+      setError("Failed to process habit data.");
       setProcessedEntries({});
-      setError(null);
-      setIsLoadingData(false);
-      return;
     }
-
-    const loadData = async () => {
-      setIsLoadingData(true);
-      setError(null);
-      const endDate = dayjs();
-      const startDate = endDate.subtract(29, "days"); // Fetch last 30 days
-
-      try {
-        const entries = await fetchHabitEntries(
-          startDate.format("YYYY-MM-DD"),
-          endDate.format("YYYY-MM-DD"),
-          selectedHabitId
-        );
-
-        const entriesMap: Record<string, ProcessedEntry> = {};
-        entries.forEach((entry) => {
-          const dateStr = entry.entry_date;
-          if (!entriesMap[dateStr]) {
-            entriesMap[dateStr] = { date: dateStr, completed: false, count: 0 };
-          }
-          if (entry.completed) {
-            entriesMap[dateStr].completed = true;
-            entriesMap[dateStr].count += 1;
-          }
-        });
-        setProcessedEntries(entriesMap);
-      } catch (err) {
-        console.error(`[HabitHeatmapWidget ${id}] Error fetching data:`, err);
-        setError("Failed to load habit data.");
-        setProcessedEntries({});
-      } finally {
-        setIsLoadingData(false);
-      }
-    };
-
-    loadData();
-  }, [selectedHabitId, habits, isLoadingHabits, fetchHabitEntries, id]);
+    // Loading state is handled by isLoadingHabits/isLoadingEntries from context now
+  }, [habitEntries, selectedHabitId, id]); // Depend on context entries and selected ID
 
   // Generate dates for the last 30 days
   const days = useMemo(() => {
@@ -107,7 +117,7 @@ export function HabitHeatmapWidget({ id, w: _w, h: _h }: WidgetProps) {
   }, []);
 
   // Determine display state
-  const showLoading = isLoadingData || isLoadingHabits;
+  const showLoading = isLoadingHabits || isLoadingEntries; // Use context loading states
   const showSelectHabitMessage = !showLoading && !selectedHabit;
   const showError = !showLoading && !!error;
   const showGrid = !showLoading && !showError && !!selectedHabit;

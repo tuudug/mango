@@ -68,10 +68,20 @@ const calculateStreaks = (
 export function HabitStreakWidget({ id, w: _w, h: _h }: WidgetProps) {
   // Removed config from props destructuring for internal use
   // Destructure config
-  const { habits, fetchHabitEntries, isLoadingHabits } = useHabits();
+  const {
+    habits,
+    habitEntries: contextHabitEntries, // Rename context entries
+    fetchInitialDataIfNeeded, // Get the interval-checking function
+    isLoadingHabits,
+    isLoadingEntries, // Get entry loading state
+  } = useHabits();
   const { widgetConfigs } = useDashboardConfig(); // Consume the widgetConfigs map
-  const [habitEntries, setHabitEntries] = useState<HabitEntry[]>([]);
-  const [isLoadingData, setIsLoadingData] = useState(false);
+  // Remove local habitEntries state
+  // Remove local isLoadingData state
+  const [streaks, setStreaks] = useState<{ current: number; longest: number }>({
+    current: 0,
+    longest: 0,
+  }); // State to hold calculated streaks
   const [error, setError] = useState<string | null>(null);
 
   // Get the specific config for this widget instance from the context
@@ -90,71 +100,58 @@ export function HabitStreakWidget({ id, w: _w, h: _h }: WidgetProps) {
     return habit || null;
   }, [habits, selectedHabitId, isLoadingHabits]);
 
-  // Fetch data when the selected habit ID changes (or habits load)
+  // Effect to trigger data fetch if needed when selected habit changes
   useEffect(() => {
-    // Don't fetch if habits are loading or no ID is selected
-    if (isLoadingHabits || !selectedHabitId) {
-      setHabitEntries([]); // Clear data
-      setError(null); // Clear error
-      setIsLoadingData(false); // Ensure loading is off if no ID
-      return;
+    // Only trigger fetch if a habit is selected and habits are loaded
+    if (selectedHabitId && !isLoadingHabits) {
+      console.log(
+        `[HabitStreakWidget ${id}] Selected habit changed to ${selectedHabitId}, triggering fetchIfNeeded.`
+      );
+      fetchInitialDataIfNeeded(); // Call the interval-aware fetch function
     }
-
-    // Find the habit again here just before fetching to ensure it exists
-    const habitToFetch = habits.find((h) => h.id === selectedHabitId);
-
-    if (!habitToFetch) {
-      // Habit ID is set in config, but habit not found (maybe deleted?)
-      // Removed console.warn
-      setHabitEntries([]);
-      setError(null); // Don't show error, just show "Select Habit" state
-      setIsLoadingData(false); // Ensure loading is off
-      return;
-    }
-
-    const loadData = async () => {
-      setIsLoadingData(true);
+    // Clear streaks if no habit is selected or habits are loading
+    if (!selectedHabitId || isLoadingHabits) {
+      setStreaks({ current: 0, longest: 0 });
       setError(null);
-      // Fetch all entries for the habit to calculate streaks accurately
-      const endDate = dayjs();
-      // Go back far enough, or maybe fetch all? For now, 2 years.
-      const startDate = endDate.subtract(2, "year");
+    }
+  }, [selectedHabitId, fetchInitialDataIfNeeded, isLoadingHabits, id]); // Depend on selected ID and the fetch function
 
-      try {
-        // Use selectedHabitId directly
-        const entries = await fetchHabitEntries(
-          startDate.format("YYYY-MM-DD"),
-          endDate.format("YYYY-MM-DD"),
-          selectedHabitId // Use the ID from props
-        );
-        // Filter only completed entries for streak calculation
-        setHabitEntries(entries.filter((e) => e.completed));
-      } catch (err) {
-        console.error("Error fetching streak data:", err);
-        setError("Failed to load habit data.");
-        setHabitEntries([]);
-      } finally {
-        setIsLoadingData(false);
-      }
-    };
+  // Effect to calculate streaks whenever entries change in the context or selected habit changes
+  useEffect(() => {
+    if (!selectedHabitId || !contextHabitEntries) {
+      setStreaks({ current: 0, longest: 0 }); // Clear if no selection or no entries
+      return;
+    }
 
-    loadData();
-    // Update dependencies: react to changes in the specific config object or habitId
-  }, [
-    selectedHabitId, // React directly to the derived habitId
-    habits,
-    isLoadingHabits,
-    fetchHabitEntries,
-    id,
-    // No longer need configVersion
-  ]);
+    console.log(
+      `[HabitStreakWidget ${id}] Processing ${contextHabitEntries.length} entries from context for habit ${selectedHabitId}`
+    );
+    setError(null); // Clear previous errors before processing
 
-  // Calculate streaks using useMemo
-  const streaks = useMemo(() => calculateStreaks(habitEntries), [habitEntries]);
+    try {
+      // Filter for the selected habit AND completed entries before calculating
+      const relevantCompletedEntries = contextHabitEntries.filter(
+        (entry) => entry.habit_id === selectedHabitId && entry.completed
+      );
+
+      const calculated = calculateStreaks(relevantCompletedEntries);
+      setStreaks(calculated);
+    } catch (err) {
+      console.error(
+        `[HabitStreakWidget ${id}] Error processing habit entries for streaks:`,
+        err
+      );
+      setError("Failed to calculate streaks.");
+      setStreaks({ current: 0, longest: 0 });
+    }
+    // Loading state is handled by isLoadingHabits/isLoadingEntries from context now
+  }, [contextHabitEntries, selectedHabitId, id]); // Depend on context entries and selected ID
+
+  // Streaks are now calculated in the useEffect above and stored in state
 
   // --- Refined Display Logic ---
-  const isFetchingSpecificHabitData = !!selectedHabitId && isLoadingData;
-  const showLoading = isLoadingHabits || isFetchingSpecificHabitData;
+  // Use context loading states directly
+  const showLoading = isLoadingHabits || isLoadingEntries;
   // Show select message only if no ID is configured AND we are not initially loading the habits list
   const showSelectHabitMessage = !isLoadingHabits && !selectedHabitId;
   // Show error only if an ID is selected, we are not loading, and an error exists

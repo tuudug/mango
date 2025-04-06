@@ -1,5 +1,12 @@
 [
   {
+    "version": "0.1.16",
+    "date": "2025-04-07",
+    "data": [
+      "Performance optimizations"
+    ]
+  },
+  {
     "version": "0.1.15",
     "date": "2025-04-06",
     "data": [

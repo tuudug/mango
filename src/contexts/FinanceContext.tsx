@@ -95,6 +95,10 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({
     WeeklyExpenseSummary[]
   >([]);
   const [isLoadingWeeklyEntries, setIsLoadingWeeklyEntries] = useState(true);
+  const [hasFetchedInitialData, setHasFetchedInitialData] = useState(false); // Flag to track initial fetch
+  const [lastFetchTime, setLastFetchTime] = useState<Date | null>(null); // Track last fetch time
+
+  const REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
   // --- Fetch Functions ---
 
@@ -115,6 +119,7 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({
       // Destructure to omit current_balance before setting state
       const { current_balance: _current_balance, ...relevantSettings } = data;
       setSettings(relevantSettings);
+      setLastFetchTime(new Date()); // Update timestamp on successful fetch
       console.log("Finance settings loaded:", relevantSettings);
     } catch (err) {
       console.error("Error fetching finance settings:", err);
@@ -148,6 +153,7 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({
         session
       );
       setTodaysExpenses(data);
+      setLastFetchTime(new Date()); // Update timestamp on successful fetch
       console.log("Today's finance entries loaded:", data);
     } catch (err) {
       console.error("Error fetching today's finance entries:", err);
@@ -192,6 +198,7 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({
           session
         );
         setWeeklyExpensesData(data);
+        setLastFetchTime(new Date()); // Update timestamp on successful fetch
         console.log(
           `Weekly expenses loaded for week starting ${startDateStr}:`,
           data
@@ -214,20 +221,64 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({
     [session, showToast] // Removed token dependency
   );
 
-  // --- Initial Fetches based on Auth State ---
-  // This effect structure remains largely the same, relying on session presence
+  // --- Data Fetching Logic ---
+
+  // Function to fetch all data if interval elapsed
+  const fetchDataIfNeeded = useCallback(() => {
+    if (
+      !session ||
+      isAuthLoading ||
+      isLoadingSettings ||
+      isLoadingEntries ||
+      isLoadingWeeklyEntries
+    ) {
+      return; // Don't fetch if not logged in or already loading
+    }
+
+    const now = new Date();
+    if (
+      !lastFetchTime ||
+      now.getTime() - lastFetchTime.getTime() > REFRESH_INTERVAL_MS
+    ) {
+      console.log("Finance refresh interval elapsed, fetching data...");
+      // Fetch all relevant data
+      fetchSettings();
+      fetchTodaysEntries();
+      // Fetch weekly expenses for the *currently selected* week
+      fetchWeeklyExpenses(currentReportWeekStart);
+    } else {
+      console.log("Skipping finance fetch, refresh interval not elapsed.");
+    }
+  }, [
+    session,
+    isAuthLoading,
+    isLoadingSettings,
+    isLoadingEntries,
+    isLoadingWeeklyEntries,
+    lastFetchTime,
+    fetchSettings,
+    fetchTodaysEntries,
+    fetchWeeklyExpenses,
+    currentReportWeekStart, // Include week start as it's used in the fetch call
+  ]);
+
+  // Effect for initial fetch based on Auth State
   useEffect(() => {
     console.log("FinanceDataSource: Auth Effect Triggered", {
       isAuthLoading,
       sessionExists: !!session,
+      hasFetched: hasFetchedInitialData,
     });
-    if (!isAuthLoading && session) {
-      console.log("FinanceDataSource: Fetching initial data...");
+    // Fetch only if auth is ready, session exists, AND initial data hasn't been fetched yet
+    if (!isAuthLoading && session && !hasFetchedInitialData) {
+      console.log("FinanceDataSource: Fetching initial data (first time)...");
+      setHasFetchedInitialData(true); // Set flag BEFORE fetching
+      // Call individual fetches directly for the very first load
       fetchSettings();
       fetchTodaysEntries();
-      fetchWeeklyExpenses(currentReportWeekStart); // Fetch initial week
+      fetchWeeklyExpenses(currentReportWeekStart);
     } else if (!isAuthLoading && !session) {
-      console.log("FinanceDataSource: Clearing data on logout");
+      console.log("FinanceDataSource: Clearing data and reset flags on logout");
       setSettings(null);
       setTodaysExpenses([]);
       setWeeklyExpensesData([]);
@@ -235,17 +286,20 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({
       setIsLoadingEntries(false);
       setIsLoadingWeeklyEntries(false);
       setError(null);
+      setHasFetchedInitialData(false); // Reset initial fetch flag
+      setLastFetchTime(null); // Reset refresh timestamp
       // Reset week start on logout? Maybe not necessary if UI resets.
       // setCurrentReportWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }));
     }
   }, [
     isAuthLoading,
-    session, // Depend on session object itself
+    session,
+    hasFetchedInitialData,
     fetchSettings,
     fetchTodaysEntries,
     fetchWeeklyExpenses,
-    currentReportWeekStart, // Keep this dependency for initial fetch
-  ]);
+    currentReportWeekStart,
+  ]); // Keep dependencies needed for the direct calls here
 
   // --- Effect to fetch weekly data when week changes ---
   // This effect also remains largely the same
@@ -257,7 +311,9 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({
       );
       fetchWeeklyExpenses(currentReportWeekStart);
     }
-  }, [currentReportWeekStart, session, isAuthLoading, fetchWeeklyExpenses]); // Depend on week start, session, auth loading, and the fetch function
+    // Note: We intentionally *don't* check the refresh interval here.
+    // Changing the week should always trigger a fetch for that specific week's data.
+  }, [currentReportWeekStart]); // Only trigger when the selected week changes
 
   // --- Action Functions ---
 
@@ -486,6 +542,22 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({
       prev.getTime() === currentWeekStart.getTime() ? prev : currentWeekStart
     );
   }, []);
+
+  // Effect for window visibility change
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        console.log(
+          "Finance Window became visible, checking if fetch needed..."
+        );
+        fetchDataIfNeeded(); // Use the interval-checking function
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [fetchDataIfNeeded]);
 
   // --- Context Value ---
   const calculatedRemainingToday = useMemo(() => {
