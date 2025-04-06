@@ -1,5 +1,12 @@
 [
   {
+    "version": "0.1.15",
+    "date": "2025-04-06",
+    "data": [
+      "Widget configuration support! Try the Habit Heatmap and Habit Streak widgets."
+    ]
+  },
+  {
     "version": "0.1.14",
     "date": "2025-04-05",
     "data": [

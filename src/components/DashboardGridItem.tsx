@@ -32,6 +32,7 @@ import { PlaceholderWidget } from "../widgets/PlaceholderWidget";
 import { PomodoroWidget } from "../widgets/PomodoroWidget";
 import { SleepStepWidget } from "../widgets/SleepStepWidget";
 import { StepsTrackerWidget } from "../widgets/StepsTrackerWidget";
+import { TextDisplayWidget } from "../widgets/TextDisplayWidget"; // Import the new widget
 import TodoListWidget from "../widgets/TodoList/index";
 
 // --- Update Props Interface ---
@@ -74,19 +75,20 @@ const widgetComponentMap: Record<
   "Habits Checklist": HabitsListWidget,
   "Habit Heatmap": HabitHeatmapWidget,
   "Habit Streaks": HabitStreakWidget,
+  "Text Display": TextDisplayWidget, // Add the new widget mapping
   Placeholder: PlaceholderWidget,
 };
 
 export function DashboardGridItem({
   item,
-  items, // Destructure the items array prop
+  items: _items, // Destructure the items array prop
   isEditing,
   handleDeleteWidget,
   editTargetDashboard,
   onConfigModalToggle, // Destructure new prop
 }: DashboardGridItemProps) {
-  // Get updateWidgetConfig from the hook
-  const { updateWidgetConfig } = useDashboardLayout();
+  // Get renamed updateLayoutAndConfig from the hook
+  const { updateLayoutAndConfig } = useDashboardLayout();
   // State for the new central config modal
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
 
@@ -157,12 +159,12 @@ export function DashboardGridItem({
       newConfig,
       `dashboard: ${editTargetDashboard}, isEditing: ${isEditing}`
     );
-    // Pass the correct layout array (items prop) AND the isEditing flag to updateWidgetConfig
-    updateWidgetConfig(
+    // Call the renamed function without the 'items' argument
+    updateLayoutAndConfig(
       item.id,
       newConfig ?? {}, // Ensure newConfig is an object, even if undefined was passed back
       editTargetDashboard,
-      items, // Pass the received items array (which is either display items or edit items)
+      // items, // REMOVED
       isEditing // Pass the explicit editing flag
     );
     // Modal closes itself via onOpenChange, which will trigger handleOpenChange below
@@ -176,12 +178,7 @@ export function DashboardGridItem({
   };
   // --- End Event Handlers ---
 
-  // --- Add Logging ---
-  console.log(
-    `[DashboardGridItem] Rendering widget ${item.id} (${item.type}). Config being passed:`,
-    JSON.stringify(item.config) // Log the config prop
-  );
-  // --- End Logging ---
+  // Removed console.log
 
   return (
     <>

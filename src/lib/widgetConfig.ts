@@ -18,11 +18,13 @@ import {
   Sparkles, // Add icon for Affirmation
   ListChecks, // Import icon for Habits Checklist
   TrendingUp, // Import icon for Habit Streaks
+  Type, // Icon for Text Display
 } from "lucide-react";
 import { GridItem } from "./dashboardConfig"; // Import GridItem for config type
 
-// Import the specific config component
+// Import the specific config components
 import { HabitSelectionConfig } from "@/components/widget-configs/HabitSelectionConfig";
+import { TextDisplayConfig } from "@/components/widget-configs/TextDisplayConfig"; // Import the new config component
 
 // Widget Groups
 export type WidgetGroup =
@@ -52,6 +54,7 @@ export type WidgetType =
   | "Habits Checklist"
   | "Habit Heatmap"
   | "Habit Streaks" // Add Habit Streaks type
+  | "Text Display" // Add Text Display type
   | "Placeholder";
 
 // Available widgets for the toolbox - Add Habit Streaks
@@ -73,6 +76,7 @@ export const availableWidgets: WidgetType[] = [
   "Habits Checklist",
   "Habit Heatmap",
   "Habit Streaks", // Add Habit Streaks to toolbox
+  "Text Display", // Add Text Display to toolbox
   // Placeholder is not available in the toolbox
 ];
 
@@ -98,6 +102,7 @@ export const defaultWidgetLayouts: Record<
   "Habits Checklist": { w: 4, h: 6, minW: 3, minH: 4 },
   "Habit Heatmap": { w: 8, h: 4, minW: 6, minH: 3 },
   "Habit Streaks": { w: 4, h: 4, minW: 3, minH: 3 }, // Add Habit Streaks layout
+  "Text Display": { w: 4, h: 3, minW: 2, minH: 2 }, // Add Text Display layout
   Placeholder: { w: 12, h: 7, minW: 8, minH: 5 },
 };
 
@@ -193,6 +198,12 @@ export const widgetMetadata: Record<
     colorAccentClass: "border-l-orange-500", // Choose color
     group: "Tracking",
   },
+  "Text Display": {
+    // Add Text Display metadata
+    icon: Type,
+    colorAccentClass: "border-l-slate-400", // Choose color
+    group: "Other", // Or maybe "Information/Utility"? Let's use Other for now.
+  },
   Placeholder: {
     icon: HelpCircle,
     colorAccentClass: "border-l-gray-700",
@@ -230,5 +241,6 @@ export const widgetConfigComponents: Record<
   "Habits Checklist": null,
   "Habit Heatmap": HabitSelectionConfig, // Use the new component
   "Habit Streaks": HabitSelectionConfig, // Use the new component
+  "Text Display": TextDisplayConfig, // Map to the new config component
   Placeholder: null,
 };

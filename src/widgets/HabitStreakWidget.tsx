@@ -1,14 +1,15 @@
+import { useDashboardConfig } from "@/contexts/DashboardConfigContext"; // Import the hook
 import { HabitEntry, useHabits } from "@/contexts/HabitsContext";
 import dayjs from "dayjs";
 import { Loader2, Medal, TrendingUp } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react"; // Add useContext if not implicitly used by hook
 
 // Define the props your widget expects, including config
 interface WidgetProps {
   id: string;
   w: number;
   h: number;
-  config?: { habitId?: string }; // Add config prop
+  config?: { habitId?: string }; // Keep config prop for modal initialization
 }
 
 // Helper function to calculate streaks
@@ -64,16 +65,18 @@ const calculateStreaks = (
   return { current: currentStreak, longest: longestStreak };
 };
 
-export function HabitStreakWidget({ id, w: _w, h: _h, config }: WidgetProps) {
+export function HabitStreakWidget({ id, w: _w, h: _h }: WidgetProps) {
+  // Removed config from props destructuring for internal use
   // Destructure config
   const { habits, fetchHabitEntries, isLoadingHabits } = useHabits();
+  const { widgetConfigs } = useDashboardConfig(); // Consume the widgetConfigs map
   const [habitEntries, setHabitEntries] = useState<HabitEntry[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(false);
-  // REMOVED: const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Read selectedHabitId directly from the config prop
-  const selectedHabitId = config?.habitId;
+  // Get the specific config for this widget instance from the context
+  const currentWidgetConfig = widgetConfigs[id];
+  const selectedHabitId = currentWidgetConfig?.habitId; // Get habitId from context config
 
   // Find the selected habit object based on ID (memoized)
   const selectedHabit = useMemo(() => {
@@ -82,26 +85,15 @@ export function HabitStreakWidget({ id, w: _w, h: _h, config }: WidgetProps) {
     }
     const habit = habits.find((h) => h.id === selectedHabitId);
     if (!habit) {
-      console.warn(
-        `HabitStreakWidget: Configured habitId ${selectedHabitId} not found in loaded habits.`
-      );
+      // Removed console.warn
     }
     return habit || null;
   }, [habits, selectedHabitId, isLoadingHabits]);
 
   // Fetch data when the selected habit ID changes (or habits load)
   useEffect(() => {
-    // --- Add Logging ---
-    console.log(
-      `[HabitStreakWidget ${id}] useEffect fetch data running. selectedHabitId: ${selectedHabitId}, isLoadingHabits: ${isLoadingHabits}`
-    );
-    // --- End Logging ---
-
     // Don't fetch if habits are loading or no ID is selected
     if (isLoadingHabits || !selectedHabitId) {
-      console.log(
-        `[HabitStreakWidget ${id}] Skipping fetch: isLoadingHabits=${isLoadingHabits}, selectedHabitId=${selectedHabitId}`
-      );
       setHabitEntries([]); // Clear data
       setError(null); // Clear error
       setIsLoadingData(false); // Ensure loading is off if no ID
@@ -113,18 +105,13 @@ export function HabitStreakWidget({ id, w: _w, h: _h, config }: WidgetProps) {
 
     if (!habitToFetch) {
       // Habit ID is set in config, but habit not found (maybe deleted?)
-      console.warn(
-        `[HabitStreakWidget ${id}]: Habit ${selectedHabitId} not found during fetch trigger. Clearing data.`
-      );
+      // Removed console.warn
       setHabitEntries([]);
       setError(null); // Don't show error, just show "Select Habit" state
       setIsLoadingData(false); // Ensure loading is off
       return;
     }
 
-    console.log(
-      `[HabitStreakWidget ${id}] Found habit to fetch: ${habitToFetch.name}. Starting loadData.`
-    );
     const loadData = async () => {
       setIsLoadingData(true);
       setError(null);
@@ -135,16 +122,10 @@ export function HabitStreakWidget({ id, w: _w, h: _h, config }: WidgetProps) {
 
       try {
         // Use selectedHabitId directly
-        console.log(
-          `[HabitStreakWidget ${id}] Calling fetchHabitEntries for ${selectedHabitId}`
-        );
         const entries = await fetchHabitEntries(
           startDate.format("YYYY-MM-DD"),
           endDate.format("YYYY-MM-DD"),
           selectedHabitId // Use the ID from props
-        );
-        console.log(
-          `[HabitStreakWidget ${id}] Received ${entries.length} entries.`
         );
         // Filter only completed entries for streak calculation
         setHabitEntries(entries.filter((e) => e.completed));
@@ -158,8 +139,15 @@ export function HabitStreakWidget({ id, w: _w, h: _h, config }: WidgetProps) {
     };
 
     loadData();
-    // Restore dependencies: selectedHabitId, habits, isLoadingHabits, fetchHabitEntries
-  }, [selectedHabitId, habits, isLoadingHabits, fetchHabitEntries, id]); // Added id for logging uniqueness
+    // Update dependencies: react to changes in the specific config object or habitId
+  }, [
+    selectedHabitId, // React directly to the derived habitId
+    habits,
+    isLoadingHabits,
+    fetchHabitEntries,
+    id,
+    // No longer need configVersion
+  ]);
 
   // Calculate streaks using useMemo
   const streaks = useMemo(() => calculateStreaks(habitEntries), [habitEntries]);

@@ -29,9 +29,31 @@
 6.  **State Propagation Fix (`useDashboardLayout.ts`):**
     - Modified `updateWidgetConfig` to ensure it creates a new object reference for the updated `GridItem` in the `editItems` array, intended to help trigger `useEffect` in widgets.
 
-## Urgent Fix Needed:
+## Widget Config Update Rendering & Persistence Fix (As of 2025-04-06 ~12:00 PM)
 
-- **Widget Config Update Rendering:** Despite the state update propagating correctly to the `useDashboardLayout` hook and `DashboardGridItem` receiving the updated config prop (verified via logs), the `HabitHeatmapWidget` and `HabitStreakWidget` are **not** visually updating immediately after saving the configuration in edit mode. Their internal `useEffect` hooks (dependent on `config.habitId`) are not re-running as expected. Further investigation is required.
+- **Issue:** Widgets (`HabitHeatmapWidget`, `HabitStreakWidget`) were not updating immediately after config changes. Furthermore, config changes were not persisting after exiting edit mode or refreshing the page.
+- **Diagnosis:**
+  - Initial attempts using direct prop drilling or simple context triggers failed due to potential state propagation issues with `react-grid-layout` or stale state closures in callbacks.
+  - The persistence issue was traced back to the save function (`saveLayoutToServerInternal`) not correctly including the updated `config` object in the payload sent to the backend.
+- **Resolution:**
+  - **Refactored `DashboardConfigContext`:** Changed the context to store a map of all widget configurations (`widgetConfigs: Record<string, GridItem['config']>`). Widgets now consume this context and retrieve their specific configuration using their `id`.
+  - **Updated `useDashboardLayout`:**
+    - The hook now initializes the `widgetConfigs` in the context when fetching layout data.
+    - The `updateLayoutAndConfig` function updates both the layout state (`items` or `editItems`) and the specific widget's config in the context via `setWidgetConfig`.
+    - The `saveLayoutToServerInternal` function was modified to explicitly retrieve the latest config for each widget from the `widgetConfigs` context state when constructing the save payload, ensuring persistence.
+  - **Updated Widgets:** Widgets like `HabitHeatmapWidget`, `HabitStreakWidget`, and the new `TextDisplayWidget` were updated to read their config directly from the `widgetConfigs` context instead of relying on props.
+  - **Result:** This context-based approach resolved both the immediate update rendering issue and the configuration persistence problem.
+- **Habit Heatmap Refactor:**
+  - Rewrote `HabitHeatmapWidget` to use a manual CSS Grid layout instead of `react-calendar-heatmap`.
+  - Limited display to the last 30 days.
+  - Added a border highlight for the current day.
+  - Removed the unused `HabitHeatmapWidget.css` file.
+
+---
+
+# Current Progress: Centralized Widget Configuration (As of 2025-04-05 ~9:57 PM)
+
+## Goal: Refactor widget configuration to use a central modal system for better scalability and maintainability.
 
 ---
 

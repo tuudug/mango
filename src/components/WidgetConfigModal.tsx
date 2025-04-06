@@ -42,10 +42,7 @@ export function WidgetConfigModal({
   const handleSave = () => {
     // Only save if there was a config component (meaning changes could be made)
     if (ConfigComponent) {
-      console.log(
-        `[WidgetConfigModal] Saving config for ${widgetId}:`,
-        tempConfig
-      );
+      // Removed console.log
       onSave(tempConfig); // Call the main save function passed from DashboardGridItem
     }
     onOpenChange(false); // Close the modal
@@ -53,33 +50,17 @@ export function WidgetConfigModal({
 
   // Logging Wrapper for onChange from child config component
   const handleConfigChange = (newConfig: GridItem["config"]) => {
-    console.log(
-      `[WidgetConfigModal] handleConfigChange called for ${widgetId}.`
-    );
-    console.log(
-      `[WidgetConfigModal] Before setTempConfig - tempConfig:`,
-      tempConfig
-    );
-    console.log(`[WidgetConfigModal] Calling setTempConfig with:`, newConfig);
+    // Removed console.logs
     setTempConfig(newConfig);
   };
 
-  // Effect to log state changes (optional, for debugging)
-  useEffect(() => {
-    console.log(
-      `[WidgetConfigModal] tempConfig state updated for ${widgetId}:`,
-      tempConfig
-    );
-  }, [tempConfig, widgetId]);
+  // Removed logging useEffect
 
   // Effect to reset state ONLY when the modal initially opens for a specific widgetId
   useEffect(() => {
     // Reset if the modal is open AND (it's the first time opening OR the widgetId changed)
     if (isOpen && initializedWidgetId.current !== widgetId) {
-      console.log(
-        `[WidgetConfigModal] Resetting tempConfig for ${widgetId} on open or widget change. Current config:`,
-        currentConfig
-      );
+      // Removed console.log
       setTempConfig(currentConfig ?? {});
       initializedWidgetId.current = widgetId; // Mark this widgetId as initialized
     } else if (!isOpen) {

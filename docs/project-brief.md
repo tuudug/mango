@@ -60,7 +60,7 @@ These components handle the interaction and persistence of core application data
   - [x] Expenses Report Widget (`ExpensesReportWidget.tsx`) - Shows weekly spending bar chart.
 - [x] **Habits Tracking:**
   - [x] Habits Checklist Widget (`HabitsListWidget.tsx`) - Log daily completion.
-  - [x] Habit Heatmap Widget (`HabitHeatmapWidget.tsx`) - Visualize consistency. **Configurable (Refactored).**
+  - [x] Habit Heatmap Widget (`HabitHeatmapWidget.tsx`) - Visualize consistency. **Configurable (Refactored). Refactored to 30-day grid view.**
   - [x] Habit Streaks Widget (`HabitStreakWidget.tsx`) - Track current/longest streaks. **Configurable (Refactored).**
 
 ### Progression System
@@ -184,8 +184,9 @@ These components handle the interaction and persistence of core application data
   - **[x] Save on Exit:** Final `editItems` state is saved to the server in a single API call when exiting edit mode.
   - **[x] Resize/Move Bug Fix:** Corrected logic in `onLayoutChange` to preserve widget dimensions during move operations.
   - **[x] Save Loader:** Added loading overlay when saving changes upon exiting edit mode.
-  - **[x] Centralized Widget Configuration:** Refactored config UI into a central modal (`WidgetConfigModal`) using specific config components (e.g., `HabitSelectionConfig`).
+  - **[x] Centralized Widget Configuration:** Refactored config UI into a central modal (`WidgetConfigModal`) using specific config components (e.g., `HabitSelectionConfig`, `TextDisplayConfig`).
   - **[x] Prevent Grid Interaction During Config:** Disabled grid drag/resize while config modal is open.
+  - **[x] Widget Config State & Persistence:** Refactored state management using `DashboardConfigContext` to handle immediate updates and ensure persistence.
 - [ ] Emphasis on Positive Reinforcement (Guiding principle).
 - **[x] PWA Update Notifications:** Implemented prompt for app updates & fixed update flow.
 - **[x/✓] PWA Error Handling:** Implemented global Error Boundary (`ErrorBoundary.tsx`, `ErrorFallback.tsx`) to catch rendering errors and offer PWA update if available. **Fixed prop passing.**

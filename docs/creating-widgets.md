@@ -47,6 +47,45 @@ export function MyNewWidget({ id: _id, w: _w, h: _h }: WidgetProps) {
 }
 ```
 
+### Handling Widget Configuration (Important!)
+
+Previously, widgets might have received their configuration directly via the `config` prop passed down through `DashboardGridItem`. However, due to potential state propagation issues with the grid library, this approach is **deprecated** for accessing config data within the widget's logic.
+
+Instead, configurable widgets **must** use the `DashboardConfigContext` to retrieve their configuration state.
+
+1.  **Import the Hook:** Import `useDashboardConfig` from `@/contexts/DashboardConfigContext`.
+2.  **Consume Context:** Call `const { widgetConfigs } = useDashboardConfig();` inside your widget component.
+3.  **Get Specific Config:** Access the configuration for the current widget instance using its `id` prop: `const currentWidgetConfig = widgetConfigs[id];`.
+4.  **Use Config Data:** Use the data from `currentWidgetConfig` (e.g., `currentWidgetConfig?.yourSetting`) in your widget's rendering logic and `useEffect` hooks.
+5.  **Dependencies:** Ensure your `useEffect` hooks that depend on configuration data list `currentWidgetConfig` or specific fields within it (like `currentWidgetConfig?.yourSetting`) in their dependency array.
+
+**Example Snippet (inside your widget component):**
+
+```tsx
+import { useDashboardConfig } from "@/contexts/DashboardConfigContext";
+
+// ... (WidgetProps definition remains the same, including optional config for modal init)
+
+export function MyConfigurableWidget({ id, w, h }: WidgetProps) {
+  const { widgetConfigs } = useDashboardConfig();
+  const currentWidgetConfig = widgetConfigs[id];
+  const settingValue = currentWidgetConfig?.yourSetting || "Default Value";
+
+  useEffect(() => {
+    // Logic that depends on the setting value
+    console.log("Setting value changed:", settingValue);
+  }, [settingValue]); // Depend on the specific value or the whole config object
+
+  return (
+    <div>
+      Widget {id} - Setting: {settingValue}
+    </div>
+  );
+}
+```
+
+**Note:** The `config` prop is still passed down by `DashboardGridItem` and is necessary for initializing the `WidgetConfigModal`. However, the widget component itself should rely on the context for reading the config state used in its logic and rendering.
+
 ## 2. Configure Widget Properties
 
 - Open the **widget configuration file**: `src/lib/widgetConfig.ts`.
@@ -112,7 +151,7 @@ export function MyNewWidget({ id: _id, w: _w, h: _h }: WidgetProps) {
     "My New Widget": MyNewWidget, // <-- Add your mapping here
   };
   ```
-- The `DashboardGridItem` component automatically passes the `id`, `w`, and `h` props to your widget component.
+- The `DashboardGridItem` component automatically passes the `id`, `w`, `h`, and `config` props to your widget component. (Widgets should use the context to read config state, see section above).
 
 ## 4. Add to Toolbox
 
@@ -174,3 +213,4 @@ After completing these steps, your new widget should be integrated into the dash
 - See its specific icon and accent color applied.
 - Interact with its unique UI and functionality.
 - Optionally, see the widget adapt its display based on its size if you implemented dynamic rendering (Step 5).
+- See the widget update correctly when its configuration is changed via the central modal.

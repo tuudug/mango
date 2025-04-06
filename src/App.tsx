@@ -11,6 +11,7 @@ import { useRegisterSW } from "virtual:pwa-register/react";
 // Use default imports for these components
 import ErrorBoundary from "./components/ErrorBoundary";
 import ErrorFallback from "./components/ErrorFallback";
+import { DashboardConfigProvider } from "./contexts/DashboardConfigContext"; // Import the provider
 // Removed: import { PomodoroBanner } from "./components/PomodoroBanner"; // Remove banner import
 
 function App() {
@@ -61,7 +62,9 @@ function App() {
             path="/"
             element={
               session ? (
-                <Dashboard {...pwaProps} />
+                <DashboardConfigProvider>
+                  <Dashboard {...pwaProps} />
+                </DashboardConfigProvider>
               ) : (
                 <Navigate to="/login" replace />
               )

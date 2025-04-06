@@ -27,6 +27,7 @@ import { useDashboardLayout } from "./dashboard/hooks/useDashboardLayout";
 import { DashboardName } from "./dashboard/types";
 import { getCachedLastSyncTime, isMobileView } from "./dashboard/utils";
 import { useToast } from "@/contexts/ToastContext"; // Import useToast
+// Removed provider import
 
 // Define props for Dashboard, including PWA update props
 interface DashboardProps {
@@ -110,9 +111,6 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
       const targetChanged = previousTarget !== editTargetDashboard;
 
       // Fetch layout for editing, populating 'editItems'
-      console.log(
-        `Edit mode active for ${editTargetDashboard}. Fetching layout for editing (Force: ${targetChanged}).`
-      );
       setIsSwitchingEditMode(targetChanged); // Show loader only if target changed
       fetchLayout(editTargetDashboard, targetChanged, { forEditing: true }) // Use forEditing flag
         .finally(() => setIsSwitchingEditMode(false));
@@ -129,7 +127,6 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
     if (!nextIsOpen && editItems) {
       // --- Closing Toolbox: Save Edits ---
       setIsSavingLayout(true); // <-- Set saving state to true
-      console.log(`Closing toolbox. Saving edits for ${editTargetDashboard}.`);
       try {
         const saveSuccess = await saveEditLayout(editTargetDashboard); // saveEditLayout now updates 'items' and clears 'editItems'
         if (!saveSuccess) {
@@ -158,9 +155,6 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
       }
     } else if (nextIsOpen) {
       // --- Opening Toolbox ---
-      console.log(
-        `Opening toolbox. Setting edit target to: ${currentViewDashboardName}`
-      );
       // Set edit target, useEffect will trigger fetch for editing
       setEditTargetDashboard(currentViewDashboardName);
       setIsToolboxOpen(true); // Update state
@@ -230,9 +224,6 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
       };
       const newEditItems = [...currentFilteredItems, newItem];
       setEditItems(newEditItems); // Update local edit state ONLY
-      console.log(
-        `Added ${widgetType} to edit state at x:${position.x}, y:${position.y}`
-      );
     } else {
       console.warn(`Could not find space for ${widgetType}`);
       showToast({
@@ -289,33 +280,8 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
     (layout: Layout[]) => {
       if (!isToolboxOpen || editItems === null) return; // Only run in edit mode
 
-      console.log("[onLayoutChange] Triggered.");
-      console.log(
-        "[onLayoutChange] Current editItems state (before update):",
-        JSON.stringify(
-          editItems.map((i) => ({ id: i.id, x: i.x, y: i.y, w: i.w, h: i.h }))
-        )
-      );
-      console.log(
-        "[onLayoutChange] Received layout from RGL:",
-        JSON.stringify(
-          layout.map((l) => ({ i: l.i, x: l.x, y: l.y, w: l.w, h: l.h }))
-        )
-      );
-
       const newEditItems = editItems.map((editItem) => {
         const layoutItem = layout.find((l) => l.i === editItem.id);
-
-        if (layoutItem) {
-          console.log(
-            `[onLayoutChange] Processing item ${editItem.id}: Found layoutItem (x:${layoutItem.x}, y:${layoutItem.y}, w:${layoutItem.w}, h:${layoutItem.h}). Current editItem (w:${editItem.w}, h:${editItem.h})`
-          );
-        } else {
-          console.warn(
-            `[onLayoutChange] Processing item ${editItem.id}: Corresponding layoutItem NOT FOUND in RGL output!`
-          );
-        }
-
         return layoutItem
           ? {
               ...editItem,
@@ -327,25 +293,9 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
           : editItem;
       });
 
-      console.log(
-        "[onLayoutChange] Calculated newEditItems (x,y,w,h updated):",
-        JSON.stringify(
-          newEditItems.map((i) => ({
-            id: i.id,
-            x: i.x,
-            y: i.y,
-            w: i.w,
-            h: i.h,
-          }))
-        )
-      );
-
       let layoutChanged = false;
       if (newEditItems.length !== editItems.length) {
         layoutChanged = true;
-        console.warn(
-          "[onLayoutChange] Mismatch in item count between editItems and newEditItems!"
-        );
       } else {
         for (let i = 0; i < editItems.length; i++) {
           const oldItem = editItems[i];
@@ -364,14 +314,7 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
       }
 
       if (layoutChanged) {
-        console.log(
-          "[onLayoutChange] Layout changed (pos or size). Updating editItems state."
-        );
         setEditItems(newEditItems);
-      } else {
-        console.log(
-          "[onLayoutChange] No layout change detected. Skipping state update."
-        );
       }
     },
     [editItems, setEditItems, isToolboxOpen]
@@ -405,10 +348,6 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
           (item) => item.id === newItemLayout.i
         );
         if (!itemExists) return currentEditItems;
-
-        console.log(
-          `[handleResizeStop] Updating item ${newItemLayout.i} size to w:${newItemLayout.w}, h:${newItemLayout.h}`
-        );
 
         return currentEditItems.map((item) =>
           item.id === newItemLayout.i
@@ -482,6 +421,7 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
           >
             {/* Pass itemsToDisplay (either items or editItems) */}
             {/* --- Pass NEW props to DashboardGrid --- */}
+            {/* Removed provider wrap */}
             <DashboardGrid
               items={itemsToDisplay}
               isToolboxOpen={isToolboxOpen}

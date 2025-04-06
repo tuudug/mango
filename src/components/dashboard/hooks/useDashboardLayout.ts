@@ -2,6 +2,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { GridItem } from "@/lib/dashboardConfig";
 import { WidgetType, defaultWidgetLayouts } from "@/lib/widgetConfig";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useDashboardConfig } from "@/contexts/DashboardConfigContext"; // Import the hook
+// Removed duplicate GridItem import
 import { CACHE_STALE_DURATION, getDefaultLayout } from "../constants";
 import { CachedGridItemData, DashboardName } from "../types";
 import {
@@ -15,6 +17,9 @@ import {
 export function useDashboardLayout() {
   const { user, session } = useAuth();
   const token = session?.access_token;
+  // Consume the new context functions AND the config map
+  const { initializeConfigs, setWidgetConfig, widgetConfigs } =
+    useDashboardConfig();
 
   // State for the currently displayed layout
   const [items, setItems] = useState<GridItem[]>([]);
@@ -33,9 +38,6 @@ export function useDashboardLayout() {
   // --- Save Function (Now used primarily by saveEditLayout) ---
   const saveLayoutToServerInternal = useCallback(
     async (layoutToSave: GridItem[], dashboardName: DashboardName) => {
-      console.log(
-        `[SaveInternal] Saving layout for dashboard: ${dashboardName}`
-      );
       if (!token || !user || !dashboardName) {
         console.error(
           "[SaveInternal] Missing auth token, user, or dashboardName. Aborting save."
@@ -43,15 +45,18 @@ export function useDashboardLayout() {
         return false; // Indicate failure
       }
       try {
+        // Map items, getting the config directly from the context state
         const itemsToSave: CachedGridItemData[] = layoutToSave.map(
-          ({ minW, minH, ...rest }) => ({
-            id: rest.id,
-            type: rest.type,
-            x: rest.x,
-            y: rest.y,
-            w: rest.w,
-            h: rest.h,
-            config: rest.config,
+          // Destructure without config from layoutToSave
+          ({ id, type, x, y, w, h }) => ({
+            id,
+            type,
+            x,
+            y,
+            w,
+            h,
+            // Get latest config from context, default to {} if not found
+            config: widgetConfigs[id] ?? {},
           })
         );
 
@@ -73,10 +78,6 @@ export function useDashboardLayout() {
           );
           return false; // Indicate failure
         } else {
-          const savedData = await response.json();
-          console.log(
-            `[SaveInternal] Layout for ${dashboardName} saved successfully. Response ID: ${savedData?.id}`
-          );
           // Update cache immediately on successful save
           setCachedLayout(dashboardName, layoutToSave);
           setCachedLastSyncTime(Date.now());
@@ -90,7 +91,8 @@ export function useDashboardLayout() {
         return false; // Indicate failure
       }
     },
-    [token, user]
+    // Add widgetConfigs to dependency array as it's now used inside
+    [token, user, widgetConfigs]
   );
 
   // --- Fetch Layout ---
@@ -126,9 +128,6 @@ export function useDashboardLayout() {
       // --- End Cache Check ---
 
       // --- Fetching Logic ---
-      console.log(
-        `Fetching layout from server for: ${dashboardName} (Force: ${forceFetch}, Edit: ${forEditing}, Effective Background: ${isBackground})`
-      );
       if (!isBackground && !initialItemsSetFromCache) {
         setIsLoadingLayout(true);
       } else if (isBackground) {
@@ -180,9 +179,18 @@ export function useDashboardLayout() {
         }
 
         // --- Process Result ---
+        // Create initial config map from loaded items
+        const initialConfigs: Record<string, GridItem["config"] | undefined> =
+          {};
+        loadedItems.forEach((item) => {
+          if (item.config) {
+            initialConfigs[item.id] = item.config;
+          }
+        });
+        initializeConfigs(initialConfigs); // Initialize context state
+
         if (forEditing) {
-          // If fetching for editing, set both states
-          console.log(`Setting editItems and items for ${dashboardName}`);
+          // If fetching for editing, set both layout states
           setEditItems(loadedItems);
           setItems(loadedItems); // Also update main display state initially
           setCachedLayout(dashboardName, loadedItems); // Update cache
@@ -196,16 +204,10 @@ export function useDashboardLayout() {
           );
 
           if (!areLayoutsEqual) {
-            console.log(
-              `Fetched layout for ${dashboardName} differs from current display state. Updating items state.`
-            );
             setItems(loadedItems); // Update display state only if different
             setCachedLayout(dashboardName, loadedItems);
             setCachedLastSyncTime(Date.now());
           } else {
-            console.log(
-              `Fetched layout for ${dashboardName} is same as current display state. Skipping state update.`
-            );
             if (!useDefault) {
               setCachedLastSyncTime(Date.now()); // Still update sync time if fetch was successful
             }
@@ -238,7 +240,8 @@ export function useDashboardLayout() {
         setIsBackgroundFetching(false);
       }
     },
-    [token, user, items] // Added items dependency for fallback in edit fetch failure
+    // Dependencies need to include initializeConfigs and potentially items/token/user
+    [token, user, items, initializeConfigs]
   );
 
   // --- Function to save the edited layout ---
@@ -248,7 +251,7 @@ export function useDashboardLayout() {
         console.warn("[SaveEdit] No edit items to save.");
         return false;
       }
-      console.log(`[SaveEdit] Saving editItems for ${dashboardName}`);
+      // Pass the current editItems state to the internal save function
       const success = await saveLayoutToServerInternal(
         editItems,
         dashboardName
@@ -258,9 +261,6 @@ export function useDashboardLayout() {
         setItems(editItems);
         // Clear the edit state
         setEditItems(null);
-        console.log(
-          `[SaveEdit] Successfully saved and cleared editItems for ${dashboardName}`
-        );
       } else {
         console.error(
           `[SaveEdit] Failed to save layout for ${dashboardName}. Edit state not cleared.`
@@ -269,79 +269,74 @@ export function useDashboardLayout() {
       }
       return success;
     },
+    // Keep dependencies: editItems and the (now updated) saveLayoutToServerInternal
     [editItems, saveLayoutToServerInternal]
   );
 
-  // --- Function to update widget config ---
-  // Now uses an explicit isEditing flag
-  const updateWidgetConfig = (
+  // --- Function to update layout state AND context config ---
+  // Renamed and removed currentLayout parameter
+  const updateLayoutAndConfig = (
     itemId: string,
     newConfig: Record<string, any>,
     dashboardName: DashboardName,
-    currentLayout: GridItem[], // Expects the layout array (either items or editItems)
+    // currentLayout: GridItem[], // REMOVED
     isEditing: boolean // Explicit flag
   ) => {
     if (!dashboardName) {
-      console.error("[UpdateConfig] dashboardName is required.");
-      return;
-    }
-
-    // --- MODIFICATION START ---
-    // Create a new array with updated item object reference
-    const updatedLayout = currentLayout.map((item) => {
-      if (item.id === itemId) {
-        // Create a completely new object for the updated item
-        return {
-          ...item, // Copy all existing properties
-          config: newConfig, // Set the new config
-        };
-      }
-      return item; // Return unchanged items as they are
-    });
-    // --- MODIFICATION END ---
-
-    // Check if the item was actually found and updated (optional sanity check)
-    const itemFound = updatedLayout.some(
-      (item, index) =>
-        item.id === itemId && currentLayout[index].config !== newConfig
-    );
-    if (!itemFound) {
-      console.error(
-        `[UpdateConfig] Item ${itemId} NOT FOUND or config unchanged in provided layout. Aborting. Layout IDs:`,
-        currentLayout.map((i) => i.id)
-      );
+      console.error("[UpdateLayoutAndConfig] dashboardName is required.");
       return;
     }
 
     // Use the explicit isEditing flag
     if (isEditing) {
       // --- In Edit Mode ---
-      console.log(`[UpdateConfig] Updating editItems state for ${itemId}`);
-      setEditItems(updatedLayout);
+      // Read current editItems state, update it, then set it
+      setEditItems((currentEditItems) => {
+        if (!currentEditItems) return null; // Should not happen if isEditing is true, but safety check
+        const updatedLayout = currentEditItems.map((item) =>
+          item.id === itemId ? { ...item, config: newConfig } : item
+        );
+        // Check if item was found (optional)
+        const itemFound = updatedLayout.some((item) => item.id === itemId);
+        if (!itemFound) {
+          console.error(
+            `[UpdateLayoutAndConfig] Item ${itemId} NOT FOUND in editItems. Aborting state update.`
+          );
+          return currentEditItems; // Return original state if not found
+        }
+        return updatedLayout;
+      });
+      // Update context AFTER state update
+      setWidgetConfig(itemId, newConfig);
       // NO server save here
     } else {
       // --- Not in Edit Mode ---
-      console.warn(
-        `[UpdateConfig] Updating items state directly (not in edit mode) for ${itemId}. Saving immediately.`
-      );
-      setItems(updatedLayout);
-      // Save immediately if not in edit mode
-      saveLayoutToServerInternal(updatedLayout, dashboardName);
+      // Read current items state, update it, then set it
+      let finalLayoutToSave: GridItem[] | null = null;
+      setItems((currentItems) => {
+        const updatedLayout = currentItems.map((item) =>
+          item.id === itemId ? { ...item, config: newConfig } : item
+        );
+        // Check if item was found (optional)
+        const itemFound = updatedLayout.some((item) => item.id === itemId);
+        if (!itemFound) {
+          console.error(
+            `[UpdateLayoutAndConfig] Item ${itemId} NOT FOUND in items. Aborting state update.`
+          );
+          finalLayoutToSave = currentItems; // Prepare to save original state
+          return currentItems; // Return original state if not found
+        }
+        finalLayoutToSave = updatedLayout; // Prepare to save updated state
+        return updatedLayout;
+      });
+      // Update context AFTER state update
+      setWidgetConfig(itemId, newConfig);
+      // Save immediately if not in edit mode (use the layout determined above)
+      if (finalLayoutToSave) {
+        saveLayoutToServerInternal(finalLayoutToSave, dashboardName);
+      }
     }
   };
-
-  // // Debounced save - keep it around? Maybe useful for other things later.
-  // const saveLayoutDebounced = useDebouncedCallback(
-  //   (layout: GridItem[], name: DashboardName) => {
-  //     if (editItems === null) {
-  //       // Only save debounced if NOT in edit mode
-  //       saveLayoutToServerInternal(layout, name);
-  //     } else {
-  //       console.log("[DebounceSave] In edit mode, debounced save skipped.");
-  //     }
-  //   },
-  //   1000
-  // );
 
   return {
     items, // Currently displayed items
@@ -352,8 +347,6 @@ export function useDashboardLayout() {
     isBackgroundFetching,
     fetchLayout,
     saveEditLayout, // Function to save edits and exit edit mode
-    updateWidgetConfig, // Updates editItems or items based on mode
-    // Expose the debounced save? Maybe rename it? For now, keep internal.
-    // saveLayoutToServer: saveLayoutDebounced,
+    updateLayoutAndConfig, // Renamed function
   };
 }
