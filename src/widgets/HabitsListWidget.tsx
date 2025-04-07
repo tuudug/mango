@@ -7,7 +7,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Habit, HabitEntry, useHabits } from "@/contexts/HabitsContext";
+import { Habit, useHabits } from "@/contexts/HabitsContext";
 import { calculateStreaks } from "@/lib/habitUtils";
 import { cn } from "@/lib/utils";
 import dayjs from "dayjs";
@@ -22,7 +22,7 @@ import {
   ThumbsUp, // Added
   TrendingUp,
 } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 
 interface WidgetProps {
   id: string;
@@ -43,7 +43,6 @@ export function HabitsListWidget({ id: _id, w: _w, h: _h }: WidgetProps) {
     isLoadingEntries,
     recordHabitEntry,
     hasEntryForDate,
-    getEntriesForDate,
     uncheckOnceDailyHabit,
   } = useHabits();
   const [loadingEntryId, setLoadingEntryId] = useState<string | null>(null);

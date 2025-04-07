@@ -19,6 +19,8 @@ These components handle the interaction and persistence of core application data
   - **[x] Backend:** Fix token decryption errors. (**Resolved: Incorrect ENV VAR**)
   - **[x] Backend:** Implement refresh token logic. (**Added: Missing handler in API route**)
   - **[x] Backend:** Fix disconnect logic. (**Fixed: Handler now uses provider from request body**)
+  - **[x] Backend:** Added API routes (`/api/health/settings`) for managing `daily_steps_goal`. (**Added**)
+  - **[x] Frontend:** Added UI in panel to configure `daily_steps_goal`. (**Added**)
 - [x] **Todos Data Source (`TodosDataSource.tsx`):** Manages todo items (add, delete, toggle completion) using `TodosContext`.
   - **[x] Editing:** Added ability to edit todo item text.
   - **[x] Reordering:** Top-level items use drag-and-drop; nested items use Move Up/Down buttons.
@@ -117,7 +119,7 @@ These components handle the interaction and persistence of core application data
   - **Health & Wellness:**
     - [x] Steps Tracker (`StepsTrackerWidget.tsx`)
       - [x] Dynamic mini/full view based on size.
-      - [x] Replaced custom chart with `recharts`, added goal line, week navigation.
+      - [x] Replaced custom chart with `recharts`, added goal line, week navigation. **Goal line now uses configurable `daily_steps_goal` from Health settings.**
     - [x] Habit Graph (`HabitGraphWidget.tsx`) - _(Deprecated by Heatmap/Streaks?)_
     - [x] Habits Checklist (`HabitsListWidget.tsx`)
     - [x] Habit Heatmap (`HabitHeatmapWidget.tsx`)

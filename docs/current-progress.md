@@ -1,3 +1,36 @@
+# Current Progress: Configurable Step Goal (As of 2025-04-07 ~6:10 PM)
+
+## Goal: Allow users to configure their daily step goal via the Health Data Source panel.
+
+## Implementation Progress:
+
+1.  **Database Schema (Supabase):**
+    - Created `manual_health_settings` table (`id`, `user_id`, `daily_steps_goal`, `created_at`, `updated_at`) to store the user's goal.
+    - Added RLS policy (`Allow individual user access for manual_health_settings`) to ensure users can only access/modify their own settings.
+    - Applied `handle_updated_at` trigger.
+2.  **Backend API (`/api/health`):**
+    - Added `GET /settings` route (`getHealthSettings.ts`) to fetch the user's step goal (defaults to 10000).
+    - Added `PUT /settings` route (`upsertHealthSettings.ts`) to create or update the user's step goal.
+    - Modified `GET /` route (`getHealthEntries.ts`) to include `healthSettings` (containing `daily_steps_goal`) in its response alongside `healthEntries` and `isGoogleHealthConnected`.
+    - **Fixed RLS Issue:** Updated `upsertHealthSettings.ts` to use the request-scoped Supabase client (`req.supabase`) instead of the global client, resolving "violates row-level security policy" errors.
+    - **Fixed TypeScript Errors:** Resolved various TS2769 (signature mismatch) errors in API handlers (`getHealthSettings.ts`, `upsertHealthSettings.ts`) and the router (`health.ts`) by ensuring correct use of `return;` after sending responses and adjusting handler signatures (including adding `next: NextFunction` where needed).
+3.  **Frontend Context (`src/contexts/HealthContext.tsx`):**
+    - Added `healthSettings: { daily_steps_goal: number } | null` state.
+    - Added `updateHealthSettings` function to call the `PUT /api/health/settings` endpoint.
+    - Modified `fetchHealthData` to fetch and store `healthSettings` from the `GET /api/health` response.
+4.  **Frontend Panel (`src/components/datasources/HealthDataSource.tsx`):**
+    - Added a new "Settings" section with an input field (`Daily Steps Goal`) and a "Save Goal" button.
+    - Input field is populated from `healthSettings` state.
+    - Save button calls `updateHealthSettings` context function.
+5.  **Frontend Widget (`src/widgets/StepsTrackerWidget.tsx`):**
+    - Removed the hardcoded `goalSteps = 10000`.
+    - Widget now consumes `healthSettings` from `HealthContext`.
+    - Calculates `goalSteps` dynamically based on `healthSettings.daily_steps_goal` (defaulting to 10000 if settings are null).
+    - Updated `useMemo` dependency array for `chartData` to include `goalSteps`.
+    - Updated `CustomTooltip` to receive and display the dynamic `goalSteps`.
+
+---
+
 # Current Progress: Habits List Enhancements & Timezone Fix (As of 2025-04-07 ~5:30 PM)
 
 ## Goal: Enhance Habits List widget with streak info, visual cues, and fix timezone inconsistencies.

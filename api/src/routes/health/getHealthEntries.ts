@@ -1,39 +1,49 @@
-import { Response, NextFunction } from "express";
-import { google, fitness_v1, Auth } from "googleapis"; // Import fitness API types & Auth
-import { GaxiosResponse } from "gaxios"; // Import GaxiosResponse type
-import { supabaseAdmin } from "../../supabaseClient"; // Need admin client
-import { AuthenticatedRequest } from "../../middleware/auth";
-import { encrypt, decrypt } from "../../utils/crypto"; // Need encrypt/decrypt
-import { addDays, startOfDay, endOfDay, format } from "date-fns"; // Date helpers + format
+import { Request, Response, NextFunction } from "express"; // Ensure Request is imported
+import { google, fitness_v1, Auth } from "googleapis";
+import { GaxiosResponse } from "gaxios";
+import { supabaseAdmin } from "../../supabaseClient";
+// Module augmentation handles req.user, req.supabase
+import { encrypt, decrypt } from "../../utils/crypto";
+import { addDays, startOfDay, endOfDay, format } from "date-fns";
 import {
   HealthEntry,
   StoredGoogleCredentials,
   DecryptedGoogleCredentials,
-} from "../../types/health"; // Import shared types
+} from "../../types/health";
+
+// Define the expected structure for health settings
+interface HealthSettings {
+  daily_steps_goal: number;
+}
 
 export const getHealthEntries = async (
-  req: AuthenticatedRequest,
+  req: Request, // Use explicit Request type
   res: Response,
   next: NextFunction
 ): Promise<void> => {
   try {
-    const userId = req.userId;
-    const supabaseUserClient = req.supabase; // Get request-scoped client
+    // Cast to any to access augmented properties due to TS inference issues
+    const supabaseUserClient = (req as any).supabase;
+    const user = (req as any).user;
 
-    if (!userId || !supabaseUserClient) {
-      res.status(401).json({ message: "Authentication data missing" });
-      return;
+    // Check user and user.id
+    if (!user || !user.id || !supabaseUserClient) {
+      res
+        .status(401)
+        .json({ message: "User not authenticated or Supabase client missing" });
+      return; // Ensure void return
     }
+    const currentUserId = user.id; // Use user.id consistently
 
-    let rawHealthEntries: HealthEntry[] = []; // Store raw entries before aggregation
-    let isGoogleHealthConnected = false; // Track connection status
+    let rawHealthEntries: HealthEntry[] = [];
+    let isGoogleHealthConnected = false;
 
     // 0. Check Google Health Connection Status
     try {
       const { count, error: googleConnError } = await supabaseAdmin
         .from("data_source_connections")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", userId)
+        .select("id", { count: "exact", head: true }) // Only need count
+        .eq("user_id", currentUserId)
         .eq("provider", "google_health");
 
       if (googleConnError) {
@@ -43,7 +53,7 @@ export const getHealthEntries = async (
         );
       } else if (count !== null && count > 0) {
         isGoogleHealthConnected = true;
-        console.log(`Google Health connection found for user ${userId}`);
+        console.log(`Google Health connection found for user ${currentUserId}`);
       }
     } catch (err) {
       console.error("Unexpected error checking Google Health connection:", err);
@@ -57,18 +67,30 @@ export const getHealthEntries = async (
           .select(
             "id, connection_id, entry_date, type, value, created_at, updated_at"
           )
-          .eq("user_id", userId);
+          .eq("user_id", currentUserId);
 
       if (manualError) throw manualError;
 
       if (manualEntries) {
-        const manualItems: HealthEntry[] = manualEntries.map((entry) => ({
-          ...entry,
-          sourceProvider: "manual",
-        }));
+        // Define type for the mapped entry based on selected columns
+        type ManualEntryData = {
+          id: string;
+          connection_id: string | null;
+          entry_date: string;
+          type: string;
+          value: number;
+          created_at: string;
+          updated_at: string;
+        };
+        const manualItems: HealthEntry[] = manualEntries.map(
+          (entry: ManualEntryData) => ({
+            ...entry,
+            sourceProvider: "manual",
+          })
+        );
         rawHealthEntries = rawHealthEntries.concat(manualItems);
         console.log(
-          `Fetched ${manualItems.length} manual health entries for user ${userId}`
+          `Fetched ${manualItems.length} manual health entries for user ${currentUserId}`
         );
       }
     } catch (err) {
@@ -81,7 +103,7 @@ export const getHealthEntries = async (
         const { data: connections, error: connError } = await supabaseAdmin
           .from("data_source_connections")
           .select("id, credentials")
-          .eq("user_id", userId)
+          .eq("user_id", currentUserId)
           .eq("provider", "google_health");
 
         if (connError) throw connError;
@@ -99,7 +121,6 @@ export const getHealthEntries = async (
                 ? decrypt(storedCredentials.refresh_token)
                 : null,
               scope: storedCredentials.scope,
-              // expiry_date is not strictly needed for health check but good practice
               expiry_date: storedCredentials.expiry_date,
             };
           } catch (decryptionError) {
@@ -115,7 +136,6 @@ export const getHealthEntries = async (
               const oauth2Client = new google.auth.OAuth2(
                 process.env.GOOGLE_CLIENT_ID,
                 process.env.GOOGLE_CLIENT_SECRET
-                // No redirect URI needed here for API calls
               );
               oauth2Client.setCredentials({
                 access_token: decryptedCreds.access_token,
@@ -124,74 +144,60 @@ export const getHealthEntries = async (
                 expiry_date: decryptedCreds.expiry_date ?? undefined,
               });
 
-              // --- Handle Token Refresh (Copied & Adapted from Calendar) ---
+              // Handle Token Refresh
               oauth2Client.on("tokens", async (tokens: Auth.Credentials) => {
                 console.log(
                   `Google Health token refreshed for connection ${connection.id}`
                 );
                 let newEncryptedAccessToken: string | null = null;
                 let newEncryptedRefreshToken: string | null = null;
-
                 try {
-                  if (tokens.access_token) {
+                  if (tokens.access_token)
                     newEncryptedAccessToken = encrypt(tokens.access_token);
-                  }
-                  // Refresh token might not always be returned, only update if it is
-                  if (tokens.refresh_token) {
+                  if (tokens.refresh_token)
                     newEncryptedRefreshToken = encrypt(tokens.refresh_token);
-                    console.log(
-                      `Received new refresh token for Google Health connection ${connection.id}`
-                    );
-                  }
 
-                  // Prepare updated credentials, merging with existing ones
                   const currentCredentials =
                     storedCredentials || ({} as StoredGoogleCredentials);
                   const updatedCredentials: StoredGoogleCredentials = {
-                    ...currentCredentials, // Keep existing fields like google_profile_id
+                    ...currentCredentials,
                     access_token:
                       newEncryptedAccessToken ??
-                      currentCredentials.access_token, // Keep old if no new one
+                      currentCredentials.access_token,
                     expiry_date: tokens.expiry_date,
-                    scope: tokens.scope ?? currentCredentials.scope, // Use new scope if provided
+                    scope: tokens.scope ?? currentCredentials.scope,
                   };
-
-                  // Only update refresh token if a new one was provided
-                  if (newEncryptedRefreshToken) {
+                  if (newEncryptedRefreshToken)
                     updatedCredentials.refresh_token = newEncryptedRefreshToken;
-                  }
 
-                  // Update Supabase using ADMIN client
                   const { error: updateError } = await supabaseAdmin
                     .from("data_source_connections")
                     .update({ credentials: updatedCredentials })
                     .eq("id", connection.id);
 
-                  if (updateError) {
+                  if (updateError)
                     console.error(
-                      `Failed to update refreshed Google Health tokens in Supabase for connection ${connection.id}:`,
+                      `Failed to update refreshed Google Health tokens for conn ${connection.id}:`,
                       updateError
                     );
-                  } else {
+                  else
                     console.log(
-                      `Successfully updated refreshed Google Health tokens in Supabase for connection ${connection.id}`
+                      `Successfully updated refreshed Google Health tokens for conn ${connection.id}`
                     );
-                  }
                 } catch (encError) {
                   console.error(
-                    `Failed to encrypt refreshed Google Health tokens for connection ${connection.id}:`,
+                    `Failed to encrypt refreshed Google Health tokens for conn ${connection.id}:`,
                     encError
                   );
                 }
               });
-              // --- End Token Refresh Handler ---
 
               const fitness = google.fitness({
                 version: "v1",
                 auth: oauth2Client,
               });
               const endTime = endOfDay(new Date());
-              const startTime = startOfDay(addDays(endTime, -6));
+              const startTime = startOfDay(addDays(endTime, -6)); // Fetch last 7 days including today
 
               const requestBody: fitness_v1.Params$Resource$Users$Dataset$Aggregate["requestBody"] =
                 {
@@ -202,7 +208,7 @@ export const getHealthEntries = async (
                         "derived:com.google.step_count.delta:com.google.android.gms:estimated_steps",
                     },
                   ],
-                  bucketByTime: { durationMillis: "86400000" }, // Needs to be string
+                  bucketByTime: { durationMillis: "86400000" }, // Daily buckets
                   startTimeMillis: String(startTime.getTime()),
                   endTimeMillis: String(endTime.getTime()),
                 };
@@ -228,7 +234,7 @@ export const getHealthEntries = async (
                     if (stepsValue !== undefined && stepsValue !== null) {
                       return [
                         {
-                          id: `google-steps-${entryDate}`,
+                          id: `google-steps-${entryDate}`, // Consistent ID for aggregation
                           connection_id: connection.id,
                           entry_date: entryDate,
                           type: "steps",
@@ -243,7 +249,7 @@ export const getHealthEntries = async (
                   }
                 );
                 console.log(
-                  `Fetched ${googleStepsEntries.length} Google Health step entries for user ${userId}`
+                  `Fetched ${googleStepsEntries.length} Google Health step entries for user ${currentUserId}`
                 );
                 rawHealthEntries = rawHealthEntries.concat(googleStepsEntries);
               }
@@ -252,8 +258,6 @@ export const getHealthEntries = async (
                 `Error fetching Google Fitness API for conn ${connection.id}:`,
                 apiError
               );
-              // TODO: Handle potential 401/invalid_grant errors more gracefully
-              // e.g., mark connection as needing re-auth
             }
           }
         }
@@ -262,52 +266,70 @@ export const getHealthEntries = async (
       }
     }
 
-    // --- Data Aggregation by Date and Type (Revised Logic) ---
-    const aggregatedData: { [key: string]: HealthEntry } = {}; // Key: "YYYY-MM-DD:type"
-
-    // Sort raw entries to process manual before google_health for the same day/type
+    // --- Data Aggregation by Date and Type ---
+    const aggregatedData: { [key: string]: HealthEntry } = {};
     rawHealthEntries.sort((a, b) => {
+      // Sort for consistent aggregation
       if (a.entry_date !== b.entry_date)
         return a.entry_date.localeCompare(b.entry_date);
       if (a.type !== b.type) return a.type.localeCompare(b.type);
-      // Process manual before google_health if date/type are same
-      return a.sourceProvider === "manual" ? -1 : 1;
+      return a.sourceProvider === "manual" ? -1 : 1; // manual first
     });
 
     for (const entry of rawHealthEntries) {
-      // Use a composite key for aggregation, specific for steps, unique ID for others
       const key =
         entry.type === "steps"
           ? `${entry.entry_date}:${entry.type}`
-          : `${entry.entry_date}:${entry.type}:${entry.id}`; // Unique key for non-step types
-
+          : `${entry.entry_date}:${entry.type}:${entry.id}`;
       const existingEntry = aggregatedData[key];
 
       if (!existingEntry) {
-        // If no entry exists for this key, add it
         aggregatedData[key] = entry;
       } else if (entry.type === "steps") {
-        // If it's a step entry and one already exists for this day:
+        // Google data overwrites manual/older google for steps on the same day
         if (entry.sourceProvider === "google_health") {
-          // Google data overwrites whatever was there (manual or older google)
-          aggregatedData[key] = {
-            ...entry,
-            // Optionally preserve manual ID if overwriting manual?
-            // id: existingEntry.sourceProvider === 'manual' ? existingEntry.id : entry.id,
-          };
+          aggregatedData[key] = entry;
         }
-        // If current entry is manual and existing is google, do nothing (keep google)
-        // If both are manual, the sort order ensures the first one added is kept (or implement latest logic if needed)
+        // If entry is manual and existing is google, keep google (do nothing)
       }
-      // For non-step types, the unique key prevents overwriting, keeping all entries
+      // Non-step types use unique keys, so no overwriting needed here
     }
-
     const finalHealthEntries = Object.values(aggregatedData);
 
-    // Return aggregated entries and connection status
-    res
-      .status(200)
-      .json({ healthEntries: finalHealthEntries, isGoogleHealthConnected });
+    // 3. Fetch Health Settings
+    let healthSettings: HealthSettings = { daily_steps_goal: 10000 }; // Default settings
+    try {
+      const { data: settingsData, error: settingsError } =
+        await supabaseUserClient
+          .from("manual_health_settings")
+          .select("daily_steps_goal")
+          .eq("user_id", currentUserId)
+          .maybeSingle();
+
+      if (settingsError) {
+        console.error(
+          `Error fetching health settings for user ${currentUserId}:`,
+          settingsError
+        );
+        // Don't fail the whole request, just use defaults
+      } else if (settingsData) {
+        healthSettings = { daily_steps_goal: settingsData.daily_steps_goal };
+      }
+    } catch (settingsErr) {
+      console.error(
+        `Unexpected error fetching health settings for user ${currentUserId}:`,
+        settingsErr
+      );
+      // Use defaults
+    }
+
+    // Return aggregated entries, connection status, and settings
+    res.status(200).json({
+      healthEntries: finalHealthEntries,
+      isGoogleHealthConnected,
+      healthSettings, // Include settings in the response
+    });
+    return; // Ensure void return type for handler
   } catch (error) {
     console.error("Error in GET /api/health handler:", error);
     next(error); // Pass error to global handler

@@ -22,6 +22,10 @@ export interface HealthEntry {
   updated_at: string;
   sourceProvider: "manual" | "google_health";
 }
+// Define the structure for health settings
+export interface HealthSettings {
+  daily_steps_goal: number;
+}
 
 // Define the shape of the context data
 interface HealthContextType {
@@ -45,6 +49,9 @@ interface HealthContextType {
   goToPreviousStepsWeek: () => void;
   goToNextStepsWeek: () => void;
   goToCurrentStepsWeek: () => void;
+  // Add settings state and update function
+  healthSettings: HealthSettings | null;
+  updateHealthSettings: (settings: HealthSettings) => Promise<void>;
 }
 
 const HealthContext = createContext<HealthContextType | undefined>(undefined);
@@ -64,6 +71,10 @@ export const HealthProvider: React.FC<HealthProviderProps> = ({ children }) => {
   const [currentStepsWeekStart, setCurrentStepsWeekStart] = useState<Date>(
     startOfWeek(new Date(), { weekStartsOn: 1 }) // Monday as start
   );
+  // Add state for health settings
+  const [healthSettings, setHealthSettings] = useState<HealthSettings | null>(
+    null
+  );
   const { session } = useAuth();
   const { showToast } = useToast();
 
@@ -77,15 +88,18 @@ export const HealthProvider: React.FC<HealthProviderProps> = ({ children }) => {
       const data = await authenticatedFetch<{
         healthEntries: HealthEntry[];
         isGoogleHealthConnected: boolean;
+        healthSettings: HealthSettings; // Expect settings in response
       }>("/api/health", "GET", session);
 
       setHealthData(data.healthEntries || []);
       setIsGoogleHealthConnected(data.isGoogleHealthConnected);
+      setHealthSettings(data.healthSettings || { daily_steps_goal: 10000 }); // Set settings, provide default if missing
       setLastFetchTime(new Date());
       console.log(
         "Google Health Connected Status (from backend):",
         data.isGoogleHealthConnected
       );
+      console.log("Fetched Health Settings:", data.healthSettings);
     } catch (e) {
       console.error("Failed to fetch health data:", e);
       const errorMsg =
@@ -98,6 +112,7 @@ export const HealthProvider: React.FC<HealthProviderProps> = ({ children }) => {
       });
       setHealthData([]);
       setIsGoogleHealthConnected(false);
+      setHealthSettings(null); // Clear settings on error
     } finally {
       setIsLoading(false);
     }
@@ -124,6 +139,7 @@ export const HealthProvider: React.FC<HealthProviderProps> = ({ children }) => {
       setHealthData([]);
       setIsGoogleHealthConnected(false);
       setLastFetchTime(null);
+      setHealthSettings(null); // Clear settings on logout
     }
   }, [session, fetchHealthDataIfNeeded]);
 
@@ -273,6 +289,61 @@ export const HealthProvider: React.FC<HealthProviderProps> = ({ children }) => {
     setCurrentStepsWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }));
   };
 
+  // --- Settings Update Function ---
+  const updateHealthSettings = async (settingsToUpdate: HealthSettings) => {
+    if (!session) {
+      setError("You must be logged in to update settings.");
+      showToast({
+        title: "Auth Error",
+        description: "Please log in.",
+        variant: "error",
+      });
+      return;
+    }
+    // Basic validation on frontend too
+    if (
+      settingsToUpdate.daily_steps_goal < 0 ||
+      !Number.isInteger(settingsToUpdate.daily_steps_goal)
+    ) {
+      setError("Invalid goal: Steps goal must be a non-negative integer.");
+      showToast({
+        title: "Validation Error",
+        description: "Steps goal must be a non-negative integer.",
+        variant: "error",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+    try {
+      await authenticatedFetch<void>(
+        "/api/health/settings",
+        "PUT",
+        session,
+        settingsToUpdate
+      );
+      // Re-fetch all data to ensure consistency after update
+      await fetchHealthData();
+      showToast({ title: "Health Settings Updated", variant: "success" });
+    } catch (e) {
+      console.error("Failed to update health settings:", e);
+      const errorMsg =
+        e instanceof Error ? e.message : "Failed to update settings";
+      setError(errorMsg);
+      showToast({
+        title: "Update Settings Error",
+        description: errorMsg,
+        variant: "error",
+      });
+      // Optionally re-fetch even on error to revert optimistic UI?
+      // await fetchHealthData();
+    } finally {
+      // isLoading will be set by the subsequent fetchHealthData call
+      // setIsLoading(false); // Removed as fetchHealthData handles it
+    }
+  };
+
   const value = {
     healthData,
     isLoading,
@@ -290,6 +361,9 @@ export const HealthProvider: React.FC<HealthProviderProps> = ({ children }) => {
     goToPreviousStepsWeek,
     goToNextStepsWeek,
     goToCurrentStepsWeek,
+    // Expose settings and update function
+    healthSettings,
+    updateHealthSettings,
   };
 
   return (

@@ -1,5 +1,5 @@
-import { Button } from "@/components/ui/button"; // Import Button
-import { useHealth } from "@/contexts/HealthContext"; // Import useHealth hook
+import { Button } from "@/components/ui/button";
+import { useHealth } from "@/contexts/HealthContext";
 import { eachDayOfInterval, endOfWeek, format, startOfWeek } from "date-fns";
 import {
   CalendarCheck2,
@@ -51,16 +51,11 @@ interface CustomTickProps {
   y: number;
   payload: {
     value: string; // The 'name' (e.g., "Mon")
-    // We need the full data point to check the date
-    // Recharts doesn't easily pass the full data point here.
-    // We'll compare the 'name' to today's short name as a proxy.
   };
 }
 
 const CustomXAxisTick = ({ x, y, payload }: CustomTickProps) => {
   const tickValue = payload.value;
-  // Check against the date in the payload if possible, otherwise fallback
-  // For now, we still use the simple check as passing full data is complex
   const todayShortName = format(new Date(), "eee");
   const isTickToday = tickValue === todayShortName;
 
@@ -81,16 +76,15 @@ const CustomXAxisTick = ({ x, y, payload }: CustomTickProps) => {
   );
 };
 
-// Custom Tooltip for Recharts
-const CustomTooltip = ({
-  active,
-  payload,
-  label, // label is the 'name' (e.g., "Mon")
-}: TooltipProps<number, string>) => {
+// Custom Tooltip for Recharts - Accepts goalSteps prop
+const CustomTooltip = (
+  props: TooltipProps<number, string> & { goalSteps: number }
+) => {
+  // Destructure props including goalSteps
+  const { active, payload, label, goalSteps } = props;
+
   if (active && payload && payload.length) {
-    // Access the original data point from the payload
     const data = payload[0].payload as StepsChartDataPoint;
-    const goalSteps = 10000; // Access goal here or pass it down
 
     return (
       <div className="bg-gray-800 border border-gray-600 p-2 rounded shadow-lg text-sm">
@@ -103,7 +97,7 @@ const CustomTooltip = ({
           Steps: {data.steps.toLocaleString()}
         </p>
         <p className="text-xs text-gray-400">
-          Goal: {goalSteps.toLocaleString()}
+          Goal: {goalSteps.toLocaleString()} {/* Use goalSteps from props */}
         </p>
       </div>
     );
@@ -116,16 +110,19 @@ const CustomTooltip = ({
 export const StepsTrackerWidget: React.FC<StepsTrackerWidgetProps> = ({
   w,
 }) => {
-  // Get data and navigation functions from context
+  // Get data, navigation functions, and settings from context
   const {
     healthData,
-    isLoading, // Use isLoading to disable buttons
+    isLoading,
     currentStepsWeekStart,
     goToPreviousStepsWeek,
     goToNextStepsWeek,
     goToCurrentStepsWeek,
+    healthSettings, // Get health settings
   } = useHealth();
-  const goalSteps = 10000; // Defined goal
+
+  // Calculate goalSteps from context, with a default fallback
+  const goalSteps = healthSettings?.daily_steps_goal ?? 10000;
 
   // --- Process Data ---
   const today = new Date();
@@ -150,6 +147,7 @@ export const StepsTrackerWidget: React.FC<StepsTrackerWidgetProps> = ({
       const dateString = format(day, "yyyy-MM-dd");
       const dayLabel = format(day, "eee");
       const steps = daysMap.get(dateString) || 0;
+      // Use the calculated goalSteps here
       const overGoal = steps >= goalSteps;
 
       return {
@@ -159,9 +157,10 @@ export const StepsTrackerWidget: React.FC<StepsTrackerWidgetProps> = ({
         overGoal: overGoal,
       };
     });
-  }, [healthData, goalSteps, currentStepsWeekStart]); // Depend on currentStepsWeekStart
+    // Add goalSteps (derived from healthSettings) to dependency array
+  }, [healthData, goalSteps, currentStepsWeekStart]);
 
-  // Today's steps for the mini view (remains unchanged)
+  // Today's steps for the mini view
   const todayString = format(today, "yyyy-MM-dd");
   const currentSteps = useMemo(() => {
     return healthData
@@ -170,17 +169,17 @@ export const StepsTrackerWidget: React.FC<StepsTrackerWidgetProps> = ({
   }, [healthData, todayString]);
 
   // --- Conditional Rendering Logic ---
-  const isMiniView = w < 6; // Threshold for mini view
+  const isMiniView = w < 6;
+  // Use calculated goalSteps for percentage
   const percentage =
     goalSteps > 0 ? Math.round((currentSteps / goalSteps) * 100) : 0;
 
-  let pathColor = "rgba(59, 130, 246, 1)";
+  let pathColor = "rgba(59, 130, 246, 1)"; // Default blue
 
   if (isMiniView) {
-    // --- Render Mini View (Unchanged) ---
+    // --- Render Mini View ---
     return (
       <div className="p-2 h-full w-full flex flex-row items-center justify-center gap-3">
-        {/* Progress Bar Container */}
         <div className="w-16 h-16 relative flex-shrink-0">
           <CircularProgressbar
             value={percentage}
@@ -192,17 +191,16 @@ export const StepsTrackerWidget: React.FC<StepsTrackerWidgetProps> = ({
               trailColor: "rgba(255, 255, 255, 0.1)",
             })}
           />
-          {/* Icon centered inside */}
           <div className="absolute inset-0 flex items-center justify-center">
             <Footprints className="w-5 h-5 text-blue-400" />
           </div>
         </div>
-        {/* Text beside */}
         <div className="text-left leading-tight">
           <span className="text-2xl font-bold text-gray-100 block">
             {currentSteps.toLocaleString()}
           </span>
           <span className="text-xs text-gray-400">
+            {/* Use calculated goalSteps */}
             Out of {goalSteps.toLocaleString()}
           </span>
         </div>
@@ -210,16 +208,14 @@ export const StepsTrackerWidget: React.FC<StepsTrackerWidgetProps> = ({
     );
   }
 
-  // --- Render Full Graph View (Recharts with Navigation) ---
+  // --- Render Full Graph View ---
   return (
     <div className="p-3 h-full w-full flex flex-col text-sm text-gray-300">
       {/* Header with Navigation */}
       <div className="flex justify-between items-center mb-1">
-        {" "}
-        {/* Reduced margin */}
         <h3 className="font-semibold text-gray-100 text-base flex items-center">
           <Footprints className="w-4 h-4 mr-2 text-blue-400" />
-          Weekly Steps {/* Changed Title */}
+          Weekly Steps
         </h3>
         <div className="flex items-center gap-1">
           <Button
@@ -227,7 +223,7 @@ export const StepsTrackerWidget: React.FC<StepsTrackerWidgetProps> = ({
             size="icon"
             className="h-6 w-6 text-gray-400 hover:text-gray-100"
             onClick={goToPreviousStepsWeek}
-            disabled={isLoading} // Disable if loading health data
+            disabled={isLoading}
             title="Previous Week"
           >
             <ChevronLeft size={16} />
@@ -290,12 +286,14 @@ export const StepsTrackerWidget: React.FC<StepsTrackerWidgetProps> = ({
               }
             />
             <Tooltip
-              content={<CustomTooltip />}
+              // Pass calculated goalSteps to tooltip component
+              content={<CustomTooltip goalSteps={goalSteps} />}
               cursor={{ fill: "rgba(255, 255, 255, 0.05)" }}
             />
             <ReferenceLine
+              // Use calculated goalSteps for reference line
               y={goalSteps}
-              stroke="#a78bfa"
+              stroke="#a78bfa" // Purple color for goal line
               strokeDasharray="3 3"
               strokeWidth={1}
               label={
@@ -308,7 +306,8 @@ export const StepsTrackerWidget: React.FC<StepsTrackerWidgetProps> = ({
               {chartData.map((entry, index) => (
                 <Cell
                   key={`cell-${index}`}
-                  fill={entry.overGoal ? "#10b981" : "#3b82f6"}
+                  // Use calculated goalSteps for coloring
+                  fill={entry.overGoal ? "#10b981" : "#3b82f6"} // Green if over goal, blue otherwise
                 />
               ))}
             </Bar>

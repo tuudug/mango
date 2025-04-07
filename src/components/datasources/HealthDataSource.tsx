@@ -1,7 +1,8 @@
 import { Button } from "@/components/ui/button"; // Keep one Button import
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area"; // Import ScrollArea
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Label } from "@/components/ui/label"; // Import Label
 import { useHealth } from "@/contexts/HealthContext";
 import {
   HeartPulse,
@@ -30,11 +31,14 @@ export function HealthDataSource({ onClose }: HealthDataSourceProps) {
     isGoogleHealthConnected,
     connectGoogleHealth,
     disconnectGoogleHealth,
-    lastFetchTime, // Get last fetch time
+    lastFetchTime,
+    healthSettings, // Get settings
+    updateHealthSettings, // Get update function
   } = useHealth();
   const [newSteps, setNewSteps] = useState("");
   const [newStepsDate, setNewStepsDate] = useState(""); // YYYY-MM-DD
-  const [timeAgo, setTimeAgo] = useState<string>(""); // State for relative time display
+  const [timeAgo, setTimeAgo] = useState<string>("");
+  const [goalInput, setGoalInput] = useState<string>(""); // State for goal input
 
   // Update relative time display periodically
   useEffect(() => {
@@ -49,6 +53,15 @@ export function HealthDataSource({ onClose }: HealthDataSourceProps) {
     const intervalId = setInterval(updateDisplay, 60000); // Update every minute
     return () => clearInterval(intervalId); // Cleanup interval
   }, [lastFetchTime]);
+
+  // Effect to initialize/update goal input when settings load/change
+  useEffect(() => {
+    if (healthSettings) {
+      setGoalInput(String(healthSettings.daily_steps_goal));
+    } else {
+      setGoalInput(""); // Clear if settings are null/loading
+    }
+  }, [healthSettings]);
 
   // Make the handler async
   const handleAddSteps = async (e: React.FormEvent) => {
@@ -72,7 +85,19 @@ export function HealthDataSource({ onClose }: HealthDataSourceProps) {
   const handleDeleteEntry = async (entryId: string) => {
     // Optional: Add confirmation dialog here
     console.log(`Requesting delete for manual health entry: ${entryId}`);
-    await deleteManualHealthEntry(entryId); // Call context function
+    await deleteManualHealthEntry(entryId);
+  };
+
+  // Handler for saving the goal
+  const handleSaveGoal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const parsedGoal = parseInt(goalInput, 10);
+    if (!isNaN(parsedGoal) && parsedGoal >= 0) {
+      await updateHealthSettings({ daily_steps_goal: parsedGoal });
+    } else {
+      // Consider using toast for validation errors
+      alert("Please enter a valid non-negative integer for the steps goal.");
+    }
   };
 
   return (
@@ -134,6 +159,44 @@ export function HealthDataSource({ onClose }: HealthDataSourceProps) {
               </div>
             )}
           </div>
+
+          {/* Settings Section */}
+          <form
+            onSubmit={handleSaveGoal}
+            className="space-y-3 border-b pb-4 border-gray-700"
+          >
+            <h3 className="text-base font-medium">Settings</h3>
+            <div className="flex items-end gap-3">
+              <div className="flex-grow space-y-1.5">
+                <Label htmlFor="steps-goal" className="text-xs text-gray-400">
+                  Daily Steps Goal
+                </Label>
+                <Input
+                  id="steps-goal"
+                  type="number"
+                  placeholder="e.g., 10000"
+                  value={goalInput}
+                  onChange={(e) => setGoalInput(e.target.value)}
+                  required
+                  min="0"
+                  className="p-2 h-9" // Adjusted height
+                  disabled={isLoading || !healthSettings} // Disable if loading or settings not loaded
+                />
+              </div>
+              <Button
+                type="submit"
+                size="sm"
+                className="h-9" // Match input height
+                disabled={
+                  isLoading ||
+                  !healthSettings || // Disable if settings not loaded
+                  goalInput === String(healthSettings?.daily_steps_goal ?? "") // Disable if unchanged
+                }
+              >
+                {isLoading ? "Saving..." : "Save Goal"}
+              </Button>
+            </div>
+          </form>
 
           {/* Add/Update Steps Form */}
           <form onSubmit={handleAddSteps} className="space-y-3">

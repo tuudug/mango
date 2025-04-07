@@ -8,7 +8,9 @@
       "Habits Checklist: Positive habits get cool animated borders for streaks (1-2 days: ✨, 3-4 days: ✅, 5+ days: 🔥)!",
       "Habits Checklist: Completed daily habits are now crossed out.",
       "Habits Checklist: Fixed count display for multi-check habits (now updates live and shows '(x today)').",
-      "Fixed daily resets (like Daily Allowance) to use your local timezone instead of UTC."
+      "Fixed daily resets (like Daily Allowance) to use your local timezone instead of UTC.",
+      "Added ability to set your Daily Steps Goal in the Health Data panel.",
+      "Steps Tracker widget now uses your configured Daily Steps Goal."
     ]
   },
   {

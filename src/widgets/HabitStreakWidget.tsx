@@ -1,9 +1,8 @@
 import { useDashboardConfig } from "@/contexts/DashboardConfigContext"; // Import the hook
-import { HabitEntry, useHabits } from "@/contexts/HabitsContext";
-import dayjs from "dayjs";
+import { useHabits } from "@/contexts/HabitsContext";
+import { calculateStreaks } from "@/lib/habitUtils"; // Import the utility function
 import { Loader2, Medal, TrendingUp } from "lucide-react";
 import { useEffect, useMemo, useState } from "react"; // Add useContext if not implicitly used by hook
-import { calculateStreaks } from "@/lib/habitUtils"; // Import the utility function
 
 // Define the props your widget expects, including config
 interface WidgetProps {
