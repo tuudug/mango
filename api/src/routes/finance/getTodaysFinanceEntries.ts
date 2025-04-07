@@ -1,6 +1,7 @@
 import { Response, NextFunction } from "express";
 import { AuthenticatedRequest } from "../../middleware/auth";
-import { format } from "date-fns"; // To get today's date string
+// import { format } from "date-fns"; // Replaced by date-fns-tz
+import { formatInTimeZone } from "date-fns-tz"; // Import timezone formatter
 
 // Define type for finance entry (can be shared)
 interface FinanceEntry {
@@ -25,7 +26,25 @@ export const getTodaysFinanceEntries = async (
   }
 
   try {
-    const todayDateString = format(new Date(), "yyyy-MM-dd");
+    // Get timezone from header, default to UTC if not provided or invalid
+    const userTimezone = (req.headers["x-user-timezone"] as string) || "UTC";
+    let validatedTimezone = "UTC";
+    try {
+      // Basic validation: Check if timezone is likely valid using Intl API
+      Intl.DateTimeFormat(undefined, { timeZone: userTimezone });
+      validatedTimezone = userTimezone;
+    } catch (e) {
+      console.warn(
+        `Invalid timezone received: ${userTimezone}, defaulting to UTC.`
+      );
+    }
+
+    // Calculate today's date string in the user's timezone
+    const todayDateString = formatInTimeZone(
+      new Date(),
+      validatedTimezone,
+      "yyyy-MM-dd"
+    );
 
     const { data, error } = await supabase
       .from("manual_finance_entries")

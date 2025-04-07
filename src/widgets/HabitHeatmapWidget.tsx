@@ -150,8 +150,8 @@ export function HabitHeatmapWidget({ id, w: _w, h: _h }: WidgetProps) {
     <div className="p-2 h-full flex flex-col">
       {" "}
       {/* Reduced padding */}
-      <h2 className="text-sm font-semibold mb-2 truncate text-gray-300">
-        Habit Heatmap (Last 30 Days):{" "}
+      <h2 className="text-xs font-semibold mb-2 truncate text-gray-300">
+        Last 30 Days:{" "}
         {selectedHabit
           ? selectedHabit.name
           : showLoading

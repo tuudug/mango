@@ -59,7 +59,7 @@ These components handle the interaction and persistence of core application data
   - [x] Daily Allowance Widget (`DailyAllowanceWidget.tsx`) - Shows remaining daily budget. **Layout improved.**
   - [x] Expenses Report Widget (`ExpensesReportWidget.tsx`) - Shows weekly spending bar chart.
 - [x] **Habits Tracking:**
-  - [x] Habits Checklist Widget (`HabitsListWidget.tsx`) - Log daily completion. **Layout made more compact. Added uncheck support for once-daily habits.**
+  - [x] Habits Checklist Widget (`HabitsListWidget.tsx`) - Log daily completion. **Layout made more compact. Added uncheck support for once-daily habits. Enhanced to show current/longest streaks inline, ThumbsUp/Down icons for habit type, line-through for completed daily habits, live count updates for multi-check habits, and tiered visual borders (sparking/glowing/fiery) for positive habit streaks.**
   - [x] Habit Heatmap Widget (`HabitHeatmapWidget.tsx`) - Visualize consistency. **Configurable (Refactored). Refactored to 30-day grid view. Layout made more compact, minimum size reduced.**
   - [x] Habit Streaks Widget (`HabitStreakWidget.tsx`) - Track current/longest streaks. **Configurable (Refactored). Layout made more compact (horizontal).**
 
@@ -199,6 +199,7 @@ These components handle the interaction and persistence of core application data
 - **[x] API Call Refactoring:** Centralized authenticated API calls into `src/lib/apiClient.ts` (`authenticatedFetch` function).
 - **[x] Transient 401 Error Handling:** Implemented automatic retry logic within `authenticatedFetch` to handle transient 401 errors during token refresh, reducing unnecessary error toasts.
 - **[x] Live Resizing:** Widgets now update appearance during resize drag, not just after.
+- **[x] Timezone Consistency:** Fixed issue where daily resets (e.g., Daily Allowance, Habit checks) could occur at inconsistent times depending on user timezone vs. server time (UTC). Backend now uses user's timezone provided by the frontend.
 
 ## LLM Prompting Considerations
 

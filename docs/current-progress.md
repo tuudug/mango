@@ -1,3 +1,23 @@
+# Current Progress: Habits List Enhancements & Timezone Fix (As of 2025-04-07 ~5:30 PM)
+
+## Goal: Enhance Habits List widget with streak info, visual cues, and fix timezone inconsistencies.
+
+## Implementation Progress:
+
+1.  **Habits List Widget (`HabitsListWidget.tsx`):**
+    - **Streak Display:** Integrated current and longest streak display inline before the action button. Refactored streak calculation logic into `src/lib/habitUtils.ts` (shared with `HabitStreakWidget`).
+    - **Tiered Streak Borders:** Added CSS animations (`sparking-streak-border`, `glowing-streak-border`, `fiery-streak-border` in `src/index.css`) applied conditionally to the `Card` based on current streak length (1-2: blue pulse, 3-4: green pulse, 5+: orange/yellow pulse) for _positive_ habits only.
+    - **Habit Type Icons:** Added `ThumbsUp` (green) / `ThumbsDown` (red) icons before positive/negative habit names respectively.
+    - **Visual Polish:** Ensured completed `once_daily` habits have line-through text. Fixed icon/text alignment.
+    - **Live Count Update:** Fixed bug where `multiple_daily` habit counts didn't update live. Calculation is now memoized. Display format updated to `(x today)`.
+2.  **Timezone Consistency Fix:**
+    - **Diagnosis:** Identified that Finance features used server UTC time for "today", while Habits used user's local time, causing inconsistent daily resets.
+    - **Frontend (`apiClient.ts`):** Modified `authenticatedFetch` to automatically send the browser's detected timezone in an `X-User-Timezone` header.
+    - **Backend (`api` directory):** Installed `date-fns-tz` dependency.
+    - **Backend (`getTodaysFinanceEntries.ts`):** Updated the API handler to read the `X-User-Timezone` header and use `date-fns-tz` to determine "today" based on the user's timezone, ensuring consistent daily resets across features.
+
+---
+
 # Current Progress: Habit Widget Compactness & Uncheck Feature (As of 2025-04-07 ~1:20 PM)
 
 ## Goal: Make habit widgets more compact and allow unchecking daily habits.

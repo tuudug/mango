@@ -80,6 +80,8 @@ export async function authenticatedFetch<T>(
 
   const headers: HeadersInit = {
     Authorization: `Bearer ${session.access_token}`,
+    // Add user's timezone header
+    "X-User-Timezone": Intl.DateTimeFormat().resolvedOptions().timeZone,
   };
 
   const options: RequestInit = {

@@ -3,6 +3,7 @@ import { HabitEntry, useHabits } from "@/contexts/HabitsContext";
 import dayjs from "dayjs";
 import { Loader2, Medal, TrendingUp } from "lucide-react";
 import { useEffect, useMemo, useState } from "react"; // Add useContext if not implicitly used by hook
+import { calculateStreaks } from "@/lib/habitUtils"; // Import the utility function
 
 // Define the props your widget expects, including config
 interface WidgetProps {
@@ -12,59 +13,7 @@ interface WidgetProps {
   config?: { habitId?: string }; // Keep config prop for modal initialization
 }
 
-// Helper function to calculate streaks
-const calculateStreaks = (
-  entries: HabitEntry[]
-): { current: number; longest: number } => {
-  if (!entries || entries.length === 0) {
-    return { current: 0, longest: 0 };
-  }
-
-  // Sort entries by date ascending
-  const sortedEntries = [...entries].sort((a, b) =>
-    dayjs(a.entry_date).diff(dayjs(b.entry_date))
-  );
-
-  let currentStreak = 0;
-  let longestStreak = 0;
-  let expectedDate = dayjs(sortedEntries[0].entry_date);
-
-  // Check if the most recent entry is today or yesterday to start current streak calculation
-  const today = dayjs().format("YYYY-MM-DD");
-  const yesterday = dayjs().subtract(1, "day").format("YYYY-MM-DD");
-  const lastEntryDate = sortedEntries[sortedEntries.length - 1].entry_date;
-
-  let isCurrentStreakActive =
-    lastEntryDate === today || lastEntryDate === yesterday;
-
-  for (let i = 0; i < sortedEntries.length; i++) {
-    const entryDate = dayjs(sortedEntries[i].entry_date);
-
-    // Check if the entry date matches the expected date in the sequence
-    if (entryDate.isSame(expectedDate, "day")) {
-      currentStreak++;
-    } else if (entryDate.isAfter(expectedDate, "day")) {
-      // Gap detected, reset streak
-      longestStreak = Math.max(longestStreak, currentStreak);
-      currentStreak = 1; // Start new streak from this entry
-    }
-    // If entryDate is before expectedDate (e.g., duplicate entry?), ignore and keep expectedDate
-
-    // Update expected date for the next iteration
-    expectedDate = entryDate.add(1, "day");
-  }
-
-  // Final check for the last calculated streak
-  longestStreak = Math.max(longestStreak, currentStreak);
-
-  // If the streak didn't continue up to today/yesterday, the current streak is 0
-  if (!isCurrentStreakActive) {
-    currentStreak = 0;
-  }
-
-  return { current: currentStreak, longest: longestStreak };
-};
-
+// calculateStreaks function is now imported from "@/lib/habitUtils"
 export function HabitStreakWidget({ id, w: _w, h: _h }: WidgetProps) {
   // Removed config from props destructuring for internal use
   // Destructure config

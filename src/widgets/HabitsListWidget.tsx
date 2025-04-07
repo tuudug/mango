@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card"; // Added Card import
+import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Tooltip,
@@ -7,155 +7,275 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Habit, useHabits } from "@/contexts/HabitsContext";
+import { Habit, HabitEntry, useHabits } from "@/contexts/HabitsContext";
+import { calculateStreaks } from "@/lib/habitUtils";
 import { cn } from "@/lib/utils";
 import dayjs from "dayjs";
 import {
   CheckCircle2,
   Circle,
   Loader2,
+  Medal,
   MinusCircle,
   PlusCircle,
-} from "lucide-react"; // Icons
-import { useState } from "react";
+  ThumbsDown, // Added
+  ThumbsUp, // Added
+  TrendingUp,
+} from "lucide-react";
+import { useState, useMemo } from "react";
 
-// Define the props your widget expects (must include id, w, h)
 interface WidgetProps {
   id: string;
   w: number;
   h: number;
 }
 
+interface StreakData {
+  current: number;
+  longest: number;
+}
+
 export function HabitsListWidget({ id: _id, w: _w, h: _h }: WidgetProps) {
   const {
     habits,
+    habitEntries,
     isLoadingHabits,
+    isLoadingEntries,
     recordHabitEntry,
     hasEntryForDate,
     getEntriesForDate,
-    uncheckOnceDailyHabit, // Destructure the new function
+    uncheckOnceDailyHabit,
   } = useHabits();
-  const [loadingEntryId, setLoadingEntryId] = useState<string | null>(null); // Track loading state per habit
+  const [loadingEntryId, setLoadingEntryId] = useState<string | null>(null);
 
   const today = dayjs().format("YYYY-MM-DD");
 
-  // Combined handler for checking and unchecking
+  // Calculate streaks for ALL habits outside the map loop
+  const allHabitStreaks = useMemo(() => {
+    const streaksMap = new Map<string, StreakData>();
+    if (!habitEntries || !habits) {
+      return streaksMap; // Return empty map if data isn't ready
+    }
+
+    habits.forEach((habit) => {
+      const completedEntries = habitEntries.filter(
+        (entry) => entry.habit_id === habit.id && entry.completed
+      );
+      // No need to sort here as calculateStreaks handles it
+      streaksMap.set(habit.id, calculateStreaks(completedEntries));
+    });
+
+    return streaksMap;
+  }, [habits, habitEntries]); // Recalculate streaks when habits or entries change
+
+  // Calculate today's counts for ALL multiple_daily habits outside the map loop
+  const multipleDailyCountsToday = useMemo(() => {
+    const countsMap = new Map<string, number>();
+    if (!habitEntries || !habits) {
+      return countsMap;
+    }
+
+    habits.forEach((habit) => {
+      if (habit.log_type === "multiple_daily") {
+        const count = habitEntries.filter(
+          (entry) =>
+            entry.habit_id === habit.id &&
+            entry.entry_date === today &&
+            entry.completed
+        ).length;
+        countsMap.set(habit.id, count);
+      }
+    });
+    return countsMap;
+  }, [habits, habitEntries, today]); // Recalculate when habits, entries, or the date change
+
   const handleToggleHabit = async (habit: Habit) => {
     setLoadingEntryId(habit.id);
     try {
       if (habit.log_type === "once_daily" && isOnceDailyCompleted(habit)) {
-        // Uncheck if it's once_daily and already completed
         await uncheckOnceDailyHabit(habit.id, today);
       } else {
-        // Otherwise, record a new entry (handles both first check for once_daily and all checks for multiple_daily)
         await recordHabitEntry(habit.id, today);
       }
     } catch (error) {
-      // Error handling is done in the context, but could add specific widget feedback here if needed
       console.error("Error toggling habit entry in widget:", error);
     } finally {
       setLoadingEntryId(null);
     }
   };
 
-  // Determine if a 'once_daily' habit is already completed today
   const isOnceDailyCompleted = (habit: Habit): boolean => {
+    if (habitEntries) {
+      return (
+        habit.log_type === "once_daily" &&
+        habitEntries.some(
+          (e) =>
+            e.habit_id === habit.id && e.entry_date === today && e.completed
+        )
+      );
+    }
     return habit.log_type === "once_daily" && hasEntryForDate(habit.id, today);
   };
 
-  // Get count for 'multiple_daily' habits today
-  const getMultipleDailyCount = (habitId: string): number => {
-    return getEntriesForDate(today).filter((e) => e.habit_id === habitId)
-      .length;
-  };
+  // Removed getMultipleDailyCount function as it's replaced by the memoized map
+
+  const isLoading = isLoadingHabits || isLoadingEntries;
 
   return (
     <div className="p-2 h-full flex flex-col">
-      {" "}
-      {/* Reduced padding */}
-      {/* Removed h2 title */}
-      {isLoadingHabits && (
-        <p className="text-center text-gray-400 mt-4">Loading habits...</p>
+      {isLoading && (
+        <p className="text-center text-gray-400 mt-4">Loading data...</p>
       )}
-      {!isLoadingHabits && habits.length === 0 && (
+      {!isLoading && habits.length === 0 && (
         <p className="text-center text-gray-500 mt-4">
           No habits defined. Add some via the Habits panel.
         </p>
       )}
-      {!isLoadingHabits && habits.length > 0 && (
+      {!isLoading && habits.length > 0 && (
         <ScrollArea className="flex-1 pr-3 -mr-3">
-          {" "}
-          {/* Offset padding for scrollbar */}
           <ul className="space-y-1.5">
-            {" "}
-            {/* Reduced spacing */}
             {habits.map((habit) => {
-              const isCompleted = isOnceDailyCompleted(habit);
-              const isLoading = loadingEntryId === habit.id;
-              const multipleCount =
-                habit.log_type === "multiple_daily"
-                  ? getMultipleDailyCount(habit.id)
-                  : 0;
+              const isCompletedToday = isOnceDailyCompleted(habit);
+              const isProcessing = loadingEntryId === habit.id;
+              // Get pre-calculated count for today from the map
+              const multipleCount = multipleDailyCountsToday.get(habit.id) ?? 0;
+
+              // Get pre-calculated streaks from the map
+              const streaks = allHabitStreaks.get(habit.id) ?? {
+                current: 0,
+                longest: 0,
+              };
 
               let Icon = Circle;
               let iconColor = "text-gray-500";
-              let tooltipText = ""; // Initialize tooltip text
+              let tooltipText = "";
 
+              // Corrected if/else structure
               if (habit.type === "positive") {
-                if (isCompleted || multipleCount > 0) {
+                if (isCompletedToday || multipleCount > 0) {
                   Icon = CheckCircle2;
                   iconColor = "text-green-400";
-                  if (habit.log_type === "once_daily") {
-                    tooltipText = `Uncheck "${habit.name}" for today`; // Changed tooltip for completed once_daily
-                  } else {
-                    tooltipText = `Logged ${multipleCount} times today`;
-                  }
-                  // Removed erroneous line 114
+                  tooltipText =
+                    habit.log_type === "once_daily"
+                      ? `Uncheck "${habit.name}" for today`
+                      : `Logged ${multipleCount} times today`;
                 } else {
                   Icon = PlusCircle;
                   iconColor = "text-blue-400";
-                  tooltipText = `Log "${habit.name}" for today`; // Tooltip for logging positive
+                  tooltipText = `Log "${habit.name}" for today`;
                 }
               } else {
                 // Negative habit
-                if (isCompleted) {
+                if (isCompletedToday) {
                   // Completed means avoided
                   Icon = CheckCircle2;
                   iconColor = "text-green-400";
-                  // Negative habits are only 'once_daily' check/uncheck
-                  tooltipText = `Unmark "${habit.name}" as avoided today`; // Tooltip for unchecking negative
+                  tooltipText = `Unmark "${habit.name}" as avoided today`;
                 } else {
                   Icon = MinusCircle; // Icon for avoiding
                   iconColor = "text-orange-400";
-                  tooltipText = `Mark "${habit.name}" as avoided today`; // Tooltip for checking negative
+                  tooltipText = `Mark "${habit.name}" as avoided today`;
                 }
               }
 
-              // isDisabled check is removed from tooltip logic as it's handled by the toggle function now
-              if (isLoading) {
+              if (isProcessing) {
                 tooltipText = `Logging "${habit.name}"...`;
               }
 
-              // Re-applying the return block cleanly
               return (
                 <li key={habit.id}>
-                  <Card className="p-1.5">
-                    <div className="flex items-center justify-between">
+                  <Card
+                    className={cn(
+                      "p-1.5", // Base class
+                      {
+                        // Apply border based on streak tier ONLY for positive habits
+                        "fiery-streak-border":
+                          habit.type === "positive" && streaks.current >= 5,
+                        "glowing-streak-border":
+                          habit.type === "positive" &&
+                          streaks.current >= 3 &&
+                          streaks.current < 5,
+                        "sparking-streak-border":
+                          habit.type === "positive" &&
+                          streaks.current >= 1 &&
+                          streaks.current < 3,
+                      }
+                    )}
+                  >
+                    <div className="flex items-center">
+                      {" "}
+                      {/* Removed justify-between */}
+                      {/* Habit Name */}
                       <span
                         className={cn(
-                          "flex-1 mr-2 text-sm",
-                          habit.log_type === "once_daily" && isCompleted
-                            ? "text-gray-400"
-                            : "" // Don't line-through, just dim slightly if completed
+                          "flex flex-1 items-center gap-1.5 mr-2 text-sm truncate", // Added flex, items-center, gap-1.5
+                          habit.log_type === "once_daily" && isCompletedToday
+                            ? "text-gray-400 line-through"
+                            : ""
                         )}
                       >
+                        {/* Habit Type Icon */}
+                        {habit.type === "positive" ? (
+                          <ThumbsUp
+                            size={12}
+                            className="text-green-500 flex-shrink-0"
+                          />
+                        ) : (
+                          <ThumbsDown
+                            size={12}
+                            className="text-red-500 flex-shrink-0"
+                          />
+                        )}
+                        {/* Habit Name Text (no extra span needed) */}
                         {habit.name}
                         {multipleCount > 0 && (
                           <span className="text-xs text-gray-400 ml-1">
-                            ({multipleCount})
+                            ({multipleCount} today) {/* Updated format */}
                           </span>
                         )}
                       </span>
+                      {/* Streaks Display (Inline) */}
+                      <div className="text-xs text-gray-400 flex items-center gap-1.5 mx-2 flex-shrink-0">
+                        <TooltipProvider delayDuration={150}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="flex items-center gap-0.5 cursor-default">
+                                <TrendingUp
+                                  size={12} // Increased size
+                                  className="text-blue-400"
+                                />
+                                {/* Added color */}
+                                {streaks.current}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent
+                              side="bottom"
+                              className="text-xs p-1"
+                            >
+                              Current Streak
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                        <span className="text-gray-600">/</span>
+                        <TooltipProvider delayDuration={150}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="flex items-center gap-0.5 cursor-default">
+                                <Medal size={12} className="text-yellow-400" />{" "}
+                                {/* Increased size */}
+                                {streaks.longest}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent
+                              side="bottom"
+                              className="text-xs p-1"
+                            >
+                              Longest Streak
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                      {/* Right side: Action Button */}
                       <TooltipProvider delayDuration={150}>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -163,19 +283,18 @@ export function HabitsListWidget({ id: _id, w: _w, h: _h }: WidgetProps) {
                               variant="ghost"
                               size="icon"
                               className={cn(
-                                "h-6 w-6 rounded-full",
+                                "h-6 w-6 rounded-full flex-shrink-0",
                                 iconColor,
-                                // Only disable based on loading state now
-                                isLoading
+                                isProcessing
                                   ? "opacity-50 cursor-not-allowed"
                                   : "hover:bg-gray-700"
                               )}
                               onClick={() =>
-                                !isLoading && handleToggleHabit(habit)
-                              } // Call the new toggle handler
-                              disabled={isLoading} // Only disable when loading
+                                !isProcessing && handleToggleHabit(habit)
+                              }
+                              disabled={isProcessing}
                             >
-                              {isLoading ? (
+                              {isProcessing ? (
                                 <Loader2 size={16} className="animate-spin" />
                               ) : (
                                 <Icon size={14} />
@@ -191,9 +310,8 @@ export function HabitsListWidget({ id: _id, w: _w, h: _h }: WidgetProps) {
                     </div>
                   </Card>
                 </li>
-              ); // End of return statement
-            })}{" "}
-            {/* End of map function */}
+              );
+            })}
           </ul>
         </ScrollArea>
       )}

@@ -121,6 +121,46 @@ button:focus-visible {
   animation: fadeInDown 0.5s ease-out forwards; /* Adjust duration/timing as needed */
 }
 
+/* Tier 3: Fiery border animation (Streak 5+) - Reverted */
+@keyframes fiery-border {
+  0% { border-color: #ff4500; box-shadow: 0 0 3px #ff4500; } /* OrangeRed */
+  25% { border-color: #ff8c00; box-shadow: 0 0 5px #ff8c00; } /* DarkOrange */
+  50% { border-color: #ffd700; box-shadow: 0 0 7px #ffd700; } /* Gold */
+  75% { border-color: #ff8c00; box-shadow: 0 0 5px #ff8c00; } /* DarkOrange */
+  100% { border-color: #ff4500; box-shadow: 0 0 3px #ff4500; } /* OrangeRed */
+}
+
+.fiery-streak-border {
+  border-width: 1px; /* Ensure border is visible */
+  animation: fiery-border 1.5s linear infinite;
+  /* Ensure the base card border doesn't conflict - might need adjustment based on card styles */
+  border-style: solid;
+}
+
+/* Tier 1: Sparking border (Streak 1-2) */
+@keyframes sparking-border {
+  0%, 100% { border-color: rgba(173, 216, 230, 0.6); box-shadow: 0 0 2px rgba(173, 216, 230, 0.4); } /* LightBlue */
+  50% { border-color: rgba(173, 216, 230, 0.9); box-shadow: 0 0 4px rgba(173, 216, 230, 0.6); }
+}
+
+.sparking-streak-border {
+  border-width: 1px;
+  border-style: solid;
+  animation: sparking-border 2s ease-in-out infinite;
+}
+
+/* Tier 2: Glowing border (Streak 3-4) - Changed to Green Pulse */
+@keyframes glowing-border {
+  0%, 100% { border-color: #00ff7f; box-shadow: 0 0 4px #00ff7f; } /* SpringGreen */
+  50% { border-color: #32cd32; box-shadow: 0 0 8px #32cd32; } /* LimeGreen */
+}
+
+.glowing-streak-border {
+  border-width: 1px;
+  border-style: solid;
+  animation: glowing-border 1.8s ease-in-out infinite;
+}
+
 
 @layer base {
   /* Light theme variables (kept for reference, but .dark overrides) */
@@ -150,6 +190,7 @@ button:focus-visible {
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
+
   }
   /* Dark theme variables */
   .dark {
