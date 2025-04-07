@@ -59,9 +59,9 @@ These components handle the interaction and persistence of core application data
   - [x] Daily Allowance Widget (`DailyAllowanceWidget.tsx`) - Shows remaining daily budget. **Layout improved.**
   - [x] Expenses Report Widget (`ExpensesReportWidget.tsx`) - Shows weekly spending bar chart.
 - [x] **Habits Tracking:**
-  - [x] Habits Checklist Widget (`HabitsListWidget.tsx`) - Log daily completion.
-  - [x] Habit Heatmap Widget (`HabitHeatmapWidget.tsx`) - Visualize consistency. **Configurable (Refactored). Refactored to 30-day grid view.**
-  - [x] Habit Streaks Widget (`HabitStreakWidget.tsx`) - Track current/longest streaks. **Configurable (Refactored).**
+  - [x] Habits Checklist Widget (`HabitsListWidget.tsx`) - Log daily completion. **Layout made more compact. Added uncheck support for once-daily habits.**
+  - [x] Habit Heatmap Widget (`HabitHeatmapWidget.tsx`) - Visualize consistency. **Configurable (Refactored). Refactored to 30-day grid view. Layout made more compact, minimum size reduced.**
+  - [x] Habit Streaks Widget (`HabitStreakWidget.tsx`) - Track current/longest streaks. **Configurable (Refactored). Layout made more compact (horizontal).**
 
 ### Progression System
 

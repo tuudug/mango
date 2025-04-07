@@ -1,3 +1,21 @@
+# Current Progress: Habit Widget Compactness & Uncheck Feature (As of 2025-04-07 ~1:20 PM)
+
+## Goal: Make habit widgets more compact and allow unchecking daily habits.
+
+## Implementation Progress:
+
+1.  **Widget Compactness:**
+    - **`HabitsListWidget`:** Reduced padding, removed title, wrapped items in `Card` components, used smaller text/buttons/icons.
+    - **`HabitHeatmapWidget`:** Reduced grid gap and padding. Updated `widgetConfig.ts` to decrease default `minW` and `minH`.
+    - **`HabitStreakWidget`:** Changed layout to horizontal, reduced icon and number sizes.
+2.  **Habit Unchecking Feature (`HabitsListWidget`):**
+    - **API:** Added new route `DELETE /api/habits/entries/by-date` (handler `deleteHabitEntryByDate.ts`) to delete entries by habit ID and date. Fixed API routing order issue where `/by-date` was conflicting with `/:entryId`.
+    - **Context (`HabitsContext.tsx`):** Added `uncheckOnceDailyHabit` function to call the new API endpoint and update local state.
+    - **Widget (`HabitsListWidget.tsx`):** Updated button `onClick` handler to call `uncheckOnceDailyHabit` for completed `once_daily` habits. Updated tooltips to reflect check/uncheck action. Corrected minor syntax errors introduced during refactoring.
+3.  **Changelog (`public/changelog.json`):** Added entry for version 0.1.18 summarizing these user-facing changes.
+
+---
+
 # Current Progress: Centralized Widget Configuration (As of 2025-04-05 ~9:57 PM)
 
 ## Goal: Refactor widget configuration to use a central modal system for better scalability and maintainability.

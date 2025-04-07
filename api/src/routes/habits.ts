@@ -6,7 +6,8 @@ import { updateHabit } from "./habits/updateHabit";
 import { deleteHabit } from "./habits/deleteHabit";
 import { getHabitEntries } from "./habits/getHabitEntries";
 import { addHabitEntry } from "./habits/addHabitEntry";
-import { deleteHabitEntry } from "./habits/deleteHabitEntry"; // Import deleteHabitEntry handler
+import { deleteHabitEntry } from "./habits/deleteHabitEntry";
+import { deleteHabitEntryByDate } from "./habits/deleteHabitEntryByDate"; // Import new handler
 
 const router = express.Router();
 
@@ -19,6 +20,7 @@ router.delete("/:id", ensureAuthenticated, deleteHabit);
 // --- Habit Entries ---
 router.get("/entries", ensureAuthenticated, getHabitEntries);
 router.post("/entries", ensureAuthenticated, addHabitEntry);
-router.delete("/entries/:entryId", ensureAuthenticated, deleteHabitEntry); // Add DELETE /entries/:entryId route
+router.delete("/entries/by-date", ensureAuthenticated, deleteHabitEntryByDate); // Specific route first
+router.delete("/entries/:entryId", ensureAuthenticated, deleteHabitEntry); // Parameterized route after
 
 export default router;

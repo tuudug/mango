@@ -147,7 +147,9 @@ export function HabitHeatmapWidget({ id, w: _w, h: _h }: WidgetProps) {
   const todayStr = dayjs().format("YYYY-MM-DD"); // Get today's date string once
 
   return (
-    <div className="p-3 h-full flex flex-col">
+    <div className="p-2 h-full flex flex-col">
+      {" "}
+      {/* Reduced padding */}
       <h2 className="text-sm font-semibold mb-2 truncate text-gray-300">
         Habit Heatmap (Last 30 Days):{" "}
         {selectedHabit
@@ -174,7 +176,9 @@ export function HabitHeatmapWidget({ id, w: _w, h: _h }: WidgetProps) {
       {showGrid && (
         <TooltipProvider delayDuration={150}>
           {/* Use CSS Grid with 7 columns and explicitly define 5 rows */}
-          <div className="flex-1 grid grid-cols-7 grid-rows-5 gap-1 content-start overflow-hidden py-1">
+          <div className="flex-1 grid grid-cols-7 grid-rows-5 gap-0.5 content-start overflow-hidden py-1">
+            {" "}
+            {/* Reduced gap */}
             {days.map((day) => (
               <Tooltip key={day.format("YYYY-MM-DD")}>
                 <TooltipTrigger asChild>

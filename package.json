@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "dev-network": "vite --host"
+    "dev-network": "vite --host",
+    "build:all": "echo 'Step 1 - Building API...' && (cd api && npm run build) && echo 'Step 2 - Building Frontend...' && (tsc -b && vite build) && echo 'Build All Complete!'"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

@@ -61,6 +61,7 @@ interface HabitsContextType {
   deleteHabitEntry: (entryId: string) => Promise<boolean>;
   getEntriesForDate: (date: string) => HabitEntry[]; // Helper to get entries for a specific date
   hasEntryForDate: (habitId: string, date: string) => boolean; // Helper to check if entry exists
+  uncheckOnceDailyHabit: (habitId: string, date: string) => Promise<boolean>; // Add uncheck function type
   fetchInitialDataIfNeeded: () => Promise<void>; // Expose the interval-checking fetch function
 }
 
@@ -316,6 +317,40 @@ export const HabitsProvider: React.FC<{ children: ReactNode }> = ({
     [session, handleError, showToast, habitEntries, habits] // Added dependencies
   );
 
+  // --- NEW: Uncheck Once Daily Habit ---
+  const uncheckOnceDailyHabit = useCallback(
+    async (habitId: string, date: string): Promise<boolean> => {
+      if (!session) return false;
+      const habit = habits.find((h) => h.id === habitId);
+      try {
+        await authenticatedFetch<void>(
+          `/api/habits/entries/by-date?habitId=${habitId}&entryDate=${date}`, // Use new endpoint
+          "DELETE",
+          session
+        );
+        // Remove the entry from local state
+        setHabitEntries((prev) =>
+          prev.filter(
+            (entry) =>
+              !(entry.habit_id === habitId && entry.entry_date === date)
+          )
+        );
+        showToast({
+          title: "Habit Unchecked",
+          description: `Removed log for "${
+            habit?.name || habitId
+          }" on ${date}.`,
+        });
+        return true;
+      } catch (e) {
+        // Handle 404 specifically? Maybe not necessary, error toast is enough.
+        handleError("uncheckOnceDailyHabit", e);
+        return false;
+      }
+    },
+    [session, handleError, showToast, habits] // Added habits dependency
+  );
+
   // --- Helpers ---
   const getEntriesForDate = useCallback(
     (date: string): HabitEntry[] => {
@@ -423,7 +458,8 @@ export const HabitsProvider: React.FC<{ children: ReactNode }> = ({
     deleteHabitEntry,
     getEntriesForDate,
     hasEntryForDate,
-    fetchInitialDataIfNeeded, // Add the function to the provided value
+    uncheckOnceDailyHabit, // Add the new function to the context value
+    fetchInitialDataIfNeeded,
   };
 
   return (

@@ -191,15 +191,21 @@ export function HabitStreakWidget({ id, w: _w, h: _h }: WidgetProps) {
       )}
 
       {showStreaks && (
-        <div className="flex flex-col items-center gap-4">
+        <div className="flex flex-row justify-around items-start w-full gap-4">
+          {" "}
+          {/* Changed to horizontal layout */}
           <div className="flex flex-col items-center">
-            <TrendingUp className="w-8 h-8 text-blue-400 mb-1" />
-            <span className="text-3xl font-bold">{streaks.current}</span>
+            <TrendingUp className="w-5 h-5 text-blue-400 mb-1" />{" "}
+            {/* Reduced icon size */}
+            <span className="text-xl font-bold">{streaks.current}</span>{" "}
+            {/* Reduced number size */}
             <span className="text-xs text-gray-400">Current Streak</span>
           </div>
           <div className="flex flex-col items-center">
-            <Medal className="w-8 h-8 text-yellow-400 mb-1" />
-            <span className="text-3xl font-bold">{streaks.longest}</span>
+            <Medal className="w-5 h-5 text-yellow-400 mb-1" />{" "}
+            {/* Reduced icon size */}
+            <span className="text-xl font-bold">{streaks.longest}</span>{" "}
+            {/* Reduced number size */}
             <span className="text-xs text-gray-400">Longest Streak</span>
           </div>
         </div>

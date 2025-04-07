@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card"; // Added Card import
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Tooltip,
@@ -32,15 +33,29 @@ export function HabitsListWidget({ id: _id, w: _w, h: _h }: WidgetProps) {
     recordHabitEntry,
     hasEntryForDate,
     getEntriesForDate,
+    uncheckOnceDailyHabit, // Destructure the new function
   } = useHabits();
   const [loadingEntryId, setLoadingEntryId] = useState<string | null>(null); // Track loading state per habit
 
   const today = dayjs().format("YYYY-MM-DD");
 
-  const handleRecordEntry = async (habit: Habit) => {
+  // Combined handler for checking and unchecking
+  const handleToggleHabit = async (habit: Habit) => {
     setLoadingEntryId(habit.id);
-    await recordHabitEntry(habit.id, today);
-    setLoadingEntryId(null);
+    try {
+      if (habit.log_type === "once_daily" && isOnceDailyCompleted(habit)) {
+        // Uncheck if it's once_daily and already completed
+        await uncheckOnceDailyHabit(habit.id, today);
+      } else {
+        // Otherwise, record a new entry (handles both first check for once_daily and all checks for multiple_daily)
+        await recordHabitEntry(habit.id, today);
+      }
+    } catch (error) {
+      // Error handling is done in the context, but could add specific widget feedback here if needed
+      console.error("Error toggling habit entry in widget:", error);
+    } finally {
+      setLoadingEntryId(null);
+    }
   };
 
   // Determine if a 'once_daily' habit is already completed today
@@ -55,8 +70,10 @@ export function HabitsListWidget({ id: _id, w: _w, h: _h }: WidgetProps) {
   };
 
   return (
-    <div className="p-4 h-full flex flex-col">
-      <h2 className="text-lg font-semibold mb-3">Today's Habits</h2>
+    <div className="p-2 h-full flex flex-col">
+      {" "}
+      {/* Reduced padding */}
+      {/* Removed h2 title */}
       {isLoadingHabits && (
         <p className="text-center text-gray-400 mt-4">Loading habits...</p>
       )}
@@ -69,10 +86,11 @@ export function HabitsListWidget({ id: _id, w: _w, h: _h }: WidgetProps) {
         <ScrollArea className="flex-1 pr-3 -mr-3">
           {" "}
           {/* Offset padding for scrollbar */}
-          <ul className="space-y-2">
+          <ul className="space-y-1.5">
+            {" "}
+            {/* Reduced spacing */}
             {habits.map((habit) => {
               const isCompleted = isOnceDailyCompleted(habit);
-              const isDisabled = isCompleted && habit.log_type === "once_daily";
               const isLoading = loadingEntryId === habit.id;
               const multipleCount =
                 habit.log_type === "multiple_daily"
@@ -81,19 +99,22 @@ export function HabitsListWidget({ id: _id, w: _w, h: _h }: WidgetProps) {
 
               let Icon = Circle;
               let iconColor = "text-gray-500";
-              let tooltipText = `Log "${habit.name}" for today`;
+              let tooltipText = ""; // Initialize tooltip text
 
               if (habit.type === "positive") {
                 if (isCompleted || multipleCount > 0) {
                   Icon = CheckCircle2;
                   iconColor = "text-green-400";
-                  tooltipText =
-                    habit.log_type === "once_daily"
-                      ? `"${habit.name}" logged for today`
-                      : `Logged ${multipleCount} times today`;
+                  if (habit.log_type === "once_daily") {
+                    tooltipText = `Uncheck "${habit.name}" for today`; // Changed tooltip for completed once_daily
+                  } else {
+                    tooltipText = `Logged ${multipleCount} times today`;
+                  }
+                  // Removed erroneous line 114
                 } else {
                   Icon = PlusCircle;
                   iconColor = "text-blue-400";
+                  tooltipText = `Log "${habit.name}" for today`; // Tooltip for logging positive
                 }
               } else {
                 // Negative habit
@@ -101,75 +122,78 @@ export function HabitsListWidget({ id: _id, w: _w, h: _h }: WidgetProps) {
                   // Completed means avoided
                   Icon = CheckCircle2;
                   iconColor = "text-green-400";
-                  tooltipText = `Avoided "${habit.name}" today`;
+                  // Negative habits are only 'once_daily' check/uncheck
+                  tooltipText = `Unmark "${habit.name}" as avoided today`; // Tooltip for unchecking negative
                 } else {
                   Icon = MinusCircle; // Icon for avoiding
                   iconColor = "text-orange-400";
-                  tooltipText = `Mark "${habit.name}" as avoided today`;
+                  tooltipText = `Mark "${habit.name}" as avoided today`; // Tooltip for checking negative
                 }
               }
 
-              if (isDisabled) {
-                tooltipText = `"${habit.name}" already logged for today`;
-              }
+              // isDisabled check is removed from tooltip logic as it's handled by the toggle function now
               if (isLoading) {
                 tooltipText = `Logging "${habit.name}"...`;
               }
 
+              // Re-applying the return block cleanly
               return (
-                <li
-                  key={habit.id}
-                  className="flex items-center justify-between p-2 pr-1 bg-gray-800/60 rounded-md"
-                >
-                  <span
-                    className={cn(
-                      "flex-1 mr-2",
-                      isDisabled ? "text-gray-500 line-through" : ""
-                    )}
-                  >
-                    {habit.name}
-                    {multipleCount > 0 && (
-                      <span className="text-xs text-gray-400 ml-1">
-                        ({multipleCount})
+                <li key={habit.id}>
+                  <Card className="p-1.5">
+                    <div className="flex items-center justify-between">
+                      <span
+                        className={cn(
+                          "flex-1 mr-2 text-sm",
+                          habit.log_type === "once_daily" && isCompleted
+                            ? "text-gray-400"
+                            : "" // Don't line-through, just dim slightly if completed
+                        )}
+                      >
+                        {habit.name}
+                        {multipleCount > 0 && (
+                          <span className="text-xs text-gray-400 ml-1">
+                            ({multipleCount})
+                          </span>
+                        )}
                       </span>
-                    )}
-                  </span>
-                  <TooltipProvider delayDuration={150}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className={cn(
-                            "h-8 w-8 rounded-full",
-                            iconColor,
-                            isDisabled
-                              ? "opacity-50 cursor-not-allowed"
-                              : "hover:bg-gray-700"
-                          )}
-                          onClick={() =>
-                            !isDisabled &&
-                            !isLoading &&
-                            handleRecordEntry(habit)
-                          }
-                          disabled={isDisabled || isLoading}
-                        >
-                          {isLoading ? (
-                            <Loader2 size={16} className="animate-spin" />
-                          ) : (
-                            <Icon size={18} />
-                          )}
-                          <span className="sr-only">{tooltipText}</span>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="left">
-                        <p>{tooltipText}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                      <TooltipProvider delayDuration={150}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className={cn(
+                                "h-6 w-6 rounded-full",
+                                iconColor,
+                                // Only disable based on loading state now
+                                isLoading
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : "hover:bg-gray-700"
+                              )}
+                              onClick={() =>
+                                !isLoading && handleToggleHabit(habit)
+                              } // Call the new toggle handler
+                              disabled={isLoading} // Only disable when loading
+                            >
+                              {isLoading ? (
+                                <Loader2 size={16} className="animate-spin" />
+                              ) : (
+                                <Icon size={14} />
+                              )}
+                              <span className="sr-only">{tooltipText}</span>
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="left">
+                            <p>{tooltipText}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                  </Card>
                 </li>
-              );
-            })}
+              ); // End of return statement
+            })}{" "}
+            {/* End of map function */}
           </ul>
         </ScrollArea>
       )}

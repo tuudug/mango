@@ -100,7 +100,7 @@ export const defaultWidgetLayouts: Record<
   Ambience: { w: 4, h: 4, minW: 3, minH: 3 },
   "Affirmation Widget": { w: 6, h: 3, minW: 4, minH: 2 },
   "Habits Checklist": { w: 4, h: 6, minW: 3, minH: 4 },
-  "Habit Heatmap": { w: 8, h: 4, minW: 6, minH: 3 },
+  "Habit Heatmap": { w: 8, h: 4, minW: 4, minH: 2 }, // Reduced minW and minH
   "Habit Streaks": { w: 4, h: 4, minW: 3, minH: 3 }, // Add Habit Streaks layout
   "Text Display": { w: 4, h: 3, minW: 2, minH: 2 }, // Add Text Display layout
   Placeholder: { w: 12, h: 7, minW: 8, minH: 5 },

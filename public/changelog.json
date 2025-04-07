@@ -1,5 +1,13 @@
 [
   {
+    "version": "0.1.18",
+    "date": "2025-04-07",
+    "data": [
+      "Habit widgets are now more compact, saving space on your dashboard.",
+      "You can now uncheck completed 'once-a-day' habits in the Habits Checklist widget."
+    ]
+  },
+  {
     "version": "0.1.17",
     "date": "2025-04-07",
     "data": [
