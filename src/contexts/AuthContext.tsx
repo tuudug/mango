@@ -8,6 +8,7 @@ import React, {
 } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabaseClient"; // Import frontend client
+import { useToast } from "./ToastContext"; // Import useToast
 
 interface AuthContextType {
   session: Session | null;
@@ -16,6 +17,8 @@ interface AuthContextType {
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signUpWithEmail: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  resetPasswordForEmail: (email: string) => Promise<boolean>; // Added, returns success boolean
+  updatePassword: (password: string) => Promise<boolean>; // Added, returns success boolean
   // Add other methods like signInWithGoogle if needed later
 }
 
@@ -29,6 +32,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true); // Start loading initially
+  const { showToast } = useToast(); // Get showToast function
 
   // Check initial session state and set up listener
   useEffect(() => {
@@ -71,7 +75,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.log("Supabase Auth Event:", event, session);
         setSession(session);
         setUser(session?.user ?? null);
-        setIsLoading(false); // Stop loading on auth change
+
+        // Handle PASSWORD_RECOVERY event specifically to stop loading
+        // The user is redirected here after clicking the email link
+        if (event === "PASSWORD_RECOVERY") {
+          setIsLoading(false);
+        } else {
+          // For other events, manage loading state as before
+          setIsLoading(false); // Stop loading on auth change
+        }
 
         // If user signs in, establish the server-side session
         if (event === "SIGNED_IN" && session?.access_token) {
@@ -97,7 +109,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     });
     if (error) {
       console.error("Error signing in:", error.message);
-      alert(`Sign in failed: ${error.message}`); // Basic error feedback
+      showToast({
+        title: "Sign In Failed",
+        description: error.message,
+        variant: "destructive",
+      });
     }
     // Auth listener will handle setting session/user state
     setIsLoading(false); // Stop loading after attempt
@@ -113,11 +129,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     });
     if (error) {
       console.error("Error signing up:", error.message);
-      alert(`Sign up failed: ${error.message}`); // Basic error feedback
+      showToast({
+        title: "Sign Up Failed",
+        description: error.message,
+        variant: "destructive",
+      });
     } else {
-      alert(
-        "Sign up successful! Please check your email for confirmation if enabled."
-      );
+      showToast({
+        title: "Sign Up Successful",
+        description: "Please check your email for confirmation if enabled.",
+      });
     }
     // Auth listener will handle setting session/user state if auto-confirm or after confirmation
     setIsLoading(false); // Stop loading after attempt
@@ -129,10 +150,65 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const { error } = await supabase.auth.signOut();
     if (error) {
       console.error("Error signing out:", error.message);
-      alert(`Sign out failed: ${error.message}`); // Basic error feedback
+      showToast({
+        title: "Sign Out Failed",
+        description: error.message,
+        variant: "destructive",
+      });
     }
     // Auth listener will set session/user to null
     setIsLoading(false); // Stop loading after attempt
+  };
+
+  // Reset Password function
+  const resetPasswordForEmail = async (email: string): Promise<boolean> => {
+    setIsLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/update-password`, // Redirect URL
+    });
+    setIsLoading(false);
+    if (error) {
+      console.error("Error sending password reset email:", error.message);
+      showToast({
+        title: "Password Reset Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+      return false;
+    } else {
+      showToast({
+        title: "Password Reset Email Sent",
+        description: "Please check your email for instructions.",
+      });
+      return true;
+    }
+  };
+
+  // Update Password function
+  const updatePassword = async (password: string): Promise<boolean> => {
+    // Removed the incorrect check: if (!session && event !== "PASSWORD_RECOVERY")
+    // Supabase's updateUser implicitly handles the recovery context via the token in the URL
+
+    setIsLoading(true);
+    const { error } = await supabase.auth.updateUser({ password });
+    setIsLoading(false);
+    if (error) {
+      console.error("Error updating password:", error.message);
+      showToast({
+        title: "Password Update Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+      return false;
+    } else {
+      showToast({
+        title: "Password Updated Successfully",
+        description: "You can now log in with your new password.",
+      });
+      // Optionally navigate the user away after successful update
+      // e.g., navigate('/auth');
+      return true;
+    }
   };
 
   // Memoize the context value to prevent unnecessary re-renders
@@ -144,7 +220,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       signInWithEmail,
       signUpWithEmail,
       signOut,
+      resetPasswordForEmail, // Added
+      updatePassword, // Added
     }),
+    // Add dependencies for new functions if they rely on state/props changed outside useMemo
+    // In this case, they don't directly, but isLoading is used.
     [session, user, isLoading]
   );
 

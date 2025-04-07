@@ -4,15 +4,14 @@ import { Dashboard } from "./components/Dashboard";
 import AuthSuccessPage from "./components/auth/AuthSuccessPage";
 import AuthFailurePage from "./components/auth/AuthFailurePage";
 import { useAuth } from "./contexts/AuthContext";
-import { SignupForm } from "./components/auth/SignupForm";
-import { LoginForm } from "./components/auth/LoginForm";
+import { AuthContainer } from "./components/auth/AuthContainer";
+import { UpdatePasswordForm } from "./components/auth/UpdatePasswordForm"; // Import UpdatePasswordForm
 import { Toaster } from "sonner";
 import { useRegisterSW } from "virtual:pwa-register/react";
 // Use default imports for these components
 import ErrorBoundary from "./components/ErrorBoundary";
 import ErrorFallback from "./components/ErrorFallback";
-import { DashboardConfigProvider } from "./contexts/DashboardConfigContext"; // Import the provider
-// Removed: import { PomodoroBanner } from "./components/PomodoroBanner"; // Remove banner import
+import { DashboardConfigProvider } from "./contexts/DashboardConfigContext";
 
 function App() {
   const { session, isLoading } = useAuth();
@@ -43,19 +42,20 @@ function App() {
   };
 
   if (isLoading) {
-    // You might want a more sophisticated loading screen later
-    // Add centering styles to the loading indicator as well
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-950 text-white">
-        Loading...
-      </div>
-    );
+    // Show loading indicator only if not on the update-password route
+    // because AuthContext handles its own loading state there
+    if (window.location.pathname !== "/update-password") {
+      return (
+        <div className="flex items-center justify-center min-h-screen bg-gray-950 text-white">
+          Loading...
+        </div>
+      );
+    }
+    // Otherwise, allow UpdatePasswordForm to render and handle its loading state
   }
 
   return (
     <BrowserRouter>
-      {/* Removed Pomodoro Banner from here */}
-      {/* Use FallbackComponent prop and pass pwaProps */}
       <ErrorBoundary FallbackComponent={ErrorFallback} pwaProps={pwaProps}>
         <Routes>
           <Route
@@ -66,46 +66,25 @@ function App() {
                   <Dashboard {...pwaProps} />
                 </DashboardConfigProvider>
               ) : (
-                <Navigate to="/login" replace />
+                <Navigate to="/auth" replace />
               )
             }
           />
           <Route
-            path="/login"
-            element={
-              !session ? (
-                // Wrap LoginForm with centering div
-                <div className="flex items-center justify-center min-h-screen bg-gray-950">
-                  <LoginForm />
-                </div>
-              ) : (
-                <Navigate to="/" replace />
-              )
-            }
+            path="/auth"
+            element={!session ? <AuthContainer /> : <Navigate to="/" replace />}
           />
+          {/* Add route for updating password */}
           <Route
-            path="/signup"
-            element={
-              !session ? (
-                // Wrap SignupForm as well for consistency
-                <div className="flex items-center justify-center min-h-screen bg-gray-950">
-                  <SignupForm />
-                </div>
-              ) : (
-                <Navigate to="/" replace />
-              )
-            }
+            path="/update-password"
+            element={<UpdatePasswordForm />} // Render the form directly
           />
           <Route path="/auth/success" element={<AuthSuccessPage />} />
           <Route path="/auth/failure" element={<AuthFailurePage />} />
-          {/* Add other routes as needed */}
-          <Route path="*" element={<Navigate to="/" replace />} />{" "}
-          {/* Catch-all */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </ErrorBoundary>
-      {/* Toast container */}
       <Toaster position="bottom-right" theme="dark" />
-      {/* PWA Update Toast (Example) */}
       {(offlineReady || needRefresh) && (
         <div className="fixed bottom-4 right-4 z-50">
           <div className="bg-gray-800 border border-gray-700 text-white p-3 rounded-lg shadow-lg flex items-center gap-3">

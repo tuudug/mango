@@ -7,11 +7,17 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 
-export function SignupForm() {
+// Define props type - updated onToggleView signature
+interface SignupFormProps {
+  onToggleView: (view: "login") => void; // Expects 'login' specifically
+}
+
+export function SignupForm({ onToggleView }: SignupFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   // Optional: Add password confirmation state if desired
@@ -77,6 +83,16 @@ export function SignupForm() {
           </Button>
         </form>
       </CardContent>
+      <CardFooter className="flex justify-center">
+        {/* Updated onClick handler to pass 'login' */}
+        <Button
+          variant="link"
+          onClick={() => onToggleView("login")}
+          disabled={isLoading}
+        >
+          Already have an account? Login
+        </Button>
+      </CardFooter>
     </Card>
   );
 }
