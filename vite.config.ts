@@ -13,26 +13,26 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: "prompt", // Changed from "autoUpdate"
+      registerType: "autoUpdate",
       includeAssets: ["favicon.ico", "apple-touch-icon.png", "mask-icon.svg"],
       manifest: {
-        name: "My Awesome PWA App",
-        short_name: "MyPWA",
-        description: "My Awesome Progressive Web App!",
-        theme_color: "#ffffff",
+        name: "Mango",
+        short_name: "Mango",
+        description: "The only assistant you need.",
+        theme_color: "#1f2937", // Dark theme color
         icons: [
           {
-            src: "pwa-192x192.png",
+            src: "favicon.png", // Assuming this is ~192x192
             sizes: "192x192",
             type: "image/png",
           },
           {
-            src: "pwa-512x512.png",
+            src: "icon.png", // Assuming this is ~512x512
             sizes: "512x512",
             type: "image/png",
           },
           {
-            src: "pwa-512x512.png",
+            src: "icon.png", // Use the larger icon for maskable
             sizes: "512x512",
             type: "image/png",
             purpose: "any maskable",
