@@ -13,7 +13,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react"; // Import useCallback
 import { ChangelogModal } from "./ChangelogModal";
 // Import the panel components that will now be rendered here
-import { GameMasterPanel } from "./GameMasterPanel";
+import { YuzuPanel } from "./YuzuPanel"; // Renamed import
 import { PathsPage } from "./PathsPage";
 import { UserProfilePanel } from "./UserProfilePanel";
 import { CalendarDataSource } from "./datasources/CalendarDataSource";
@@ -52,12 +52,12 @@ const latestVersion =
   changelogData && changelogData.length > 0 ? changelogData[0].version : "0";
 
 // Helper type for panel open state, including non-data source panels
-type PanelId = DataSourceId | "gameMaster" | "userProfile" | "paths" | "habits"; // Add 'habits'
+type PanelId = DataSourceId | "yuzu" | "userProfile" | "paths" | "habits"; // Renamed gameMaster to yuzu
 type PanelOpenState = Record<PanelId, boolean>;
 
 // Initial state for panels
 const initialPanelState: PanelOpenState = {
-  gameMaster: false,
+  yuzu: false, // Renamed gameMaster to yuzu
   userProfile: false,
   paths: false,
   finance: false,
@@ -272,18 +272,18 @@ export function LeftSidebar({
             </Tooltip>
           </TooltipProvider>
 
-          {/* Game Master Button */}
+          {/* Yuzu Button */}
           <Button
-            variant={panelOpenState.gameMaster ? "secondary" : "ghost"}
+            variant={panelOpenState.yuzu ? "secondary" : "ghost"}
             size="icon"
             className={`h-10 w-10 rounded-lg ${
-              panelOpenState.gameMaster ? "text-indigo-400" : "text-gray-400"
+              panelOpenState.yuzu ? "text-indigo-400" : "text-gray-400"
             }`}
-            onClick={() => handleTogglePanel("gameMaster")}
-            title="Toggle Game Master Panel"
+            onClick={() => handleTogglePanel("yuzu")}
+            title="Toggle Yuzu Panel"
           >
             <Bot size={20} />
-            <span className="sr-only">Toggle Game Master</span>
+            <span className="sr-only">Toggle Yuzu</span>
           </Button>
 
           {/* Paths Button */}
@@ -363,8 +363,8 @@ export function LeftSidebar({
 
       {/* Render Panels Conditionally */}
       {/* Updated panel rendering to use modified getPanelClasses with explicit breakpoints */}
-      <div className={getPanelClasses("gameMaster", "md:max-w-md")}>
-        <GameMasterPanel onClose={() => handleTogglePanel("gameMaster")} />
+      <div className={getPanelClasses("yuzu", "md:max-w-md")}>
+        <YuzuPanel onClose={() => handleTogglePanel("yuzu")} />
       </div>
       <div className={getPanelClasses("userProfile", "md:max-w-md")}>
         <UserProfilePanel onClose={() => handleTogglePanel("userProfile")} />

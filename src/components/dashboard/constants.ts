@@ -33,7 +33,7 @@ export const pathsData = [
     ],
   },
   {
-    name: "Game Master",
+    name: "Yuzu",
     items: [
       { label: "GM Tones", xpCost: 300 },
       { label: "GM Limit Up", xpCost: 750 } /* ... */,

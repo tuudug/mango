@@ -15,7 +15,7 @@ import {
   ListChecks, // Productivity
   HeartPulse, // Health
   Brain, // Mindfulness
-  Bot, // Game Master
+  Bot, // Yuzu
   Gamepad2, // Gamification
   Footprints, // Steps
   CalendarCheck, // Habit
@@ -121,7 +121,7 @@ const pathsData: Path[] = [
     ],
   },
   {
-    name: "Game Master",
+    name: "Yuzu",
     icon: Bot,
     items: [
       { label: "GM Tones", icon: MicVocal, xpCost: 300 },

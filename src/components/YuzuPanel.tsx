@@ -2,11 +2,13 @@ import React, { useState } from "react"; // Added useState
 import { Button } from "@/components/ui/button";
 import { Bot, X, SendHorizontal } from "lucide-react"; // Added SendHorizontal icon
 
-interface GameMasterPanelProps {
+interface YuzuPanelProps {
+  // Renamed from GameMasterPanelProps
   onClose: () => void; // Function to close the panel
 }
 
-export function GameMasterPanel({ onClose }: GameMasterPanelProps) {
+export function YuzuPanel({ onClose }: YuzuPanelProps) {
+  // Renamed from GameMasterPanel
   const [message, setMessage] = useState(""); // State for input
 
   const handleSend = () => {
@@ -33,7 +35,7 @@ export function GameMasterPanel({ onClose }: GameMasterPanelProps) {
         {/* Added flex-shrink-0 */}
         <div className="flex items-center gap-2">
           <Bot className="w-5 h-5 text-indigo-400" />
-          <h2 className="text-lg font-semibold text-gray-100">Game Master</h2>
+          <h2 className="text-lg font-semibold text-gray-100">Yuzu</h2>{" "}
         </div>
         <Button
           variant="ghost"
