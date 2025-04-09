@@ -1,7 +1,7 @@
 import { NextFunction, Response } from "express";
 import { AuthenticatedRequest } from "../../middleware/auth";
-// We need a way to call the addXp logic. Ideally refactor addXp into a service.
-// For now, we'll skip the direct XP call and assume frontend handles refresh.
+import { awardXpToUser } from "../../services/userProgressService"; // Import the XP service
+import { Database } from "../../types/supabase"; // Import Database type
 
 export async function claimQuest(
   req: AuthenticatedRequest,
@@ -9,7 +9,8 @@ export async function claimQuest(
   next: NextFunction
 ): Promise<void> {
   const userId = req.user?.id;
-  const supabase = req.supabase;
+  // Explicitly type supabase client
+  const supabase = req.supabase as AuthenticatedRequest["supabase"];
   const { questId } = req.params;
 
   if (!userId || !supabase) {
@@ -23,7 +24,7 @@ export async function claimQuest(
   }
 
   try {
-    // 1. Fetch the quest to verify ownership and status
+    // 1. Fetch the quest to verify ownership, status, and get XP reward
     const { data: targetQuest, error: fetchError } = await supabase
       .from("quests")
       .select("id, user_id, status, xp_reward")
@@ -45,11 +46,9 @@ export async function claimQuest(
     }
 
     if (targetQuest.status !== "claimable") {
-      res
-        .status(400)
-        .json({
-          message: `Quest is not claimable (current status: ${targetQuest.status}).`,
-        });
+      res.status(400).json({
+        message: `Quest is not claimable (current status: ${targetQuest.status}).`,
+      });
       return;
     }
 
@@ -60,37 +59,52 @@ export async function claimQuest(
       .eq("id", questId)
       .eq("user_id", userId) // Ensure ownership
       .eq("status", "claimable") // Ensure status hasn't changed
-      .select(`*, quest_criteria (*)`) // Return updated quest
+      .select(`*, quest_criteria (*)`) // Return updated quest with criteria
       .single();
 
     if (updateError) {
       console.error("Error completing quest:", updateError);
-      if (updateError.message.includes("constraint violation")) {
-        res
-          .status(409)
-          .json({ message: "Failed to claim quest, status may have changed." });
+      // Check if the error is due to the row not being found (status changed between fetch and update)
+      if (updateError.code === "PGRST116") {
+        res.status(409).json({
+          message: "Failed to claim quest, status may have changed.",
+        });
         return;
       }
       return next(new Error("Failed to claim quest."));
     }
 
+    // If updatedQuest is null here, it means the update affected 0 rows (likely status changed)
     if (!updatedQuest) {
-      res
-        .status(409)
-        .json({
-          message:
-            "Failed to claim quest, status may have changed or quest not found.",
-        });
+      res.status(409).json({
+        message:
+          "Failed to claim quest, status may have changed or quest not found.",
+      });
       return;
     }
 
-    // 3. Award XP - Skipping direct internal call for now.
-    // The frontend should refetch user data (including XP) after a successful claim.
+    // 3. Award XP using the service function
     const xpAwarded = targetQuest.xp_reward;
-    console.log(
-      `Quest ${questId} claimed by user ${userId}. XP Award: ${xpAwarded}. Frontend should refresh auth context.`
-    );
+    if (xpAwarded > 0) {
+      const xpResult = await awardXpToUser(userId, xpAwarded, supabase);
+      if (!xpResult.success) {
+        // Log the error but proceed with returning the completed quest data
+        console.error(
+          `Failed to award ${xpAwarded} XP to user ${userId} for quest ${questId}: ${xpResult.error}`
+        );
+        // Optionally, you could add a flag to the response indicating XP award failure
+      } else {
+        console.log(
+          `Awarded ${xpAwarded} XP to user ${userId} for quest ${questId}. New level: ${xpResult.newLevel}`
+        );
+      }
+    } else {
+      console.log(
+        `Quest ${questId} claimed by user ${userId}, but had 0 XP reward.`
+      );
+    }
 
+    // Return the successfully completed quest data
     res.status(200).json(updatedQuest);
   } catch (error) {
     console.error("Unexpected error claiming quest:", error);

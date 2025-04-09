@@ -5,21 +5,30 @@ import React, {
   ReactNode,
   useEffect,
   useMemo,
+  useCallback,
 } from "react";
 import { Session, User } from "@supabase/supabase-js";
-import { supabase } from "@/lib/supabaseClient"; // Import frontend client
-import { useToast } from "./ToastContext"; // Import useToast
+import { supabase } from "@/lib/supabaseClient";
+import { useToast } from "./ToastContext";
+import { authenticatedFetch } from "@/lib/apiClient";
+
+interface UserProgress {
+  xp: number;
+  level: number;
+}
 
 interface AuthContextType {
   session: Session | null;
   user: User | null;
   isLoading: boolean;
+  xp: number;
+  level: number;
+  fetchUserProgress: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signUpWithEmail: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
-  resetPasswordForEmail: (email: string) => Promise<boolean>; // Added, returns success boolean
-  updatePassword: (password: string) => Promise<boolean>; // Added, returns success boolean
-  // Add other methods like signInWithGoogle if needed later
+  resetPasswordForEmail: (email: string) => Promise<boolean>;
+  updatePassword: (password: string) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -31,21 +40,60 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true); // Start loading initially
-  const { showToast } = useToast(); // Get showToast function
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [xp, setXp] = useState<number>(0);
+  const [level, setLevel] = useState<number>(1);
+  const { showToast } = useToast();
 
-  // Check initial session state and set up listener
+  // Function to fetch user progress (XP and Level)
+  const fetchUserProgress = useCallback(
+    async (currentSession: Session | null) => {
+      // Pass session directly to avoid dependency loop issues
+      if (!currentSession) {
+        setXp(0);
+        setLevel(1);
+        return;
+      }
+
+      console.log("Fetching user progress...");
+      try {
+        const progress = await authenticatedFetch<UserProgress>(
+          "/api/user/progress",
+          "GET",
+          currentSession
+        );
+        setXp(progress.xp);
+        setLevel(progress.level);
+        console.log("User progress updated:", progress);
+      } catch (error) {
+        console.error("Failed to fetch user progress:", error);
+        setXp(0);
+        setLevel(1);
+      }
+    },
+    []
+  ); // No dependencies needed here as session is passed in
+
+  // Effect for initial session check (runs once)
   useEffect(() => {
     setIsLoading(true);
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setIsLoading(false);
-    });
+    supabase.auth
+      .getSession()
+      .then(async ({ data: { session: initialSession } }) => {
+        setSession(initialSession);
+        setUser(initialSession?.user ?? null);
+        // Fetch progress immediately after setting initial session
+        await fetchUserProgress(initialSession);
+        setIsLoading(false);
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty dependency array ensures this runs only once on mount
 
+  // Effect for Auth State Change Listener
+  useEffect(() => {
     // Function to establish server-side session
     const establishServerSession = async (token: string | undefined) => {
-      if (!token) return; // Don't proceed if no token
+      if (!token) return;
       try {
         console.log("Attempting to establish server session...");
         const response = await fetch("/api/auth/session-login", {
@@ -65,40 +113,44 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.log("Server session established successfully.");
       } catch (error) {
         console.error("Error establishing server session:", error);
-        // Handle error appropriately - maybe notify user?
-        // For now, just log it. The primary Supabase session is still valid.
       }
     };
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        console.log("Supabase Auth Event:", event, session);
-        setSession(session);
-        setUser(session?.user ?? null);
+      async (event, currentSession) => {
+        // Make listener async
+        console.log("Supabase Auth Event:", event, currentSession);
+        // Update session/user state first
+        setSession(currentSession);
+        setUser(currentSession?.user ?? null);
 
-        // Handle PASSWORD_RECOVERY event specifically to stop loading
-        // The user is redirected here after clicking the email link
-        if (event === "PASSWORD_RECOVERY") {
-          setIsLoading(false);
-        } else {
-          // For other events, manage loading state as before
-          setIsLoading(false); // Stop loading on auth change
-        }
+        // Stop loading regardless of event, except maybe initial? (Handled by initial effect now)
+        setIsLoading(false); // Ensure loading stops
 
-        // If user signs in, establish the server-side session
-        if (event === "SIGNED_IN" && session?.access_token) {
-          establishServerSession(session.access_token);
+        if (event === "SIGNED_IN") {
+          if (currentSession?.access_token) {
+            await establishServerSession(currentSession.access_token);
+          }
+          // Fetch user progress after sign in state is set
+          await fetchUserProgress(currentSession);
+        } else if (event === "SIGNED_OUT") {
+          // Reset progress on sign out
+          setXp(0);
+          setLevel(1);
+        } else if (event === "TOKEN_REFRESHED") {
+          // Optionally re-fetch progress if needed after token refresh
+          await fetchUserProgress(currentSession);
         }
-        // TODO: Handle SIGNED_OUT - potentially clear server session if needed?
-        // Currently, server session might persist until cookie expires.
+        // PASSWORD_RECOVERY doesn't need special handling here anymore
       }
     );
 
-    // Cleanup listener on unmount
     return () => {
       authListener?.subscription.unsubscribe();
     };
-  }, []);
+  }, [fetchUserProgress]); // Keep fetchUserProgress dependency here for the listener
+
+  // --- Other functions remain the same ---
 
   // Sign in function
   const signInWithEmail = async (email: string, password: string) => {
@@ -114,9 +166,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         description: error.message,
         variant: "destructive",
       });
+      setIsLoading(false); // Stop loading on error
     }
-    // Auth listener will handle setting session/user state
-    setIsLoading(false); // Stop loading after attempt
+    // Auth listener will handle setting session/user state and fetching progress
+    // setIsLoading(false); // Listener handles loading state now
   };
 
   // Sign up function
@@ -125,7 +178,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      // options: { emailRedirectTo: window.location.origin } // Optional: for email confirmation
     });
     if (error) {
       console.error("Error signing up:", error.message);
@@ -140,13 +192,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         description: "Please check your email for confirmation if enabled.",
       });
     }
-    // Auth listener will handle setting session/user state if auto-confirm or after confirmation
-    setIsLoading(false); // Stop loading after attempt
+    setIsLoading(false);
   };
 
   // Sign out function
   const signOut = async () => {
-    setIsLoading(true);
+    setIsLoading(true); // Start loading before sign out
     const { error } = await supabase.auth.signOut();
     if (error) {
       console.error("Error signing out:", error.message);
@@ -155,16 +206,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         description: error.message,
         variant: "destructive",
       });
+      setIsLoading(false); // Stop loading on error
     }
-    // Auth listener will set session/user to null
-    setIsLoading(false); // Stop loading after attempt
+    // Auth listener will set session/user to null and reset progress
+    // setIsLoading(false); // Listener handles loading state
   };
 
   // Reset Password function
   const resetPasswordForEmail = async (email: string): Promise<boolean> => {
     setIsLoading(true);
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/update-password`, // Redirect URL
+      redirectTo: `${window.location.origin}/update-password`,
     });
     setIsLoading(false);
     if (error) {
@@ -186,9 +238,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Update Password function
   const updatePassword = async (password: string): Promise<boolean> => {
-    // Removed the incorrect check: if (!session && event !== "PASSWORD_RECOVERY")
-    // Supabase's updateUser implicitly handles the recovery context via the token in the URL
-
     setIsLoading(true);
     const { error } = await supabase.auth.updateUser({ password });
     setIsLoading(false);
@@ -205,27 +254,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         title: "Password Updated Successfully",
         description: "You can now log in with your new password.",
       });
-      // Optionally navigate the user away after successful update
-      // e.g., navigate('/auth');
       return true;
     }
   };
 
-  // Memoize the context value to prevent unnecessary re-renders
+  // Memoize the context value
   const value = useMemo(
     () => ({
       session,
       user,
       isLoading,
+      xp,
+      level,
+      fetchUserProgress: () => fetchUserProgress(session), // Expose a version that uses current session state
       signInWithEmail,
       signUpWithEmail,
       signOut,
-      resetPasswordForEmail, // Added
-      updatePassword, // Added
+      resetPasswordForEmail,
+      updatePassword,
     }),
-    // Add dependencies for new functions if they rely on state/props changed outside useMemo
-    // In this case, they don't directly, but isLoading is used.
-    [session, user, isLoading]
+    [session, user, isLoading, xp, level, fetchUserProgress] // Keep fetchUserProgress in outer scope dependency
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

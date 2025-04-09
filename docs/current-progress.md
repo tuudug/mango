@@ -1,3 +1,48 @@
+# Current Progress: Quest LLM Generation (v0.2.2) (As of 2025-04-09 ~6:26 PM)
+
+## Goal: Implement LLM-based quest generation and XP/Leveling system.
+
+## Implementation Progress:
+
+1.  **Database Schema:**
+    - Created `user_progress` table to store XP and Level.
+    - Added `llm_prompt_context` and `llm_response_raw` columns to `quests` table.
+    - Changed default `source` on `quests` table to `llm_generated`.
+2.  **Backend - XP & Leveling:**
+    - Defined level thresholds in `api/src/config/leveling.ts`.
+    - Created `api/src/services/userProgressService.ts` with `awardXpToUser` function to handle XP addition and level calculation.
+    - Refactored `POST /api/user/progress/add-xp` route (`addXp.ts`) to use the new service.
+    - Updated `POST /api/quests/:questId/claim` route (`claimQuest.ts`) to call `awardXpToUser` service upon successful claim.
+    - Created `GET /api/user/progress` route (`getUserProgress.ts`) to fetch current XP/Level.
+    - Registered new route in `api/src/routes/user.ts`.
+3.  **Backend - Quest Generation:**
+    - Created `api/src/services/questService.ts` containing:
+      - `generateQuestsForUser`: Orchestrates fetching user data (basic context implemented), constructing prompt, calling LLM, validating response, and storing results.
+      - `fetchUserDataContext`: Fetches user level and habits (TODO: add more data sources).
+      - `constructLlmPrompt`: Creates the prompt for Gemini, requesting JSON output.
+      - `parseAndValidateLlmResponse`: Validates the LLM JSON response structure and content, including mapping habit names to IDs.
+      - `storeGeneratedQuests`: Inserts validated quests/criteria into DB and updates `user_quest_state`.
+    - Added general-purpose `generateJsonContent` function to `api/src/services/geminiService.ts` to handle calls expecting JSON responses.
+    - Updated `questService.ts` to use `generateJsonContent` instead of the placeholder response.
+    - Created `POST /api/quests/generate` route (`generateQuests.ts`) with daily reset timing logic (using user timezone) and placeholder weekly reset logic (marked TODO).
+    - Registered new route in `api/src/routes/quests.ts`.
+4.  **Frontend:**
+    - Updated `AuthContext` (`src/contexts/AuthContext.tsx`) to:
+      - Store `xp` and `level` state.
+      - Add `fetchUserProgress` function to get data from `GET /api/user/progress`.
+      - Call `fetchUserProgress` on initial load and after sign-in.
+      - Refactored `useEffect` hooks to prevent potential infinite loops.
+    - Updated `QuestsContext` (`src/contexts/QuestsContext.tsx`) to:
+      - Add state for `generationState` (fetch TODO) and `isGenerating`.
+      - Implement `generateOrResetQuests` function calling `POST /api/quests/generate`.
+      - Update `claimQuest` to call `fetchUserProgress` from `AuthContext` after successful claim.
+    - Updated `QuestsPanel` (`src/components/datasources/QuestsPanel.tsx`) to:
+      - Add "Generate/Reset" buttons for daily/weekly quests.
+      - Include basic conditional logic for button display/state based on context.
+    - Updated `LeftSidebar` (`src/components/LeftSidebar.tsx`) to display dynamic `level` and `xp` from `AuthContext`.
+
+---
+
 # Current Progress: Quest System Planning (v0.2.x) (As of 2025-04-09 ~4:08 PM)
 
 ## Goal: Define the implementation plan for the new Quest System (Version 0.2).
@@ -156,19 +201,19 @@
     - **Issue:** Configuring newly added widgets failed because they didn't exist on the server yet. Widget config changes didn't reflect immediately. Resizing then moving a widget reverted its size.
     - **Diagnosis:** Immediate saving on every change in edit mode caused issues with unsaved items and potential race conditions. `onLayoutChange` was incorrectly discarding size updates.
     - **Resolution:**
-      - Introduced separate local state (`editItems`) in `useDashboardLayout` to hold the layout being edited.
-      - Modified `fetchLayout` to populate `editItems` when entering edit mode (`forEditing: true`).
-      - Modified layout change handlers (`onLayoutChange`, `handleLiveResize`, `handleResizeStop`, `handleAddWidget`, `handleDeleteWidget`) in `Dashboard.tsx` to update _only_ the `editItems` state via `setEditItems` when in edit mode.
-      - Modified `updateWidgetConfig` in `useDashboardLayout` to accept an `isEditing` flag and update `editItems` (without saving) or `items` (with immediate save) accordingly. Passed `isEditing` flag down from `Dashboard` -> `DashboardGrid` -> `DashboardGridItem`. **(Later modified again to ensure new object reference)**.
-      - Created `saveEditLayout` function in `useDashboardLayout` to handle saving the final `editItems` state to the server API.
-      - Modified `toggleToolbox` in `Dashboard.tsx` to call `saveEditLayout` only when closing the toolbox (exiting edit mode).
-      - Corrected `onLayoutChange` in `Dashboard.tsx` to update `w` and `h` based on the layout provided by `react-grid-layout`, fixing the resize+move bug.
+    - Introduced separate local state (`editItems`) in `useDashboardLayout` to hold the layout being edited.
+    - Modified `fetchLayout` to populate `editItems` when entering edit mode (`forEditing: true`).
+    - Modified layout change handlers (`onLayoutChange`, `handleLiveResize`, `handleResizeStop`, `handleAddWidget`, `handleDeleteWidget`) in `Dashboard.tsx` to update _only_ the `editItems` state via `setEditItems` when in edit mode.
+    - Modified `updateWidgetConfig` in `useDashboardLayout` to accept an `isEditing` flag and update `editItems` (without saving) or `items` (with immediate save) accordingly. Passed `isEditing` flag down from `Dashboard` -> `DashboardGrid` -> `DashboardGridItem`. **(Later modified again to ensure new object reference)**.
+    - Created `saveEditLayout` function in `useDashboardLayout` to handle saving the final `editItems` state to the server API.
+    - Modified `toggleToolbox` in `Dashboard.tsx` to call `saveEditLayout` only when closing the toolbox (exiting edit mode).
+    - Corrected `onLayoutChange` in `Dashboard.tsx` to update `w` and `h` based on the layout provided by `react-grid-layout`, fixing the resize+move bug.
 2.  **Save Loader (`Dashboard.tsx`):**
     - **Issue:** Exiting edit mode caused a 1-2 second delay with no feedback while saving.
     - **Resolution:**
-      - Added `isSavingLayout` state to `Dashboard.tsx`.
-      - Set `isSavingLayout` to `true` before calling `saveEditLayout` in `toggleToolbox` and `false` afterwards in a `finally` block.
-      - Added a conditional loading overlay (spinner and "Saving Layout..." text) that displays when `isSavingLayout` is true.
+    - Added `isSavingLayout` state to `Dashboard.tsx`.
+    - Set `isSavingLayout` to `true` before calling `saveEditLayout` in `toggleToolbox` and `false` afterwards in a `finally` block.
+    - Added a conditional loading overlay (spinner and "Saving Layout..." text) that displays when `isSavingLayout` is true.
 3.  **~~Widget Update Refactor (Heatmap/Streaks - Partial):~~** (Superseded by Central Config Refactor & Outstanding Bug)
     - ~~**Issue:** Habit Heatmap/Streaks widgets didn't update immediately after config change even with correct state update.~~
     - ~~**Diagnosis:** Widgets used an intermediate local state derived from props, causing a delay.~~
@@ -221,10 +266,10 @@
     - Added `updateWidgetConfig` function to `useDashboardLayout` hook to update a specific widget's config and trigger a save.
     - ~~Created `HabitSelectionModal.tsx` for selecting a habit, including UI refinements.~~ (Removed, replaced by central modal system)
     - Updated `DashboardGridItem.tsx` to:
-      - Accept `editTargetDashboard` prop.
-      - ~~Render `HabitSelectionModal` when the pencil icon is clicked for Heatmap/Streaks widgets.~~ (Replaced with `WidgetConfigModal`)
-      - Call `updateWidgetConfig` with the selected habit ID and correct `dashboardName`.
-      - Pass the `config` prop down to the rendered widget component.
+    - Accept `editTargetDashboard` prop.
+    - ~~Render `HabitSelectionModal` when the pencil icon is clicked for Heatmap/Streaks widgets.~~ (Replaced with `WidgetConfigModal`)
+    - Call `updateWidgetConfig` with the selected habit ID and correct `dashboardName`.
+    - Pass the `config` prop down to the rendered widget component.
     - Updated `HabitHeatmapWidget` and `HabitStreakWidget` to accept and use the `config` prop to determine which habit's data to display.
     - **Fixed Config Saving:** Refactored `updateWidgetConfig` in `useDashboardLayout` multiple times, finally settling on calling the non-debounced `saveLayoutDirectly` function immediately after `setItems` to resolve the issue where config changes weren't saving reliably due to potential state/timing issues. (Note: This immediate save approach was later reverted during the edit mode refactor).
 
@@ -474,29 +519,3 @@ Added a new data source for manual finance tracking, including settings manageme
   - Enhance `useAnimatedCounter` for a true slot-machine effect (optional).
   - Improve robustness of `CustomXAxisTick` highlighting for `ExpensesReportWidget` if needed.
   - **Investigate widget config update rendering issue.** **(URGENT)**
-
-</final_file_content>
-
-IMPORTANT: For any future changes to this file, use the final_file_content shown above as your reference. This content reflects the current state of the file, including any auto-formatting (e.g., if you used single quotes but the formatter converted them to double quotes). Always base your SEARCH/REPLACE operations on this final version to ensure accuracy.
-
-<environment_details>
-
-# VSCode Visible Files
-
-docs/current-progress.md
-
-# VSCode Open Tabs
-
-docs/roadmap-draft.md
-docs/versions/0.2.1-quest-foundation.md
-docs/project-brief.md
-docs/current-progress.md
-
-# Current Time
-
-4/9/2025, 4:09:04 PM (Asia/Ulaanbaatar, UTC+8:00)
-
-# Current Mode
-
-ACT MODE
-</environment_details>

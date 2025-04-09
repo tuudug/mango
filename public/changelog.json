@@ -1,7 +1,14 @@
 [
   {
-    "version": "0.2.0",
-    "date": "2025-04-07",
+    "version": "0.2.2",
+    "date": "2025-04-09",
+    "data": [
+      "Now you can generate quests using AI!"
+    ]
+  },
+  {
+    "version": "0.2.1",
+    "date": "2025-04-09",
     "data": [
       "Added quests panel."
     ]

@@ -33,24 +33,24 @@ These components handle the interaction and persistence of core application data
 - [x] **Pomodoro Context (`PomodoroContext.tsx`):** Manages global Pomodoro state (idle, work, break).
 - [x] **Ambience Context (`AmbienceContext.tsx`):** Manages background audio playback state and volume using Web Audio API.
 - [x] **Habits Context (`HabitsContext.tsx`):** Manages habit definitions and entries.
-- [ ] **Quests Context (`QuestsContext.tsx`):** (Planned for v0.2.1) Manages quest state (available, active, claimable, completed, cancelled) and interactions.
+- [x] **Quests Context (`QuestsContext.tsx`):** (Foundation v0.2.1 done) Manages quest state (available, active, claimable, completed, cancelled) and interactions. **LLM Generation v0.2.2 added.**
 
 ## Key Features
 
 ### Quests (Planned for v0.2.1 - v0.2.3)
 
-- [ ] **Foundation (v0.2.1):**
-  - [ ] Database Schema: `quests`, `quest_criteria`, `user_quest_state` tables.
-  - [ ] Backend API: Basic routes for activate, cancel, claim (`POST /api/quests/...`).
-  - [ ] Frontend: New `QuestsPanel.tsx` in sidebar, `QuestsContext.tsx`.
-  - [ ] Manual Claiming: User manually claims completed quests via button.
-  - [ ] Basic XP Award: Claiming triggers XP gain via `POST /api/user/progress/add-xp`.
-- [ ] **LLM Generation (v0.2.2):**
-  - [ ] Backend: `generateQuestsForUser` function using LLM (Gemini) and user data context.
-  - [ ] Backend: `POST /api/quests/generate` endpoint with timing/reset logic (daily/weekly).
-  - [ ] LLM Prompting: Craft prompt for generating quests + criteria + XP rewards in JSON format.
-  - [ ] LLM Validation: Parse, validate, and map LLM response (e.g., habit names to IDs).
-  - [ ] Frontend: Add Generate/Reset buttons to `QuestsPanel`.
+- [x] **Foundation (v0.2.1):**
+  - [x] Database Schema: `quests`, `quest_criteria`, `user_quest_state` tables.
+  - [x] Backend API: Basic routes for activate, cancel, claim (`POST /api/quests/...`).
+  - [x] Frontend: New `QuestsPanel.tsx` in sidebar, `QuestsContext.tsx`.
+  - [x] Manual Claiming: User manually claims completed quests via button.
+  - [x] Basic XP Award: Claiming triggers XP gain via `POST /api/user/progress/add-xp`. **(Refactored in v0.2.2)**
+- [x] **LLM Generation (v0.2.2):**
+  - [x] Backend: `generateQuestsForUser` function using LLM (Gemini) and user data context. **(Integrated actual Gemini call)**
+  - [x] Backend: `POST /api/quests/generate` endpoint with timing/reset logic (daily/weekly). **(Basic daily reset implemented, weekly TODO)**
+  - [x] LLM Prompting: Craft prompt for generating quests + criteria + XP rewards in JSON format. **(Initial prompt implemented)**
+  - [x] LLM Validation: Parse, validate, and map LLM response (e.g., habit names to IDs). **(Implemented)**
+  - [x] Frontend: Add Generate/Reset buttons to `QuestsPanel`. **(Implemented)**
 - [ ] **Automation & Progress Tracking (v0.2.3):**
   - [ ] Backend: `updateQuestProgress` service to track user actions (habit checks, steps, finance, todos, pomodoro).
   - [ ] Backend: Integrate `updateQuestProgress` calls into existing API endpoints.
@@ -88,15 +88,15 @@ These components handle the interaction and persistence of core application data
 ### Progression System
 
 - [ ] Virtual currency rewards.
-- [x] Leveling up (XP gain) - _UI placeholder added to sidebar_.
-  - [ ] Backend: `POST /api/user/progress/add-xp` endpoint (Planned for v0.2.1).
-  - [ ] Frontend: Display actual Level/XP from `AuthContext` (Planned for v0.2.1).
+- [x] Leveling up (XP gain) - **Implemented backend & frontend display (v0.2.2)**
+  - [x] Backend: `POST /api/user/progress/add-xp` endpoint. **(Implemented & Refactored in v0.2.2)**
+  - [x] Frontend: Display actual Level/XP from `AuthContext`. **(Implemented in v0.2.2)**
 - [x] **Paths System:**
   - [x] Concept: User selects one linear path at a time; XP contributes to path progress. Switching paths resets progress towards the _next_ item on the previous path.
   - [x] UI Mockup: Implemented as a sliding panel (`PathsPage.tsx`) showing defined paths, active path indication (star icon), progress bar for active path, unlock status (lock/check icon), XP costs, and path switching confirmation.
   - [ ] Path Definition: Finalize items, order, XP costs, level requirements per path.
   - [x] Implementation: Logic for path selection, progress tracking, unlocking items (state managed in `LeftSidebar.tsx` now, saved to localStorage - _Path state only_).
-- [ ] **XP Gain Mechanism:** (Planned for v0.2.1) Primarily via claiming completed Quests.
+- [x] **XP Gain Mechanism:** Primarily via claiming completed Quests. **(Implemented in v0.2.1/v0.2.2)**
 - [ ] Widgets unlocked/customized through app usage (via Paths / Shop).
 - [ ] **Shop:**
   - [ ] Concept: Purchase widget themes/styles.
@@ -171,7 +171,7 @@ These components handle the interaction and persistence of core application data
     - [ ] Achievement Showcase
     - [ ] Brain Teaser/Puzzle Widget
     - [ ] _(More Mini-Games - TBD)_
-    - [ ] Quest Log Widget (Considered, but using dedicated Panel instead - Planned for v0.2.1)
+    - [x] Quest Log Widget (Considered, but using dedicated Panel instead - Implemented v0.2.1)
   - **Yuzu:** (Path for Yuzu features)
     - [ ] Unlock Casual Tone
     - [ ] Unlock Formal Tone
@@ -194,7 +194,7 @@ These components handle the interaction and persistence of core application data
 
 - [ ] Minimal user input focus.
 - [x] Intuitive interface (Implemented Left sidebar, sliding panels for Toolbox, GM, Profile, Paths, Data Sources, Finance Settings). **Sidebar refactored for dynamic data source buttons.**
-  - [ ] Quests Panel (Planned for v0.2.1)
+  - [x] Quests Panel (Implemented v0.2.1, updated v0.2.2)
 - [x] Dashboard customization implemented.
 - [x] **Widget Adding:** Replaced drag-and-drop with click-to-add from toolbox.
 - [x] **Panel Behavior:**
@@ -226,17 +226,16 @@ These components handle the interaction and persistence of core application data
 - **[x] Transient 401 Error Handling:** Implemented automatic retry logic within `authenticatedFetch` to handle transient 401 errors during token refresh, reducing unnecessary error toasts.
 - **[x] Live Resizing:** Widgets now update appearance during resize drag, not just after.
 - **[x] Timezone Consistency:** Fixed issue where daily resets (e.g., Daily Allowance, Habit checks) could occur at inconsistent times depending on user timezone vs. server time (UTC). Backend now uses user's timezone provided by the frontend.
+- **[x] Auth Context Refactor:** Separated initial load effect from auth state change listener to prevent potential infinite loops (v0.2.2).
 
 ## LLM Prompting Considerations
 
-- [ ] Personalized Quest Generation (using user data - Planned for v0.2.2).
-- [ ] Quest Criteria Generation (Planned for v0.2.2).
+- [x] Personalized Quest Generation (using user data - Implemented v0.2.2, basic context).
+- [x] Quest Criteria Generation (Implemented v0.2.2).
 - [ ] Motivational Tone (customizable via Paths, low-pressure).
-- [x] Contextual Awareness (access to user data - **Improved for Todo breakdown**).
+- [x] Contextual Awareness (access to user data - **Improved for Todo breakdown**, basic implementation for Quests v0.2.2).
 - [ ] Adaptability (adjust quest difficulty).
 - [ ] Randomized Timing.
 - [ ] Urgency/Scarcity (carefully implemented).
 - [ ] Adherence to Yuzu Availability limits (upgradable via Paths/Subscription).
 - **[x] Task Breakdown:** Implemented Gemini integration for breaking down todo items, including prompt refinement **and parent context**.
-
-_(Removed Skill Tree Concept Diagram)_

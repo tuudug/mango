@@ -6,6 +6,7 @@ import { getQuests } from "./quests/getQuests";
 import { activateQuest } from "./quests/activateQuest";
 import { cancelQuest } from "./quests/cancelQuest";
 import { claimQuest } from "./quests/claimQuest";
+import { generateQuests } from "./quests/generateQuests"; // Import the new handler
 
 // Import testing handlers
 import { setQuestClaimable } from "./quests/setQuestClaimable";
@@ -15,6 +16,7 @@ const router = Router();
 
 // --- Core User Routes ---
 router.get("/", ensureAuthenticated, getQuests);
+router.post("/generate", ensureAuthenticated, generateQuests); // Add generate route
 router.post("/:questId/activate", ensureAuthenticated, activateQuest);
 router.post("/:questId/cancel", ensureAuthenticated, cancelQuest);
 router.post("/:questId/claim", ensureAuthenticated, claimQuest);

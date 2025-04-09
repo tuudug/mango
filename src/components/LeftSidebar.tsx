@@ -38,6 +38,7 @@ import {
 // Import the new data source config
 import { dataSourceConfig, DataSourceId } from "@/lib/dataSourceConfig";
 import { QuestsPanel } from "./datasources/QuestsPanel";
+import { useAuth } from "@/contexts/AuthContext"; // Import useAuth
 
 interface LeftSidebarProps {
   isToolboxOpen: boolean;
@@ -78,6 +79,7 @@ export function LeftSidebar({
   triggerShakeIndicator,
 }: LeftSidebarProps) {
   const { showToast } = useToast();
+  const { level, xp } = useAuth(); // Get level and xp from AuthContext
 
   // Consolidated state for panel visibility
   const [panelOpenState, setPanelOpenState] =
@@ -344,9 +346,11 @@ export function LeftSidebar({
             <User size={18} />
             <span className="sr-only">User Profile</span>
           </Button>
-          {/* TODO: Get level/points dynamically */}
-          <span className="text-[10px] font-medium text-gray-300">Level 1</span>
-          <span className="text-[10px] text-gray-400">150 pts</span>
+          {/* Display dynamic level and xp */}
+          <span className="text-[10px] font-medium text-gray-300">
+            Level {level}
+          </span>
+          <span className="text-[10px] text-gray-400">{xp} XP</span>
         </div>
       </aside>
 
