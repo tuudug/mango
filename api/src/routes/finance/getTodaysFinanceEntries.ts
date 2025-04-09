@@ -1,7 +1,7 @@
 import { Response, NextFunction } from "express";
 import { AuthenticatedRequest } from "../../middleware/auth";
-// import { format } from "date-fns"; // Replaced by date-fns-tz
 import { formatInTimeZone } from "date-fns-tz"; // Import timezone formatter
+import { updateQuestProgress } from "../../services/questService"; // Import quest service
 
 // Define type for finance entry (can be shared)
 interface FinanceEntry {
@@ -10,6 +10,18 @@ interface FinanceEntry {
   amount: number;
   description: string | null;
   created_at: string; // Stored as timestamptz, retrieved as string
+}
+
+// Define type for finance settings (can be shared)
+interface FinanceSettings {
+  id: string;
+  user_id: string;
+  currency: string | null;
+  daily_allowance_goal: number | null;
+  salary_schedule: any | null; // Adjust 'any' if structure is known
+  current_balance: number | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export const getTodaysFinanceEntries = async (
@@ -41,31 +53,77 @@ export const getTodaysFinanceEntries = async (
 
     // Calculate today's date string in the user's timezone
     const todayDateString = formatInTimeZone(
-      new Date(),
+      new Date(), // Use current date/time
       validatedTimezone,
       "yyyy-MM-dd"
     );
 
-    const { data, error } = await supabase
+    // Fetch today's entries
+    const { data: entriesData, error: entriesError } = await supabase
       .from("manual_finance_entries")
       .select("id, entry_date, amount, description, created_at")
       .eq("user_id", userId)
-      .eq("entry_date", todayDateString) // Filter for today's date
-      .order("created_at", { ascending: false }); // Order by creation time, newest first
+      .eq("entry_date", todayDateString); // Filter for today's date
 
-    if (error) {
-      console.error("Error fetching today's finance entries:", error);
-      throw error; // Let error handler catch it
+    if (entriesError) {
+      console.error("Error fetching today's finance entries:", entriesError);
+      throw entriesError; // Let error handler catch it
     }
 
-    const entries: FinanceEntry[] = data || [];
+    const entries: FinanceEntry[] = entriesData || [];
+
+    // Fetch finance settings (needed for allowance goal)
+    const { data: settingsData, error: settingsError } = await supabase
+      .from("manual_finance_settings")
+      .select("daily_allowance_goal")
+      .eq("user_id", userId)
+      .maybeSingle(); // Use maybeSingle as settings might not exist
+
+    if (settingsError) {
+      console.error("Error fetching finance settings:", settingsError);
+      // Don't throw, proceed without settings if necessary, quest update will handle null allowance
+    }
+
+    const allowance = settingsData?.daily_allowance_goal ?? null; // Default to null if no settings
 
     console.log(
-      `Fetched ${entries.length} finance entries for user ${userId} for date ${todayDateString}`
+      `Fetched ${entries.length} finance entries for user ${userId} for date ${todayDateString}. Allowance: ${allowance}`
     );
+
+    // Send response first
     res.status(200).json(entries);
+
+    // --- Trigger Quest Progress Update ---
+    if (allowance !== null) {
+      // Calculate total spent today
+      const totalSpentToday = entries.reduce(
+        (sum, entry) => sum + entry.amount,
+        0
+      );
+
+      updateQuestProgress(
+        userId,
+        "finance_under_allowance",
+        { date: todayDateString, spent: totalSpentToday, allowance: allowance },
+        validatedTimezone, // Use the validated timezone
+        supabase // Pass the request-scoped client
+      ).catch((questError) => {
+        // Log errors from quest progress update, but don't fail the original request
+        console.error(
+          `[Quest Progress Update Error] Failed after fetching finance entries for date ${todayDateString}:`,
+          questError
+        );
+      });
+    } else {
+      console.log(
+        `[Quest Progress Update] Skipping finance_under_allowance check for ${todayDateString} as allowance goal is not set.`
+      );
+    }
   } catch (error) {
     console.error("Error in getTodaysFinanceEntries handler:", error);
-    next(error); // Pass error to the global error handler
+    // Ensure response is sent even if quest update call setup fails
+    if (!res.headersSent) {
+      next(error); // Pass error to the global error handler if response not sent
+    }
   }
 };

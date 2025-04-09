@@ -1,3 +1,49 @@
+# Current Progress: Quest Automation & Enhancements (v0.2.3) (As of 2025-04-09 ~11:34 PM)
+
+## Goal: Implement automatic quest progress tracking, UI updates, and expiry logic.
+
+## Implementation Progress:
+
+1.  **Backend - Automation Core:**
+    - Created modular criteria handlers in `api/src/services/quest-criteria-handlers/` for `habit_check`, `steps_reach`, `finance_under_allowance`, `todo_complete`. (Pomodoro deferred).
+    - Created `api/src/services/questCriteriaRegistry.ts` to manage handlers.
+    - Implemented `updateQuestProgress` service in `api/src/services/questService.ts`:
+      - Fetches active, unmet criteria matching the action type.
+      - Performs activation date check for relevant types (`steps_reach`, `finance_under_allowance`) using user timezone.
+      - Calls the appropriate handler via the registry.
+      - Updates `quest_criteria.current_progress` and `quest_criteria.is_met`.
+    - Implemented `checkAndSetQuestClaimable` helper in `api/src/services/questService.ts`:
+      - Called after a criterion is marked `is_met = true`.
+      - Checks if all criteria for the parent quest are met.
+      - Updates `quests.status` to 'claimable' and sets `claimable_at` if all criteria met and quest is 'active'.
+      - Added detailed logging for debugging.
+      - Added a small `sleep(200)` after successful update to potentially help with DB propagation delays.
+2.  **Backend - API Integration:**
+    - Integrated calls to `updateQuestProgress` into existing API handlers:
+      - `api/src/routes/habits/addHabitEntry.ts` (called after successful entry creation/fetch).
+      - `api/src/routes/todos/toggleTodo.ts` (called after successful toggle _if_ `is_completed` becomes true).
+      - `api/src/routes/health/getHealthEntries.ts` (called after fetching/aggregating step data).
+      - `api/src/routes/finance/getTodaysFinanceEntries.ts` (called after fetching entries and allowance, if allowance is set).
+    - Calls are made non-blocking (`.catch()` used) to avoid delaying the primary API response. User timezone is read from `x-user-timezone` header.
+3.  **Frontend - Refresh & UI:**
+    - Updated `src/contexts/QuestsContext.tsx`:
+      - `fetchQuests` now includes a 5-minute cooldown check unless `forceRefresh: true` is passed.
+      - Added `useEffect` hook to call `fetchQuests()` (without forcing) on window focus.
+      - Modified `generateOrResetQuests` to call `fetchQuests({ forceRefresh: true })` upon success.
+    - Updated `src/contexts/HabitsContext.tsx` and `src/contexts/TodosContext.tsx`:
+      - Import `useQuests`.
+      - Call `fetchQuestsData({ forceRefresh: true })` with a `setTimeout` (1500ms) after successful habit recording/unchecking or todo completion to ensure backend status update is reflected.
+    - Updated `src/components/datasources/QuestsPanel.tsx`:
+      - Displays criteria progress (e.g., `(2/3)`).
+      - Displays checkmark and line-through for met criteria.
+      - Calculates expiry time (Daily: 24h, Weekly: 7d from `activated_at`).
+      - Displays time remaining (e.g., "expires in 15 hours") or an "Expired" badge.
+      - Disables "Claim Reward" button and shows only "Cancel" button if quest is expired (based on frontend calculation).
+      - Added `framer-motion` entry animation to quest cards.
+    - Corrected provider nesting order in `src/main.tsx` so `QuestsProvider` wraps `HabitsProvider` and `TodosProvider`.
+
+---
+
 # Current Progress: Quest LLM Generation (v0.2.2) (As of 2025-04-09 ~6:26 PM)
 
 ## Goal: Implement LLM-based quest generation and XP/Leveling system.

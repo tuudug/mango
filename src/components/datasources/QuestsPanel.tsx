@@ -1,17 +1,27 @@
-import React from "react";
-import { useQuests, Quest } from "@/contexts/QuestsContext";
+import { Badge } from "@/components/ui/badge"; // Import Badge
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardFooter,
-} from "@/components/ui/card";
+import { Card, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { X, Check, Loader2, Info, Target, Star, RefreshCw } from "lucide-react"; // Added RefreshCw
-import { isBefore, parseISO } from "date-fns"; // For date comparison
+import { Quest, useQuests } from "@/contexts/QuestsContext";
+import {
+  addDays,
+  addHours,
+  formatDistanceToNow,
+  isAfter,
+  isBefore,
+  parseISO,
+} from "date-fns"; // Import date functions
+import { motion } from "framer-motion"; // Import motion
+import {
+  Check,
+  Clock,
+  Info,
+  Loader2,
+  RefreshCw,
+  Star,
+  Target,
+  X,
+} from "lucide-react"; // Added RefreshCw, Clock
 
 interface QuestsPanelProps {
   onClose: () => void;
@@ -65,6 +75,12 @@ export function QuestsPanel({ onClose }: QuestsPanelProps) {
   };
   // --- End Helper functions ---
 
+  // Animation variants
+  const cardVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.3 } },
+  };
+
   const renderQuestCard = (quest: Quest, isActive: boolean) => {
     const isDaily = quest.type === "daily";
     const canActivate = isActive
@@ -73,77 +89,166 @@ export function QuestsPanel({ onClose }: QuestsPanelProps) {
       ? activeDailyQuests.length < MAX_ACTIVE_DAILY_QUESTS
       : activeWeeklyQuests.length < MAX_ACTIVE_WEEKLY_QUESTS;
 
+    // --- Expiry Calculation ---
+    let expiryDate: Date | null = null;
+    let isExpired = false;
+    let timeRemaining: string | null = null;
+
+    if (isActive && quest.activated_at) {
+      const activationDate = parseISO(quest.activated_at);
+      if (quest.type === "daily") {
+        expiryDate = addHours(activationDate, 24);
+      } else if (quest.type === "weekly") {
+        expiryDate = addDays(activationDate, 7);
+      }
+
+      if (expiryDate) {
+        isExpired = isAfter(new Date(), expiryDate);
+        if (!isExpired) {
+          timeRemaining = formatDistanceToNow(expiryDate, { addSuffix: true });
+        }
+      }
+    }
+    // --- End Expiry Calculation ---
+
     return (
-      <Card key={quest.id} className="mb-4 bg-gray-700 border-gray-600">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base text-gray-100 flex items-center justify-between">
-            {quest.description}
-            <span className="text-sm font-normal text-yellow-400 flex items-center">
-              <Star size={14} className="mr-1 fill-current" /> {quest.xp_reward}{" "}
-              XP
-            </span>
-          </CardTitle>
-          {quest.quest_criteria && quest.quest_criteria.length > 0 && (
-            <CardDescription className="text-xs text-gray-400 pt-1">
-              Criteria:{" "}
-              {quest.quest_criteria.map((c) => c.description).join(", ")}
-            </CardDescription>
-          )}
-        </CardHeader>
-        <CardFooter className="pt-2 flex justify-end">
-          {isActive ? (
-            quest.status === "claimable" ? (
-              <Button
-                size="sm"
-                variant="default"
-                onClick={() => claimQuest(quest.id)}
-                disabled={isLoading || isGenerating} // Disable during generation too
-                className="bg-green-600 hover:bg-green-700"
-              >
-                {isLoading ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Check size={16} className="mr-1" />
-                )}{" "}
-                Claim Reward
-              </Button>
-            ) : (
+      // Wrap Card with motion.div
+      <motion.div
+        key={quest.id} // Key must be on the motion component
+        variants={cardVariants}
+        initial="hidden"
+        animate="visible"
+        layout // Animate layout changes
+        className="mb-4" // Move margin bottom here
+      >
+        <Card className="bg-gray-700 border-gray-600">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base text-gray-100 flex items-center justify-between gap-2">
+              <span className="flex-1">{quest.description}</span>{" "}
+              {/* Allow title to wrap */}
+              <div className="flex items-center flex-shrink-0 space-x-2">
+                {" "}
+                {/* Group badges/XP */}
+                {/* Display Time Remaining or Expired Badge */}
+                {isActive && isExpired && (
+                  <Badge variant="destructive" className="text-xs">
+                    Expired
+                  </Badge>
+                )}
+                {isActive && !isExpired && timeRemaining && (
+                  <Badge
+                    variant="outline"
+                    className="text-xs text-gray-400 border-gray-600 font-normal"
+                  >
+                    <Clock size={12} className="mr-1" />{" "}
+                    {timeRemaining.replace("about ", "")}
+                  </Badge>
+                )}
+                <span className="text-sm font-normal text-yellow-400 flex items-center">
+                  <Star size={14} className="mr-1 fill-current" />{" "}
+                  {quest.xp_reward} XP
+                </span>
+              </div>
+            </CardTitle>
+            {/* Render Criteria with Progress */}
+            {quest.quest_criteria && quest.quest_criteria.length > 0 && (
+              <div className="pt-2 text-xs text-gray-400 space-y-1">
+                {quest.quest_criteria.map((c) => (
+                  <div
+                    key={c.id}
+                    className={`flex items-center ${
+                      c.is_met ? "line-through text-gray-500" : ""
+                    }`}
+                  >
+                    <span className="mr-2">-</span>
+                    <span>{c.description}</span>
+                    {!c.is_met && c.target_count > 1 && (
+                      <span className="ml-1.5 text-gray-500">
+                        ({c.current_progress}/{c.target_count})
+                      </span>
+                    )}
+                    {c.is_met && (
+                      <Check
+                        size={12}
+                        className="ml-1.5 text-green-500 flex-shrink-0"
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardHeader>
+          {/* Footer remains below the criteria list */}
+          <CardFooter className="pt-3 flex justify-end">
+            {/* Conditional Button Rendering based on expiry */}
+            {isActive && isExpired ? (
               <Button
                 size="sm"
                 variant="destructive"
                 onClick={() => cancelQuest(quest.id)}
-                disabled={isLoading || isGenerating} // Disable during generation too
+                disabled={isLoading || isGenerating}
               >
                 {isLoading ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
                   <X size={16} className="mr-1" />
                 )}{" "}
-                Cancel
+                Cancel {/* Or "Remove Expired" */}
               </Button>
-            )
-          ) : (
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => activateQuest(quest.id)}
-              disabled={isLoading || isGenerating || !canActivate} // Disable during generation too
-              title={
-                !canActivate
-                  ? `Max active ${quest.type} quests reached`
-                  : undefined
-              }
-            >
-              {isLoading ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : isActive ? ( // Not expired, show normal buttons
+              quest.status === "claimable" ? (
+                <Button
+                  size="sm"
+                  variant="default"
+                  onClick={() => claimQuest(quest.id)}
+                  disabled={isLoading || isGenerating}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  {isLoading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Check size={16} className="mr-1" />
+                  )}{" "}
+                  Claim Reward
+                </Button>
               ) : (
-                <Target size={16} className="mr-1" />
-              )}{" "}
-              Activate
-            </Button>
-          )}
-        </CardFooter>
-      </Card>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => cancelQuest(quest.id)}
+                  disabled={isLoading || isGenerating}
+                >
+                  {isLoading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <X size={16} className="mr-1" />
+                  )}{" "}
+                  Cancel
+                </Button>
+              )
+            ) : (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => activateQuest(quest.id)}
+                disabled={isLoading || isGenerating || !canActivate}
+                title={
+                  !canActivate
+                    ? `Max active ${quest.type} quests reached`
+                    : undefined
+                }
+              >
+                {isLoading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Target size={16} className="mr-1" />
+                )}{" "}
+                Activate
+              </Button>
+            )}
+          </CardFooter>
+        </Card>
+      </motion.div>
     );
   };
 

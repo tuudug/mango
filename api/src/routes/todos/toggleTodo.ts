@@ -1,6 +1,7 @@
 import { Response, NextFunction } from "express";
 import { AuthenticatedRequest } from "../../middleware/auth";
 import { TodoItem } from "../../types/todo";
+import { updateQuestProgress } from "../../services/questService"; // Import quest service
 
 export const toggleTodoHandler = async (
   req: AuthenticatedRequest,
@@ -59,9 +60,33 @@ export const toggleTodoHandler = async (
       `Toggled todo item ${itemId} to ${newStatus} for user ${userId}`
     );
     const resultTodo: TodoItem = { ...updatedTodo, sourceProvider: "manual" };
+
+    // Send response first
     res.status(200).json(resultTodo);
+
+    // If the todo was marked as complete, update quest progress
+    if (newStatus === true) {
+      const userTimezone = (req.headers["x-user-timezone"] as string) || "UTC";
+      updateQuestProgress(
+        userId,
+        "todo_complete",
+        { count: 1 }, // Increment by 1 for each completed todo
+        userTimezone,
+        supabaseUserClient
+      ).catch((questError) => {
+        // Log errors from quest progress update, but don't fail the original request
+        console.error(
+          `[Quest Progress Update Error] Failed after completing todo ${itemId}:`,
+          questError
+        );
+      });
+    }
   } catch (err: unknown) {
     console.error("Server error toggling todo item:", err);
+    // Ensure response is sent even if quest update call setup fails
+    if (!res.headersSent) {
+      next(err); // Pass error to error handling middleware if response not sent
+    }
     next(err);
   }
 };

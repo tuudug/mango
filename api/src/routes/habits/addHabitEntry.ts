@@ -1,7 +1,7 @@
-import { Response } from "express";
-// import { supabase } from "../../supabaseClient"; // Remove global import
+import { Response, Request } from "express"; // Import Request
 import { AuthenticatedRequest } from "../../middleware/auth";
 import dayjs from "dayjs"; // Use dayjs for date validation
+import { updateQuestProgress } from "../../services/questService"; // Import quest service
 
 // Define expected request body structure
 interface AddHabitEntryRequestBody {
@@ -17,6 +17,8 @@ export const addHabitEntry = async (
   const userId = req.userId;
   const supabase = req.supabase; // Use request-scoped client
   const { habit_id, entry_date }: AddHabitEntryRequestBody = req.body;
+  // Read user timezone from header, default to UTC if not provided
+  const userTimezone = (req.headers["x-user-timezone"] as string) || "UTC";
 
   if (!userId || !supabase) {
     // Check for client
@@ -45,6 +47,7 @@ export const addHabitEntry = async (
   }
 
   try {
+    let existingData: any = null; // Declare existingData here
     // Use the request-scoped 'supabase' client
     const { data, error } = await supabase
       .from("manual_habit_entries")
@@ -66,7 +69,8 @@ export const addHabitEntry = async (
         );
         // It might be better to return the existing entry instead of an error
         // Let's try fetching the existing entry using the request-scoped client
-        const { data: existingData, error: fetchError } = await supabase
+        // Assign to the already declared existingData variable
+        const { data: fetchedExistingData, error: fetchError } = await supabase
           .from("manual_habit_entries")
           .select("*")
           .eq("user_id", userId)
@@ -74,7 +78,7 @@ export const addHabitEntry = async (
           .eq("entry_date", entry_date)
           .maybeSingle(); // Use maybeSingle in case it was deleted concurrently
 
-        if (fetchError || !existingData) {
+        if (fetchError || !fetchedExistingData) {
           console.error(
             "Error fetching existing entry after unique violation:",
             fetchError
@@ -84,8 +88,11 @@ export const addHabitEntry = async (
               "Habit already logged for this date (unique constraint violation).",
           });
         } else {
+          // Assign the fetched data to existingData
+          existingData = fetchedExistingData;
           // Return the existing entry with a 200 OK status, indicating it was already there
-          res.status(200).json(existingData);
+          // We will send the response later, after determining entryForQuest
+          // res.status(200).json(existingData);
         }
       } else {
         console.error("Error adding habit entry:", error);
@@ -94,9 +101,41 @@ export const addHabitEntry = async (
       return;
     }
 
-    res.status(201).json(data); // Send back the created entry
+    // Determine the entry data to use for quest progress (newly created or existing)
+    const entryForQuest = data || existingData; // Use existingData if unique violation occurred
+
+    // Send response first
+    if (data) {
+      res.status(201).json(data); // Send back the created entry
+    } else if (existingData) {
+      res.status(200).json(existingData); // Send back the existing entry
+    }
+    // Don't return here, proceed to update quest progress
+
+    // Call quest progress update in the background (don't await)
+    if (entryForQuest) {
+      updateQuestProgress(
+        userId,
+        "habit_check",
+        {
+          habitId: entryForQuest.habit_id,
+          entryDate: entryForQuest.entry_date,
+        },
+        userTimezone,
+        supabase // Pass the request-scoped client
+      ).catch((questError) => {
+        // Log errors from quest progress update, but don't fail the original request
+        console.error(
+          `[Quest Progress Update Error] Failed after adding habit entry ${entryForQuest.id}:`,
+          questError
+        );
+      });
+    }
   } catch (err) {
     console.error("Unexpected error adding habit entry:", err);
-    res.status(500).json({ error: "Internal server error" });
+    // Ensure response is sent even if quest update call setup fails
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Internal server error" });
+    }
   }
 };

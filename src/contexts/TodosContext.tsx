@@ -10,6 +10,7 @@ import React, {
 import { useAuth } from "./AuthContext";
 import { useToast } from "./ToastContext"; // Import useToast
 import { authenticatedFetch, ApiError } from "@/lib/apiClient"; // Import the new utility and error class
+import { useQuests } from "./QuestsContext"; // Import useQuests
 
 // Define the structure of a todo item from backend
 export interface TodoItem {
@@ -97,6 +98,7 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
   const [editingTodoId, setEditingTodoId] = useState<string | null>(null);
   const { session } = useAuth();
   const { showToast } = useToast();
+  const { fetchQuests: fetchQuestsData } = useQuests(); // Get fetchQuests from QuestsContext
 
   const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
@@ -284,6 +286,12 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
       );
       console.log(`Successfully toggled todo ${id}`);
       // API confirmed success, optimistic update is now the source of truth
+
+      // Trigger quest refresh if todo was marked complete, with a short delay
+      if (updatedTodo.is_completed === true) {
+        console.log(`Todo ${id} completed, triggering delayed quest refresh.`);
+        setTimeout(() => fetchQuestsData({ forceRefresh: true }), 750); // Delay 750ms
+      }
     } catch (e) {
       // Revert optimistic update on error
       setTodos(originalTodos);

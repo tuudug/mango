@@ -1,13 +1,14 @@
+import { ApiError, authenticatedFetch } from "@/lib/apiClient";
 import React, {
   createContext,
-  useState,
-  useContext,
-  useCallback,
-  useEffect,
   ReactNode,
-  useMemo, // Import useMemo
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
 } from "react";
-import { authenticatedFetch, ApiError } from "@/lib/apiClient";
 import { useAuth } from "./AuthContext";
 import { useToast } from "./ToastContext";
 
@@ -74,7 +75,8 @@ interface QuestsContextType {
   generationState: QuestGenerationState | null; // Added state
   isLoading: boolean;
   isGenerating: boolean; // Added loading state for generation
-  fetchQuests: () => Promise<void>;
+  // Update fetchQuests signature to accept optional options
+  fetchQuests: (options?: { forceRefresh?: boolean }) => Promise<void>;
   activateQuest: (questId: string) => Promise<Quest | null>;
   cancelQuest: (questId: string) => Promise<Quest | null>;
   claimQuest: (questId: string) => Promise<Quest | null>;
@@ -89,53 +91,86 @@ export const QuestsProvider: React.FC<{ children: ReactNode }> = ({
   const [quests, setQuests] = useState<Quest[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isGenerating, setIsGenerating] = useState<boolean>(false); // Added state
+  // Re-add the missing useState for generationState
   const [generationState, setGenerationState] =
-    useState<QuestGenerationState | null>(null); // Added state
+    useState<QuestGenerationState | null>(null);
+  const lastFetchTimestampRef = useRef<number>(0); // Track last fetch time
   const { showToast } = useToast();
   const { session, fetchUserProgress } = useAuth(); // Get fetchUserProgress from AuthContext
 
   // Fetch quests and potentially generation state
-  const fetchQuests = useCallback(async () => {
-    if (!session) return;
-    setIsLoading(true);
-    try {
-      // TODO: Modify backend GET /api/quests to optionally include generationState
-      // For now, fetch quests only. Generation state might need a separate fetch or endpoint.
-      const data = await authenticatedFetch<Quest[]>(
-        "/api/quests",
-        "GET",
-        session
-      );
-      setQuests(data ?? []);
+  const fetchQuests = useCallback(
+    async (options: { forceRefresh?: boolean } = {}) => {
+      const { forceRefresh = false } = options;
+      if (!session) return;
 
-      // Placeholder: Fetch generation state separately if needed
-      // const genState = await authenticatedFetch<QuestGenerationState>('/api/quests/generation-state', 'GET', session);
-      // setGenerationState(genState);
-    } catch (error) {
-      console.error("Failed to fetch quests:", error);
-      showToast({
-        title: "Error Fetching Quests",
-        description:
-          error instanceof ApiError
-            ? error.message
-            : "An unknown error occurred",
-        variant: "destructive",
-      });
-      setQuests([]);
-      setGenerationState(null); // Reset on error
-    } finally {
-      setIsLoading(false);
-    }
-  }, [session, showToast]);
+      const now = Date.now();
+      const fiveMinutes = 5 * 60 * 1000;
 
+      // Check timestamp if not forcing refresh
+      if (!forceRefresh && now - lastFetchTimestampRef.current < fiveMinutes) {
+        console.log("Quests fetch skipped, too soon since last fetch.");
+        return;
+      }
+
+      console.log(`Fetching quests... (Forced: ${forceRefresh})`);
+      setIsLoading(true);
+      try {
+        // TODO: Modify backend GET /api/quests to optionally include generationState
+        // For now, fetch quests only. Generation state might need a separate fetch or endpoint.
+        const data = await authenticatedFetch<Quest[]>(
+          "/api/quests",
+          "GET",
+          session
+        );
+        setQuests(data ?? []);
+        lastFetchTimestampRef.current = Date.now(); // Update timestamp on success
+
+        // Placeholder: Fetch generation state separately if needed
+        // const genState = await authenticatedFetch<QuestGenerationState>('/api/quests/generation-state', 'GET', session);
+        // setGenerationState(genState);
+      } catch (error) {
+        console.error("Failed to fetch quests:", error);
+        showToast({
+          title: "Error Fetching Quests",
+          description:
+            error instanceof ApiError
+              ? error.message
+              : "An unknown error occurred",
+          variant: "destructive",
+        });
+        setQuests([]);
+        setGenerationState(null); // Reset on error
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [session, showToast]
+  ); // Keep dependencies minimal for the core fetch logic
+
+  // Initial fetch on session change
   useEffect(() => {
     if (session) {
-      fetchQuests();
+      fetchQuests({ forceRefresh: true }); // Force refresh on initial load/login
     } else {
       setQuests([]);
       setGenerationState(null); // Clear state on logout
+      lastFetchTimestampRef.current = 0; // Reset timestamp on logout
     }
-  }, [session, fetchQuests]);
+  }, [session, fetchQuests]); // fetchQuests dependency is okay here
+
+  // Refetch on window focus (with interval check)
+  useEffect(() => {
+    const handleFocus = () => {
+      console.log("Window focused, checking to refetch quests...");
+      fetchQuests(); // Call without forceRefresh to respect interval
+    };
+
+    window.addEventListener("focus", handleFocus);
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [fetchQuests]); // Re-attach listener if fetchQuests identity changes
 
   const updateQuestInState = (updatedQuest: Quest) => {
     setQuests((prevQuests) =>
@@ -217,7 +252,7 @@ export const QuestsProvider: React.FC<{ children: ReactNode }> = ({
     async (questId: string): Promise<Quest | null> => {
       if (!session) return null;
       setIsLoading(true);
-      let claimedQuest: Quest | null = null;
+      //let claimedQuest: Quest | null = null;
       try {
         const updatedQuest = await authenticatedFetch<Quest>(
           `/api/quests/${questId}/claim`,
@@ -225,7 +260,7 @@ export const QuestsProvider: React.FC<{ children: ReactNode }> = ({
           session
         );
         if (updatedQuest) {
-          claimedQuest = updatedQuest; // Store for XP update
+          //claimedQuest = updatedQuest; // Store for XP update
           updateQuestInState(updatedQuest);
           showToast({
             title: "Quest Claimed!",
@@ -276,8 +311,8 @@ export const QuestsProvider: React.FC<{ children: ReactNode }> = ({
             description: response.message,
             variant: "success",
           });
-          // Refresh the quest list to show newly generated quests
-          await fetchQuests();
+          // Refresh the quest list to show newly generated quests, forcing it
+          await fetchQuests({ forceRefresh: true });
           // TODO: Update generationState based on response or refetch
         } else {
           // API handled the error message generation

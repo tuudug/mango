@@ -51,13 +51,14 @@ These components handle the interaction and persistence of core application data
   - [x] LLM Prompting: Craft prompt for generating quests + criteria + XP rewards in JSON format. **(Initial prompt implemented)**
   - [x] LLM Validation: Parse, validate, and map LLM response (e.g., habit names to IDs). **(Implemented)**
   - [x] Frontend: Add Generate/Reset buttons to `QuestsPanel`. **(Implemented)**
-- [ ] **Automation & Progress Tracking (v0.2.3):**
-  - [ ] Backend: `updateQuestProgress` service to track user actions (habit checks, steps, finance, todos, pomodoro).
-  - [ ] Backend: Integrate `updateQuestProgress` calls into existing API endpoints.
-  - [ ] Backend: Automatically update criteria `current_progress` and `is_met`.
-  - [ ] Backend: Automatically update quest `status` to 'claimable' when all criteria met.
-  - [ ] Frontend: Display criteria progress (`current_progress / target_count`) in `QuestsPanel`.
-  - [ ] Frontend: Implement data refresh mechanism for quest progress updates.
+- [x] **Automation & Progress Tracking (v0.2.3):**
+  - [x] Backend: `updateQuestProgress` service to track user actions (habit checks, steps, finance, todos). **(Pomodoro deferred)**
+  - [x] Backend: Integrate `updateQuestProgress` calls into existing API endpoints (Habits, Todos, Health, Finance).
+  - [x] Backend: Automatically update criteria `current_progress` and `is_met`.
+  - [x] Backend: Automatically update quest `status` to 'claimable' when all criteria met. **(Includes logging & small delay)**
+  - [x] Frontend: Display criteria progress (`current_progress / target_count`) in `QuestsPanel`.
+  - [x] Frontend: Implement data refresh mechanism (on focus, after relevant actions with delay) for quest progress updates.
+  - [x] Frontend: Added quest expiry display (time remaining / "Expired" badge) and logic (disable claim, show cancel) based on `activated_at`.
 
 ### Yuzu
 

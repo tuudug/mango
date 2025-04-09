@@ -22,21 +22,20 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <AuthProvider>
           <CalendarProvider>
             <HealthProvider>
-              <TodosProvider>
-                <FinanceProvider>
-                  <PomodoroProvider>
-                    <AmbienceProvider>
-                      <HabitsProvider>
-                        <QuestsProvider>
-                          {" "}
-                          {/* Wrap App with QuestsProvider */}
+              {/* Corrected Nesting Order */}
+              <QuestsProvider>
+                <HabitsProvider>
+                  <TodosProvider>
+                    <FinanceProvider>
+                      <PomodoroProvider>
+                        <AmbienceProvider>
                           <App />
-                        </QuestsProvider>
-                      </HabitsProvider>
-                    </AmbienceProvider>
-                  </PomodoroProvider>
-                </FinanceProvider>
-              </TodosProvider>
+                        </AmbienceProvider>
+                      </PomodoroProvider>
+                    </FinanceProvider>
+                  </TodosProvider>
+                </HabitsProvider>
+              </QuestsProvider>
             </HealthProvider>
           </CalendarProvider>
         </AuthProvider>

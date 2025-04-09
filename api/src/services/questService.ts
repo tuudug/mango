@@ -1,9 +1,17 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "../types/supabase";
-import { generateJsonContent } from "./geminiService"; // Import the new function
+import { generateJsonContent } from "./geminiService";
+import { criteriaHandlers } from "./questCriteriaRegistry"; // Import handlers registry
+// Corrected import: Removed zonedTimeToUtc, kept formatInTimeZone and toZonedTime (though toZonedTime might not be needed here either)
+import { formatInTimeZone, toZonedTime } from "date-fns-tz";
+import { sleep } from "../utils/sleep"; // Import sleep utility
 
+type Quest = Database["public"]["Tables"]["quests"]["Row"];
+type QuestCriterion = Database["public"]["Tables"]["quest_criteria"]["Row"];
 type QuestInsert = Database["public"]["Tables"]["quests"]["Insert"];
 type CriteriaInsert = Database["public"]["Tables"]["quest_criteria"]["Insert"];
+type QuestStatus = Database["public"]["Enums"]["quest_status"];
+type QuestCriteriaType = Database["public"]["Enums"]["quest_criteria_type"];
 type UserQuestState = Database["public"]["Tables"]["user_quest_state"]["Row"];
 type Habit = Database["public"]["Tables"]["manual_habits"]["Row"]; // Assuming table name
 
@@ -505,5 +513,332 @@ async function storeGeneratedQuests(
   } catch (error) {
     console.error("Error in storeGeneratedQuests:", error);
     return { success: false, error };
+  }
+}
+
+// --- Quest Progress Tracking ---
+
+/**
+ * Checks if all criteria for a given quest are met and updates the quest status to 'claimable'.
+ * Should be called within a transaction after a criterion's is_met status changes to true.
+ * @param questId The ID of the quest to check.
+ * @param supabase Supabase client instance.
+ */
+async function checkAndSetQuestClaimable(
+  questId: string,
+  supabase: SupabaseClient<Database>
+): Promise<void> {
+  console.log(`[Quest Claimable Check] Checking quest ${questId}...`); // Added log
+  try {
+    // Fetch the quest itself to ensure it's still 'active'
+    const { data: questData, error: questFetchError } = await supabase
+      .from("quests")
+      .select("id, status")
+      .eq("id", questId)
+      .single();
+
+    if (questFetchError || !questData) {
+      console.error(
+        `[Quest Claimable Check] Error fetching quest ${questId}:`,
+        questFetchError
+      );
+      // Don't throw, just log and exit, as the primary update might have succeeded
+      return;
+    }
+
+    // Only proceed if the quest is currently 'active'
+    if (questData.status !== "active") {
+      console.log(
+        `[Quest Claimable Check] Quest ${questId} is not active (status: ${questData.status}). Skipping claimable check.`
+      );
+      return;
+    }
+
+    // Fetch all criteria for the quest
+    const { data: criteria, error: criteriaError } = await supabase
+      .from("quest_criteria")
+      .select("id, is_met")
+      .eq("quest_id", questId);
+
+    if (criteriaError) {
+      console.error(
+        `[Quest Claimable Check] Error fetching criteria for quest ${questId}:`,
+        criteriaError
+      );
+      return; // Don't proceed if criteria can't be fetched
+    }
+
+    if (!criteria || criteria.length === 0) {
+      console.warn(
+        `[Quest Claimable Check] No criteria found for quest ${questId}. Cannot set claimable.`
+      );
+      return; // Should not happen for valid quests
+    }
+
+    // Check if all criteria are met
+    const allMet = criteria.every((c) => c.is_met === true);
+    console.log(
+      `[Quest Claimable Check] Quest ${questId} - All criteria met: ${allMet}`
+    ); // Added log
+
+    if (allMet) {
+      console.log(
+        `[Quest Claimable Check] Attempting to update quest ${questId} status to claimable.` // Added log
+      );
+      // Update quest status to 'claimable'
+      const { error: updateError } = await supabase
+        .from("quests")
+        .update({
+          status: "claimable" as QuestStatus,
+          claimable_at: new Date().toISOString(),
+        })
+        .eq("id", questId)
+        .eq("status", "active"); // Ensure it's still active
+
+      if (updateError) {
+        console.error(
+          `[Quest Claimable Check] Error updating quest ${questId} status to claimable:`,
+          updateError
+        );
+      } else {
+        // Correctly wrap the log message
+        console.log(
+          `[Quest Claimable Check] Successfully updated quest ${questId} status to claimable.` // Added log
+        );
+        // Add a small delay to allow potential DB propagation before frontend refetches
+        await sleep(200); // Sleep for 200ms
+        // TODO: Optionally trigger a notification to the frontend (e.g., via Supabase Realtime or other mechanism)
+      }
+    } else {
+      // This log might be redundant if the allMet log is false, but keep for clarity
+      console.log(
+        `[Quest Claimable Check] Not all criteria met for quest ${questId}. Status remains active.` // Added log
+      );
+    }
+  } catch (error) {
+    console.error(
+      `[Quest Claimable Check] Unexpected error checking quest ${questId}:`,
+      error
+    );
+    // Rethrow if needed to ensure transaction rollback
+    throw error;
+  }
+}
+
+/**
+ * Updates progress for active quests based on a user action.
+ * @param userId The ID of the user performing the action.
+ * @param actionType The type of action performed (matches quest_criteria_type).
+ * @param actionData Data specific to the action (e.g., { habitId: '...' }).
+ * @param userTimezone The user's IANA timezone string (e.g., 'America/New_York').
+ * @param supabase Supabase client instance.
+ */
+export async function updateQuestProgress(
+  userId: string,
+  actionType: QuestCriteriaType,
+  actionData: any,
+  userTimezone: string,
+  supabase: SupabaseClient<Database>
+): Promise<void> {
+  console.log(
+    `[Quest Progress] Updating for user ${userId}, action: ${actionType}, data:`,
+    actionData
+  );
+
+  try {
+    // 1. Find relevant active, unmet criteria
+    const { data: criteria, error: criteriaError } = await supabase
+      .from("quest_criteria")
+      .select("*, quests (id, activated_at, status)") // Select parent quest data too
+      .eq("quests.user_id", userId)
+      .eq("quests.status", "active" as QuestStatus) // Only check criteria for active quests
+      .eq("type", actionType)
+      .eq("is_met", false); // Only check unmet criteria
+
+    if (criteriaError) {
+      console.error(
+        "[Quest Progress] Error fetching active criteria:",
+        criteriaError
+      );
+      return;
+    }
+
+    if (!criteria || criteria.length === 0) {
+      console.log(
+        `[Quest Progress] No active, unmet criteria found for action type ${actionType}.`
+      );
+      return;
+    }
+
+    console.log(
+      `[Quest Progress] Found ${criteria.length} potential criteria to update for action ${actionType}.`
+    );
+
+    // 2. Process each criterion
+    for (const criterion of criteria) {
+      // Ensure parent quest data is present (should be due to join)
+      if (!criterion.quests || criterion.quests.status !== "active") {
+        console.warn(
+          `[Quest Progress] Skipping criterion ${criterion.id} as parent quest data is missing or not active.`
+        );
+        continue;
+      }
+
+      const parentQuest = criterion.quests;
+      const activatedAt = parentQuest.activated_at
+        ? new Date(parentQuest.activated_at)
+        : null;
+
+      // 3. Activation Date Check (for relevant types)
+      if (
+        actionType === "steps_reach" ||
+        actionType === "finance_under_allowance"
+      ) {
+        if (!activatedAt) {
+          console.warn(
+            `[Quest Progress] Skipping criterion ${criterion.id} of type ${actionType} because parent quest activation date is missing.`
+          );
+          continue;
+        }
+        if (!actionData.date || typeof actionData.date !== "string") {
+          console.warn(
+            `[Quest Progress] Skipping criterion ${criterion.id} of type ${actionType} because actionData.date is missing or invalid.`
+          );
+          continue;
+        }
+
+        try {
+          // Parse the action date string (assuming it's like 'YYYY-MM-DD')
+          const actionDate = new Date(actionData.date + "T00:00:00"); // Add time to avoid potential UTC conversion issues with just date
+
+          // Format both dates into 'yyyy-MM-dd' strings using the user's timezone
+          const actionDateStr = formatInTimeZone(
+            actionDate,
+            userTimezone,
+            "yyyy-MM-dd"
+          );
+          const activationDateStr = formatInTimeZone(
+            activatedAt,
+            userTimezone,
+            "yyyy-MM-dd"
+          );
+
+          // Perform the comparison
+          if (actionDateStr < activationDateStr) {
+            console.log(
+              `[Quest Progress] Skipping criterion ${criterion.id}: Action date ${actionDateStr} is before activation date ${activationDateStr}.`
+            );
+            continue; // Action occurred before quest activation
+          }
+          // If comparison passes, proceed (no 'else' needed here)
+        } catch (tzError) {
+          console.error(
+            `[Quest Progress] Error comparing dates for criterion ${criterion.id} using timezone ${userTimezone}:`,
+            tzError
+          );
+          continue; // Skip if timezone logic fails
+        }
+      }
+
+      // 4. Get and call the specific handler
+      const handler = criteriaHandlers[actionType];
+      if (!handler) {
+        console.warn(
+          `[Quest Progress] No handler found for action type ${actionType}.`
+        );
+        continue; // Skip if no handler registered
+      }
+
+      try {
+        const result = await handler(
+          criterion,
+          actionData,
+          userId,
+          userTimezone,
+          activatedAt
+        );
+
+        if (result) {
+          let criterionUpdated = false;
+          let newIsMet = criterion.is_met; // Start with current value
+          let updateObject: Partial<QuestCriterion> = {};
+
+          // Determine update based on handler result
+          if (result.isMetOverride === true) {
+            if (!criterion.is_met) {
+              // Only update if it wasn't already met
+              updateObject.is_met = true;
+              updateObject.current_progress = criterion.target_count; // Max out progress when met directly
+              criterionUpdated = true;
+              newIsMet = true;
+              console.log(
+                `[Quest Progress] Criterion ${criterion.id} met via override.`
+              );
+            }
+          } else if (result.progressIncrement && result.progressIncrement > 0) {
+            const newProgress =
+              criterion.current_progress + result.progressIncrement;
+            updateObject.current_progress = Math.min(
+              newProgress,
+              criterion.target_count
+            ); // Cap at target
+
+            if (
+              !criterion.is_met &&
+              updateObject.current_progress >= criterion.target_count
+            ) {
+              updateObject.is_met = true;
+              newIsMet = true;
+              console.log(
+                `[Quest Progress] Criterion ${criterion.id} met via progress increment.`
+              );
+            }
+            criterionUpdated = true;
+            console.log(
+              `[Quest Progress] Criterion ${criterion.id} progress updated to ${updateObject.current_progress}.`
+            );
+          }
+
+          // Perform the update if changes occurred
+          if (criterionUpdated) {
+            const { error: updateError } = await supabase
+              .from("quest_criteria")
+              .update(updateObject)
+              .eq("id", criterion.id)
+              .eq("is_met", false); // Optimistic concurrency: only update if still not met
+
+            if (updateError) {
+              console.error(
+                `[Quest Progress] Error updating criterion ${criterion.id}:`,
+                updateError
+              );
+              // Don't proceed to check claimable status if update failed
+            } else {
+              // 5. If the criterion is now met, check if the quest is claimable
+              if (newIsMet) {
+                // Call checkAndSetQuestClaimable *after* successful update
+                // Pass the regular supabase client, not a transaction client
+                await checkAndSetQuestClaimable(criterion.quest_id, supabase);
+              }
+            }
+          }
+        } else {
+          console.log(
+            `[Quest Progress] Handler for criterion ${criterion.id} (type ${actionType}) returned null (no update needed).`
+          );
+        }
+      } catch (handlerError) {
+        console.error(
+          `[Quest Progress] Error executing handler for criterion ${criterion.id} (type ${actionType}):`,
+          handlerError
+        );
+        // Continue to next criterion
+      }
+    } // End loop through criteria
+  } catch (error) {
+    console.error(
+      "[Quest Progress] Unexpected error in updateQuestProgress:",
+      error
+    );
   }
 }

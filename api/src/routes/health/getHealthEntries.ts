@@ -10,6 +10,7 @@ import {
   StoredGoogleCredentials,
   DecryptedGoogleCredentials,
 } from "../../types/health";
+import { updateQuestProgress } from "../../services/questService"; // Import quest service
 
 // Define the expected structure for health settings
 interface HealthSettings {
@@ -329,9 +330,37 @@ export const getHealthEntries = async (
       isGoogleHealthConnected,
       healthSettings, // Include settings in the response
     });
-    return; // Ensure void return type for handler
+    // Don't return yet, trigger quest updates
+
+    // --- Trigger Quest Progress Update ---
+    // Read user timezone from header, default to UTC if not provided
+    const userTimezone = (req.headers["x-user-timezone"] as string) || "UTC";
+
+    // Iterate through the final aggregated entries and trigger updates for steps
+    for (const entry of finalHealthEntries) {
+      if (entry.type === "steps") {
+        updateQuestProgress(
+          currentUserId,
+          "steps_reach",
+          { date: entry.entry_date, steps: entry.value },
+          userTimezone,
+          supabaseUserClient // Use the request-scoped client
+        ).catch((questError) => {
+          // Log errors from quest progress update, but don't fail the original request
+          console.error(
+            `[Quest Progress Update Error] Failed after fetching health entry for date ${entry.entry_date}:`,
+            questError
+          );
+        });
+      }
+      // Add triggers for other health types here if needed in the future
+    }
   } catch (error) {
     console.error("Error in GET /api/health handler:", error);
+    // Ensure response is sent even if quest update call setup fails
+    if (!res.headersSent) {
+      next(error); // Pass error to global handler if response not sent
+    }
     next(error); // Pass error to global handler
   }
 };

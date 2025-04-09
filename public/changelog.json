@@ -1,5 +1,16 @@
 [
   {
+    "version": "0.2.3",
+    "date": "2025-04-09",
+    "data": [
+      "Quests now track your progress automatically as you complete tasks, check habits, reach step goals, etc.!",
+      "Quest criteria progress (like 3/5 todos) is now shown.",
+      "Quests now show time remaining before they expire.",
+      "Expired quests can no longer be claimed and show an 'Expired' badge.",
+      "Newly generated quests now appear instantly with a smooth animation."
+    ]
+  },
+  {
     "version": "0.2.2",
     "date": "2025-04-09",
     "data": [

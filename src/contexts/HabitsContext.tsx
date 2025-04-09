@@ -10,6 +10,7 @@ import { useAuth } from "./AuthContext";
 import { useToast } from "./ToastContext";
 import { authenticatedFetch, ApiError } from "@/lib/apiClient";
 import dayjs from "dayjs"; // Needed for date formatting/comparison
+import { useQuests } from "./QuestsContext"; // Import useQuests
 
 // --- Types ---
 export interface Habit {
@@ -78,6 +79,7 @@ export const HabitsProvider: React.FC<{ children: ReactNode }> = ({
   const [lastFetchTime, setLastFetchTime] = useState<Date | null>(null); // Track last fetch time
   const { session } = useAuth();
   const { showToast } = useToast();
+  const { fetchQuests: fetchQuestsData } = useQuests(); // Get fetchQuests from QuestsContext
 
   const REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -279,6 +281,8 @@ export const HabitsProvider: React.FC<{ children: ReactNode }> = ({
           title: "Habit Logged",
           description: `Recorded "${habit?.name || habitId}" for ${entryDate}.`,
         });
+        // Trigger quest refresh after successful recording, with a longer delay
+        setTimeout(() => fetchQuestsData({ forceRefresh: true }), 1500); // Delay 1.5s
         return newEntry;
       } catch (e) {
         handleError("recordHabitEntry", e);
@@ -341,6 +345,8 @@ export const HabitsProvider: React.FC<{ children: ReactNode }> = ({
             habit?.name || habitId
           }" on ${date}.`,
         });
+        // Trigger quest refresh after successful uncheck, with a longer delay
+        setTimeout(() => fetchQuestsData({ forceRefresh: true }), 1500); // Delay 1.5s
         return true;
       } catch (e) {
         // Handle 404 specifically? Maybe not necessary, error toast is enough.
