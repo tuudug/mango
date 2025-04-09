@@ -13,6 +13,7 @@ import { FinanceProvider } from "./contexts/FinanceContext.tsx"; // Updated impo
 import { PomodoroProvider } from "./contexts/PomodoroContext.tsx";
 import { AmbienceProvider } from "./contexts/AmbienceContext.tsx"; // Import AmbienceProvider
 import { HabitsProvider } from "./contexts/HabitsContext.tsx"; // Import HabitsProvider
+import { QuestsProvider } from "./contexts/QuestsContext.tsx"; // Import QuestsProvider
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
@@ -26,9 +27,11 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
                   <PomodoroProvider>
                     <AmbienceProvider>
                       <HabitsProvider>
-                        {" "}
-                        {/* Wrap App with HabitsProvider */}
-                        <App />
+                        <QuestsProvider>
+                          {" "}
+                          {/* Wrap App with QuestsProvider */}
+                          <App />
+                        </QuestsProvider>
                       </HabitsProvider>
                     </AmbienceProvider>
                   </PomodoroProvider>

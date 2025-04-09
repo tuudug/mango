@@ -2,25 +2,22 @@ import { Button } from "@/components/ui/button";
 import { cn, compareVersions } from "@/lib/utils";
 import {
   Bot,
-  // CalendarDays, // Now imported from config
-  // HeartPulse, // Now imported from config
-  // Landmark, // Now imported from config
-  // ListTodo, // Now imported from config
   Milestone,
   Pencil,
   User,
+  Target, // Import Target icon for Quests button
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react"; // Import useCallback
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChangelogModal } from "./ChangelogModal";
-// Import the panel components that will now be rendered here
-import { YuzuPanel } from "./YuzuPanel"; // Renamed import
+// Import the panel components
+import { YuzuPanel } from "./YuzuPanel";
 import { PathsPage } from "./PathsPage";
 import { UserProfilePanel } from "./UserProfilePanel";
 import { CalendarDataSource } from "./datasources/CalendarDataSource";
 import { HealthDataSource } from "./datasources/HealthDataSource";
 import { TodosDataSource } from "./datasources/TodosDataSource";
-import { FinanceDataSource } from "./datasources/FinanceDataSource"; // Updated import path and name
-import { HabitsDataSource } from "./datasources/HabitsDataSource"; // Import Habits panel
+import { FinanceDataSource } from "./datasources/FinanceDataSource";
+import { HabitsDataSource } from "./datasources/HabitsDataSource";
 // Import the changelog data
 import changelogData from "../../public/changelog.json";
 // Import types and constants needed for PathsPage
@@ -29,8 +26,8 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip"; // Import Tooltip components
-import { useToast } from "@/contexts/ToastContext"; // Import useToast
+} from "@/components/ui/tooltip";
+import { useToast } from "@/contexts/ToastContext";
 import { pathsData } from "./dashboard/constants";
 import { SavedPathState } from "./dashboard/types";
 import {
@@ -40,39 +37,47 @@ import {
 } from "./dashboard/utils";
 // Import the new data source config
 import { dataSourceConfig, DataSourceId } from "@/lib/dataSourceConfig";
+import { QuestsPanel } from "./datasources/QuestsPanel";
 
 interface LeftSidebarProps {
   isToolboxOpen: boolean;
   toggleToolbox: (forceState?: boolean) => void;
-  triggerShakeIndicator: () => void; // Add prop to trigger shake
+  triggerShakeIndicator: () => void;
 }
 
 const LOCALSTORAGE_KEY = "mango_last_read_changelog_version";
 const latestVersion =
   changelogData && changelogData.length > 0 ? changelogData[0].version : "0";
 
-// Helper type for panel open state, including non-data source panels
-type PanelId = DataSourceId | "yuzu" | "userProfile" | "paths" | "habits"; // Renamed gameMaster to yuzu
+// Helper type for panel open state
+type PanelId =
+  | DataSourceId // Includes 'quests' now from dataSourceConfig
+  | "yuzu"
+  | "userProfile"
+  | "paths";
+// No need to list individual DataSourceIds here anymore if PanelId includes DataSourceId
+
 type PanelOpenState = Record<PanelId, boolean>;
 
 // Initial state for panels
 const initialPanelState: PanelOpenState = {
-  yuzu: false, // Renamed gameMaster to yuzu
+  yuzu: false,
   userProfile: false,
   paths: false,
   finance: false,
   calendar: false,
   health: false,
   todos: false,
-  habits: false, // Add initial state for habits
+  habits: false,
+  quests: false, // Add initial state for quests
 };
 
 export function LeftSidebar({
   isToolboxOpen,
   toggleToolbox,
-  triggerShakeIndicator, // Receive prop
+  triggerShakeIndicator,
 }: LeftSidebarProps) {
-  const { showToast } = useToast(); // Get showToast function
+  const { showToast } = useToast();
 
   // Consolidated state for panel visibility
   const [panelOpenState, setPanelOpenState] =
@@ -96,9 +101,9 @@ export function LeftSidebar({
     const checkMobile = () => {
       setIsMobileView(checkIsMobileView());
     };
-    checkMobile(); // Check on initial mount
+    checkMobile();
     window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile); // Cleanup listener
+    return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
   // Effect to save path state
@@ -162,13 +167,10 @@ export function LeftSidebar({
       }
       setPanelOpenState((prevState) => {
         const isOpen = prevState[panelId];
-        // Create a new state object with all panels closed
-        const newState = { ...initialPanelState }; // Start with all false
-        // If the clicked panel wasn't open, open it
+        const newState = { ...initialPanelState };
         if (!isOpen) {
           newState[panelId] = true;
         }
-        // Otherwise, all panels remain closed (effectively closing the clicked one)
         return newState;
       });
     },
@@ -176,19 +178,15 @@ export function LeftSidebar({
   );
 
   const handleToggleToolbox = () => {
-    // Prevent toggling if in mobile view, but allow click to show toast
     if (isMobileView) {
       showToast({
         title: "Edit mode is disabled on mobile.",
         variant: "info",
       });
-      return; // Stop further execution
+      return;
     }
-    // If not mobile, proceed with toggling
-    toggleToolbox(); // Toggle the toolbox state via prop
+    toggleToolbox();
     if (!isToolboxOpen) {
-      // If toolbox is about to open
-      // Close any open panels by resetting the panel state
       setPanelOpenState(initialPanelState);
     }
   };
@@ -197,16 +195,12 @@ export function LeftSidebar({
   const isAnyPanelOpen = Object.values(panelOpenState).some((isOpen) => isOpen);
 
   // Helper function to get panel class names
-  // Updated to handle responsive width
-  const getPanelClasses = (
-    panelId: PanelId,
-    maxWidthClass = "md:max-w-md" // Default max-width applied at md breakpoint
-  ) =>
+  const getPanelClasses = (panelId: PanelId, maxWidthClass = "md:max-w-md") =>
     cn(
       "absolute top-0 left-16 bottom-0 transition-transform duration-300 ease-in-out z-20",
-      "w-[calc(100vw-4rem)]", // Full width minus sidebar on mobile/small screens
-      "md:w-auto", // Allow content width on medium screens and up
-      maxWidthClass, // Apply max-width constraint on medium screens and up (e.g., md:max-w-md)
+      "w-[calc(100vw-4rem)]",
+      "md:w-auto",
+      maxWidthClass,
       "bg-gray-800 shadow-lg",
       panelOpenState[panelId] ? "translate-x-0" : "-translate-x-full"
     );
@@ -219,7 +213,6 @@ export function LeftSidebar({
         <button
           onClick={handleLogoClick}
           title="View Changelog"
-          // Removed overflow-hidden
           className={`relative mb-6 h-10 w-10 cursor-pointer rounded-lg transition-transform hover:scale-105 p-0 ${
             hasNewChangelog ? "widget-shake" : ""
           }`}
@@ -227,11 +220,9 @@ export function LeftSidebar({
           <img
             src="/icon.png"
             alt="Mango Logo"
-            // Make image fill the button using object-cover
-            className="h-full w-full object-cover rounded-lg" // Added rounded-lg to match button
+            className="h-full w-full object-cover rounded-lg"
           />
           {hasNewChangelog && (
-            // Kept badge styling, including z-20
             <span className="absolute -top-1 -right-1 flex h-3 w-3 z-20">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
@@ -286,6 +277,20 @@ export function LeftSidebar({
             <span className="sr-only">Toggle Yuzu</span>
           </Button>
 
+          {/* Quests Button (Added before Paths) */}
+          <Button
+            variant={panelOpenState.quests ? "secondary" : "ghost"}
+            size="icon"
+            className={`h-10 w-10 rounded-lg ${
+              panelOpenState.quests ? "text-indigo-400" : "text-gray-400"
+            }`}
+            onClick={() => handleTogglePanel("quests")}
+            title="Quests"
+          >
+            <Target size={20} />
+            <span className="sr-only">Quests</span>
+          </Button>
+
           {/* Paths Button */}
           <Button
             variant={panelOpenState.paths ? "secondary" : "ghost"}
@@ -300,26 +305,30 @@ export function LeftSidebar({
             <span className="sr-only">Paths</span>
           </Button>
         </nav>
-        {/* Data Sources Section - Rendered Programmatically */}
+        {/* Data Sources Section */}
         <nav className="mt-6 flex flex-col items-center gap-3 border-t border-gray-700 pt-4">
           <span className="mb-1 text-[10px] font-medium text-gray-500">
             DATA
           </span>
-          {dataSourceConfig.map(({ id, label, IconComponent }) => (
-            <Button
-              key={id}
-              variant={panelOpenState[id] ? "secondary" : "ghost"}
-              size="icon"
-              className={`h-10 w-10 rounded-lg ${
-                panelOpenState[id] ? "text-indigo-400" : "text-gray-400"
-              }`}
-              onClick={() => handleTogglePanel(id)}
-              title={label}
-            >
-              <IconComponent size={20} />
-              <span className="sr-only">{label}</span>
-            </Button>
-          ))}
+          {dataSourceConfig.map(
+            ({ id, label, IconComponent }) =>
+              // Exclude 'quests' from this section as it's now a main nav item
+              id !== "quests" && (
+                <Button
+                  key={id}
+                  variant={panelOpenState[id] ? "secondary" : "ghost"}
+                  size="icon"
+                  className={`h-10 w-10 rounded-lg ${
+                    panelOpenState[id] ? "text-indigo-400" : "text-gray-400"
+                  }`}
+                  onClick={() => handleTogglePanel(id)}
+                  title={label}
+                >
+                  <IconComponent size={20} />
+                  <span className="sr-only">{label}</span>
+                </Button>
+              )
+          )}
         </nav>
         {/* User Profile Section */}
         <div className="mt-auto flex w-full flex-col items-center gap-1 border-t border-gray-700 pt-3 pb-2">
@@ -341,7 +350,7 @@ export function LeftSidebar({
         </div>
       </aside>
 
-      {/* Overlay for darkening the background */}
+      {/* Overlay */}
       <div
         className={cn(
           "fixed inset-0 left-16 z-10 bg-black/50 transition-opacity duration-300",
@@ -350,7 +359,6 @@ export function LeftSidebar({
             : "opacity-0 pointer-events-none"
         )}
         onClick={() => {
-          // Find the currently open panel and close it
           const openPanelId = Object.keys(panelOpenState).find(
             (key) => panelOpenState[key as PanelId]
           ) as PanelId | undefined;
@@ -361,8 +369,7 @@ export function LeftSidebar({
         aria-hidden="true"
       />
 
-      {/* Render Panels Conditionally */}
-      {/* Updated panel rendering to use modified getPanelClasses with explicit breakpoints */}
+      {/* Render Panels */}
       <div className={getPanelClasses("yuzu", "md:max-w-md")}>
         <YuzuPanel onClose={() => handleTogglePanel("yuzu")} />
       </div>
@@ -390,16 +397,17 @@ export function LeftSidebar({
         <TodosDataSource onClose={() => handleTogglePanel("todos")} />
       </div>
       <div className={getPanelClasses("finance", "md:max-w-sm")}>
-        <FinanceDataSource onClose={() => handleTogglePanel("finance")} />{" "}
-        {/* Updated component name */}
+        <FinanceDataSource onClose={() => handleTogglePanel("finance")} />
       </div>
       <div className={getPanelClasses("habits", "md:max-w-sm")}>
-        {" "}
-        {/* Add Habits Panel */}
         <HabitsDataSource onClose={() => handleTogglePanel("habits")} />
       </div>
+      {/* Quests Panel */}
+      <div className={getPanelClasses("quests", "md:max-w-md")}>
+        <QuestsPanel onClose={() => handleTogglePanel("quests")} />
+      </div>
 
-      {/* Render the changelog modal */}
+      {/* Changelog modal */}
       <ChangelogModal
         isOpen={isChangelogOpen}
         onOpenChange={setIsChangelogOpen}

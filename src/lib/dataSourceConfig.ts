@@ -4,7 +4,8 @@ import {
   CalendarDays,
   HeartPulse,
   ListTodo,
-  ListChecks, // Import the icon for Habits
+  ListChecks,
+  Target, // Import the Target icon for Quests
 } from "lucide-react";
 
 // Define the possible IDs for data source panels
@@ -13,7 +14,8 @@ export type DataSourceId =
   | "calendar"
   | "health"
   | "todos"
-  | "habits"; // Add 'habits'
+  | "habits"
+  | "quests"; // Add 'quests'
 
 // Define the structure for each data source configuration item
 export interface DataSourceConfigItem {
@@ -45,9 +47,14 @@ export const dataSourceConfig: DataSourceConfigItem[] = [
     IconComponent: ListTodo,
   },
   {
-    // Add configuration for Habits
     id: "habits",
     label: "Habits Data Source",
     IconComponent: ListChecks,
+  },
+  {
+    // Add configuration for Quests
+    id: "quests",
+    label: "Quests Data Source",
+    IconComponent: Target,
   },
 ];
