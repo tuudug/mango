@@ -4,18 +4,15 @@ import {
   CriterionProgressResult,
 } from "../questCriteriaRegistry";
 
-// Define the expected structure for the config object for this criterion type
 interface StepsReachConfig {
-  target_steps: number;
-  // Add other expected properties if any (e.g., period: 'daily' | 'weekly') - assume daily for now
+  target_count: number;
 }
 
-// Type guard to check if the config object matches the expected structure
 function isStepsReachConfig(config: any): config is StepsReachConfig {
   return (
     typeof config === "object" &&
     config !== null &&
-    typeof config.target_steps === "number"
+    typeof config.target_count === "number"
   );
 }
 
@@ -57,7 +54,7 @@ export const checkCriterionProgress: CriterionCheckFunction = async (
   }
 
   // Check if steps meet or exceed the target
-  if (actionData.steps >= criterion.config.target_steps) {
+  if (actionData.steps >= criterion.config.target_count) {
     // Target met for this day
     return { isMetOverride: true };
   }

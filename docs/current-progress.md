@@ -1,3 +1,31 @@
+# Current Progress: Quest UI, Auth Fixes (As of 2025-04-10 ~1:35 PM)
+
+## Goal: Improve Quest Panel UI, fix Quest progress tracking for steps, and resolve authentication issues after idle periods.
+
+## Implementation Progress:
+
+1.  **Quests Panel UI (`src/components/datasources/QuestsPanel.tsx`):**
+    *   Refactored layout to group "Active Quests" (Daily & Weekly) at the top, followed by "Available Quests" (Daily & Weekly).
+    *   Added subsections with headers for Daily/Weekly within both Active and Available sections.
+    *   Added active quest counts (e.g., `(1/2)`) to subsection headers in the Active section.
+    *   Moved "Generate/Reset" buttons to the main panel header.
+    *   Added shadcn/ui tooltips ("Generate Daily Quests", "Generate Weekly Quests") to generate buttons.
+    *   Added bottom padding to the scroll area to prevent content from being hidden by the footer.
+    *   _(Note: Compactness adjustments from previous plan were not explicitly implemented in this round but could be revisited)._
+2.  **Active Quests Summary Widget:**
+    *   Created new widget component `src/widgets/ActiveQuestsSummaryWidget.tsx`.
+    *   Displays total active quest count (e.g., "Active: 3/6") and lists titles of the first few active daily/weekly quests in larger views.
+    *   Registered widget type, metadata (Swords icon, Tracking group), default layout, and added to toolbox availability in `src/lib/widgetConfig.ts`.
+    *   Registered component in `src/components/DashboardGridItem.tsx`.
+3.  **Quest Progress Fix (`steps_reach`):**
+    *   **Diagnosis:** Identified via logs that `steps_reach` criteria were failing validation due to expecting `config.target_steps` while the database stored `config.target_count`. Activation date checks were also confirmed to be working correctly.
+    *   **Fix:** Modified the handler `api/src/services/quest-criteria-handlers/steps_reach.ts` to correctly check for and use `config.target_count`, aligning it with the stored data format.
+4.  **Authentication Fix (Idle Timeout):**
+    *   **Diagnosis:** Identified that multiple `401 Unauthorized` errors occurred upon returning to the app after >1 hour idle, indicating the Supabase token expired and the existing retry logic in `authenticatedFetch` (which reused the stale token) was insufficient.
+    *   **Fix:** Modified `authenticatedFetch` in `src/lib/apiClient.ts` to proactively attempt `supabase.auth.refreshSession()` upon receiving a 401 error. If successful, it updates the Authorization header with the new token before retrying the request. If the refresh fails, it throws the 401 error immediately without retrying.
+
+---
+
 # Current Progress: Quest Automation & Enhancements (v0.2.3) (As of 2025-04-09 ~11:34 PM)
 
 ## Goal: Implement automatic quest progress tracking, UI updates, and expiry logic.

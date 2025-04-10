@@ -32,7 +32,9 @@ import { PlaceholderWidget } from "../widgets/PlaceholderWidget";
 import { PomodoroWidget } from "../widgets/PomodoroWidget";
 import { SleepStepWidget } from "../widgets/SleepStepWidget";
 import { StepsTrackerWidget } from "../widgets/StepsTrackerWidget";
+
 import { TextDisplayWidget } from "../widgets/TextDisplayWidget"; // Import the new widget
+import { ActiveQuestsSummaryWidget } from "../widgets/ActiveQuestsSummaryWidget";
 import TodoListWidget from "../widgets/TodoList/index";
 
 // --- Update Props Interface ---
@@ -76,6 +78,7 @@ const widgetComponentMap: Record<
   "Habit Heatmap": HabitHeatmapWidget,
   "Habit Streaks": HabitStreakWidget,
   "Text Display": TextDisplayWidget, // Add the new widget mapping
+  "Active Quests Summary": ActiveQuestsSummaryWidget,
   Placeholder: PlaceholderWidget,
 };
 

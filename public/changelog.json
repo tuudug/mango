@@ -1,5 +1,17 @@
 [
   {
+    "version": "0.2.4",
+    "date": "2025-04-10",
+    "data": [
+      "Quests Panel: Active quests are now shown first, with clearer Daily/Weekly sections.",
+      "Quests Panel: Added tooltips to the 'Generate/Reset' buttons.",
+      "Quests Panel: Added active quest counts (e.g., 'Daily Quests (1/2)').",
+      "New Widget: Added 'Active Quests Summary' widget to see your active quests at a glance on the dashboard!",
+      "Bug Fix: Steps from Google Health should now correctly count towards quest progress.",
+      "Bug Fix: Improved app stability after being idle for a long time (fewer connection errors)."
+    ]
+  },
+  {
     "version": "0.2.3",
     "date": "2025-04-09",
     "data": [

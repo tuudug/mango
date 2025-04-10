@@ -2,6 +2,12 @@ import { Badge } from "@/components/ui/badge"; // Import Badge
 import { Button } from "@/components/ui/button";
 import { Card, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Quest, useQuests } from "@/contexts/QuestsContext";
 import {
   addDays,
@@ -339,32 +345,77 @@ export function QuestsPanel({ onClose }: QuestsPanelProps) {
     <div className="h-full flex flex-col text-gray-100">
       <div className="flex items-center justify-between p-4 border-b border-gray-700">
         <h2 className="text-xl font-semibold">Quests</h2>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onClose}
-          className="text-gray-400 hover:text-gray-100"
-        >
-          <X size={20} />
-        </Button>
+        <div className="flex gap-2">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => generateOrResetQuests("daily")}
+                  disabled={isGenerating || !canGenerateDaily()}
+                  className="border-blue-500 text-blue-400 hover:bg-blue-900/50 hover:text-blue-300"
+                >
+                  {isGenerating ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw size={14} className="mr-1.5" />
+                  )}
+                  Daily
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                Generate Daily Quests
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => generateOrResetQuests("weekly")}
+                  disabled={isGenerating || !canGenerateWeekly()}
+                  className="border-blue-500 text-blue-400 hover:bg-blue-900/50 hover:text-blue-300"
+                >
+                  {isGenerating ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw size={14} className="mr-1.5" />
+                  )}
+                  Weekly
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                Generate Weekly Quests
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-100"
+          >
+            <X size={20} />
+          </Button>
+        </div>
       </div>
-      <ScrollArea className="flex-grow p-4">
+      <ScrollArea className="flex-grow p-3 space-y-6 pb-24">
         {renderSection(
           "Daily Quests",
-          "daily", // Pass type
+          "daily",
           activeDailyQuests,
           availableDailyQuests,
           MAX_ACTIVE_DAILY_QUESTS
         )}
         {renderSection(
           "Weekly Quests",
-          "weekly", // Pass type
+          "weekly",
           activeWeeklyQuests,
           availableWeeklyQuests,
           MAX_ACTIVE_WEEKLY_QUESTS
         )}
       </ScrollArea>
-      {/* Optional Footer for info */}
       <div className="p-3 border-t border-gray-700 text-xs text-gray-500 flex items-center">
         <Info size={14} className="mr-1.5 flex-shrink-0" />
         <span>

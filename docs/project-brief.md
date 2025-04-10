@@ -53,7 +53,7 @@ These components handle the interaction and persistence of core application data
   - [x] Frontend: Add Generate/Reset buttons to `QuestsPanel`. **(Implemented)**
 - [x] **Automation & Progress Tracking (v0.2.3):**
   - [x] Backend: `updateQuestProgress` service to track user actions (habit checks, steps, finance, todos). **(Pomodoro deferred)**
-  - [x] Backend: Integrate `updateQuestProgress` calls into existing API endpoints (Habits, Todos, Health, Finance).
+  - [x] Backend: Integrate `updateQuestProgress` calls into existing API endpoints (Habits, Todos, Health, Finance). **(Steps tracking fixed by correcting handler config)**
   - [x] Backend: Automatically update criteria `current_progress` and `is_met`.
   - [x] Backend: Automatically update quest `status` to 'claimable' when all criteria met. **(Includes logging & small delay)**
   - [x] Frontend: Display criteria progress (`current_progress / target_count`) in `QuestsPanel`.
@@ -173,6 +173,7 @@ These components handle the interaction and persistence of core application data
     - [ ] Brain Teaser/Puzzle Widget
     - [ ] _(More Mini-Games - TBD)_
     - [x] Quest Log Widget (Considered, but using dedicated Panel instead - Implemented v0.2.1)
+    - [x] Active Quests Summary (`ActiveQuestsSummaryWidget.tsx`) - Shows count and list of active quests.
   - **Yuzu:** (Path for Yuzu features)
     - [ ] Unlock Casual Tone
     - [ ] Unlock Formal Tone
@@ -195,7 +196,7 @@ These components handle the interaction and persistence of core application data
 
 - [ ] Minimal user input focus.
 - [x] Intuitive interface (Implemented Left sidebar, sliding panels for Toolbox, GM, Profile, Paths, Data Sources, Finance Settings). **Sidebar refactored for dynamic data source buttons.**
-  - [x] Quests Panel (Implemented v0.2.1, updated v0.2.2)
+  - [x] Quests Panel (Implemented v0.2.1, UI refactored v0.2.3)
 - [x] Dashboard customization implemented.
 - [x] **Widget Adding:** Replaced drag-and-drop with click-to-add from toolbox.
 - [x] **Panel Behavior:**
@@ -224,7 +225,7 @@ These components handle the interaction and persistence of core application data
 - **[x] Development Aids:** Added widget coordinate display in dev mode.
 - **[x] Pomodoro Banner:** Banner now pushes content down instead of overlaying.
 - **[x] API Call Refactoring:** Centralized authenticated API calls into `src/lib/apiClient.ts` (`authenticatedFetch` function).
-- **[x] Transient 401 Error Handling:** Implemented automatic retry logic within `authenticatedFetch` to handle transient 401 errors during token refresh, reducing unnecessary error toasts.
+- **[x] 401 Error Handling:** Enhanced `authenticatedFetch` to proactively refresh session on 401 before retrying.
 - **[x] Live Resizing:** Widgets now update appearance during resize drag, not just after.
 - **[x] Timezone Consistency:** Fixed issue where daily resets (e.g., Daily Allowance, Habit checks) could occur at inconsistent times depending on user timezone vs. server time (UTC). Backend now uses user's timezone provided by the frontend.
 - **[x] Auth Context Refactor:** Separated initial load effect from auth state change listener to prevent potential infinite loops (v0.2.2).

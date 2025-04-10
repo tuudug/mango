@@ -1,4 +1,5 @@
 import { Session } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabaseClient";
 
 interface ApiErrorParams {
   status: number;
@@ -102,11 +103,48 @@ export async function authenticatedFetch<T>(
     // Check for 401 Unauthorized and retry once after a delay
     if (response.status === 401) {
       console.warn(
-        `Received 401 for ${method} ${url}. Retrying after delay...`
+        `Received 401 for ${method} ${url}. Attempting token refresh...`
       );
-      await new Promise((resolve) => setTimeout(resolve, 750)); // Wait 750ms
 
-      // Retry the fetch
+      try {
+        const { data, error } = await supabase.auth.refreshSession();
+        if (error || !data.session) {
+          console.warn(
+            `Token refresh failed or no session returned: ${error?.message}`
+          );
+          // Do not retry, throw original 401 error
+          const { body: errorBody, message: errorMessage } =
+            await parseErrorBody(response);
+          throw new ApiError({
+            status: response.status,
+            message: errorMessage,
+            body: errorBody,
+          });
+        }
+
+        console.log("Token refresh successful, retrying request...");
+        // Update session and Authorization header
+        session = data.session;
+        options.headers = {
+          ...options.headers,
+          Authorization: `Bearer ${session.access_token}`,
+        };
+      } catch (refreshError) {
+        console.error("Error during token refresh attempt:", refreshError);
+        const { body: errorBody, message: errorMessage } = await parseErrorBody(
+          response
+        );
+        throw new ApiError({
+          status: response.status,
+          message: errorMessage,
+          body: errorBody,
+        });
+      }
+
+      // Wait a moment before retrying
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // Retry the fetch with updated token
       response = await fetch(url, options);
       console.log(`Retry status for ${method} ${url}: ${response.status}`);
     }
