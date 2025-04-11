@@ -62,9 +62,9 @@ These components handle the interaction and persistence of core application data
 
 ### Yuzu
 
-- [ ] **Basic Interaction (Planned for v0.2):**
-  - [ ] Backend: `POST /api/yuzu/message` endpoint (initially simple responses).
-  - [ ] Frontend: Implement basic chat functionality in `YuzuPanel.tsx`.
+- [x] **Basic Interaction (v0.2.5):**
+  - [x] Backend: `POST /api/yuzu/message` endpoint (LLM integrated, context-aware). **Includes conversation history (last 10 msgs) and user data context (progress, quests, todos, habits, health, finance, calendar).**
+  - [x] Frontend: Implemented chat UI with history, suggestions, and API integration in `YuzuPanel.tsx`. **Includes initial static suggestions and dynamic LLM-generated suggestions.**
 - [ ] **Personality/Tone Customization (via Paths):**
   - [ ] Unlock Casual tone.
   - [ ] Unlock Formal tone.
@@ -241,3 +241,4 @@ These components handle the interaction and persistence of core application data
 - [ ] Urgency/Scarcity (carefully implemented).
 - [ ] Adherence to Yuzu Availability limits (upgradable via Paths/Subscription).
 - **[x] Task Breakdown:** Implemented Gemini integration for breaking down todo items, including prompt refinement **and parent context**.
+- **[x] Yuzu Chat Prompting:** Refined prompt to use conversation history and user context for more relevant responses and suggestions, avoiding generic praise.

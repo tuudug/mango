@@ -16,6 +16,7 @@ import financeRoutes from "./routes/finance"; // Import new finance routes
 import habitsRoutes from "./routes/habits"; // Import new habits routes
 import userRoutes from "./routes/user"; // Import the new user routes
 import questsRoutes from "./routes/quests"; // Import the new quests routes
+import yuzuRoutes from "./routes/yuzu";
 
 dotenv.config(); // Load environment variables from .env file
 
@@ -81,6 +82,7 @@ app.use("/api/finance", financeRoutes); // Add finance routes (uses ensureAuthen
 app.use("/api/habits", habitsRoutes); // Add habits routes (uses ensureAuthenticated internally)
 app.use("/api/user", userRoutes); // Add the user routes
 app.use("/api/quests", questsRoutes); // Add the quests routes
+app.use("/api/yuzu", yuzuRoutes);
 
 // Simple root route
 app.get("/api", (req: Request, res: Response) => {

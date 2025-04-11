@@ -1,5 +1,15 @@
 [
   {
+    "version": "0.2.5",
+    "date": "2025-04-11",
+    "data": [
+      "Yuzu Chat is here! Talk to your virtual companion in the sidebar.",
+      "Yuzu now understands your current progress (quests, habits, todos, etc.) and conversation history for more relevant replies.",
+      "Added suggested replies in the Yuzu chat to make conversations quicker.",
+      "Improved Yuzu's response quality and reduced generic replies."
+    ]
+  },
+  {
     "version": "0.2.4",
     "date": "2025-04-10",
     "data": [

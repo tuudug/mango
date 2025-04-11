@@ -10,7 +10,7 @@ dotenv.config({ path: ".env" }); // Ensure environment variables are loaded
 const API_KEY = process.env.GOOGLE_GEMINI_API_KEY;
 // Use a model known to be good at following JSON instructions if possible
 // gemini-1.5-flash-latest might be better than 1.0-pro for strict JSON output. Test needed.
-const MODEL_NAME = "gemini-1.5-flash-latest"; // Updated model suggestion
+const MODEL_NAME = "gemini-2.0-flash-lite"; // Updated model suggestion
 
 if (!API_KEY) {
   throw new Error("GOOGLE_GEMINI_API_KEY environment variable not set.");
@@ -26,6 +26,70 @@ const generationConfig = {
   maxOutputTokens: 4096, // Increased slightly for potentially larger JSON
   // Ensure response_mime_type is set if using Gemini 1.5 models for JSON mode
   responseMimeType: "application/json",
+};
+
+/**
+ * Calls the Gemini API with a given prompt and returns a chat response and suggestions.
+ * @param prompt The prompt string to send to the LLM.
+ * @returns An object with the main response and up to 4 suggestions.
+ * @throws Throws an error if the API call fails or is blocked.
+ */
+export const generateChatResponse = async (
+  prompt: string
+): Promise<{ yuzuResponse: string; suggestions: string[] }> => {
+  console.log(
+    "Sending prompt to Gemini for chat response (with suggestions)..."
+  );
+  try {
+    // Use JSON output mode for structured response
+    const chatConfig = {
+      ...generationConfig,
+      temperature: 0.7,
+      responseMimeType: "application/json",
+    };
+    const chatModel = genAI.getGenerativeModel({ model: MODEL_NAME });
+    const result = await chatModel.generateContent({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: chatConfig,
+      safetySettings,
+    });
+
+    if (!result.response) {
+      console.error("Gemini chat response blocked or unavailable.", result);
+      throw new Error(
+        "Gemini response was blocked due to safety settings or other issues."
+      );
+    }
+
+    const responseText = result.response.text().trim();
+    console.log("Gemini raw chat response text:", responseText);
+
+    // Parse the JSON response
+    try {
+      const parsed = JSON.parse(responseText);
+      const yuzuResponse =
+        typeof parsed.response === "string"
+          ? parsed.response
+          : "Sorry, I couldn't think of a reply just now.";
+      const suggestions =
+        Array.isArray(parsed.suggestions) && parsed.suggestions.length >= 2
+          ? parsed.suggestions.slice(0, 4)
+          : [];
+      return { yuzuResponse, suggestions };
+    } catch (err) {
+      console.error("Failed to parse Gemini response as JSON:", err);
+      return {
+        yuzuResponse: responseText,
+        suggestions: [],
+      };
+    }
+  } catch (error) {
+    console.error("Error calling Gemini API for chat response:", error);
+    if (error instanceof Error) {
+      throw new Error(`Gemini API Error: ${error.message}`);
+    }
+    throw new Error("Failed to generate chat response using AI.");
+  }
 };
 
 // Safety settings - adjust as needed for your use case

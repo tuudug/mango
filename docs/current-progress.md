@@ -1,3 +1,29 @@
+# Current Progress: Yuzu Chat Implementation & Refinements (As of 2025-04-11 ~5:53 PM)
+
+## Goal: Implement basic Yuzu chat with LLM integration, context awareness, and suggested replies.
+
+## Implementation Progress:
+
+1.  **Backend API (`/api/yuzu/message`):**
+    - Created new route and handler (`postMessage.ts`).
+    - Integrated `geminiService.ts` to generate chat responses.
+    - Added `generateChatResponse` function to `geminiService.ts` supporting JSON output for response + suggestions.
+    - Implemented user context fetching (`userContextService.ts`) to gather summaries from all data sources (Progress, Quests, Todos, Habits, Health, Finance, Calendar).
+    - Included conversation history (last 10 messages) and user context in the prompt sent to the LLM.
+    - Refined LLM prompt instructions to encourage context-aware responses, specific suggestions, and less generic praise.
+    - API now returns both Yuzu's response and 2-4 suggested user replies.
+2.  **Frontend (`src/components/YuzuPanel.tsx`):**
+    - Implemented chat UI with message history display (user/Yuzu differentiation).
+    - Added state for conversation history, loading status, and suggestions.
+    - Integrated API call using `authenticatedFetch` to send user messages and history, receiving Yuzu's response and suggestions.
+    - Added a suggestions area above the input, displaying clickable suggestion buttons.
+    - Implemented initial static suggestions on panel load.
+    - Clicking a suggestion sends it as a message.
+    - Added loading indicator while waiting for Yuzu's response.
+    - Included basic error handling using toasts.
+
+---
+
 # Current Progress: Quest UI, Auth Fixes (As of 2025-04-10 ~1:35 PM)
 
 ## Goal: Improve Quest Panel UI, fix Quest progress tracking for steps, and resolve authentication issues after idle periods.
@@ -5,24 +31,24 @@
 ## Implementation Progress:
 
 1.  **Quests Panel UI (`src/components/datasources/QuestsPanel.tsx`):**
-    *   Refactored layout to group "Active Quests" (Daily & Weekly) at the top, followed by "Available Quests" (Daily & Weekly).
-    *   Added subsections with headers for Daily/Weekly within both Active and Available sections.
-    *   Added active quest counts (e.g., `(1/2)`) to subsection headers in the Active section.
-    *   Moved "Generate/Reset" buttons to the main panel header.
-    *   Added shadcn/ui tooltips ("Generate Daily Quests", "Generate Weekly Quests") to generate buttons.
-    *   Added bottom padding to the scroll area to prevent content from being hidden by the footer.
-    *   _(Note: Compactness adjustments from previous plan were not explicitly implemented in this round but could be revisited)._
+    - Refactored layout to group "Active Quests" (Daily & Weekly) at the top, followed by "Available Quests" (Daily & Weekly).
+    - Added subsections with headers for Daily/Weekly within both Active and Available sections.
+    - Added active quest counts (e.g., `(1/2)`) to subsection headers in the Active section.
+    - Moved "Generate/Reset" buttons to the main panel header.
+    - Added shadcn/ui tooltips ("Generate Daily Quests", "Generate Weekly Quests") to generate buttons.
+    - Added bottom padding to the scroll area to prevent content from being hidden by the footer.
+    - _(Note: Compactness adjustments from previous plan were not explicitly implemented in this round but could be revisited)._
 2.  **Active Quests Summary Widget:**
-    *   Created new widget component `src/widgets/ActiveQuestsSummaryWidget.tsx`.
-    *   Displays total active quest count (e.g., "Active: 3/6") and lists titles of the first few active daily/weekly quests in larger views.
-    *   Registered widget type, metadata (Swords icon, Tracking group), default layout, and added to toolbox availability in `src/lib/widgetConfig.ts`.
-    *   Registered component in `src/components/DashboardGridItem.tsx`.
+    - Created new widget component `src/widgets/ActiveQuestsSummaryWidget.tsx`.
+    - Displays total active quest count (e.g., "Active: 3/6") and lists titles of the first few active daily/weekly quests in larger views.
+    - Registered widget type, metadata (Swords icon, Tracking group), default layout, and added to toolbox availability in `src/lib/widgetConfig.ts`.
+    - Registered component in `src/components/DashboardGridItem.tsx`.
 3.  **Quest Progress Fix (`steps_reach`):**
-    *   **Diagnosis:** Identified via logs that `steps_reach` criteria were failing validation due to expecting `config.target_steps` while the database stored `config.target_count`. Activation date checks were also confirmed to be working correctly.
-    *   **Fix:** Modified the handler `api/src/services/quest-criteria-handlers/steps_reach.ts` to correctly check for and use `config.target_count`, aligning it with the stored data format.
+    - **Diagnosis:** Identified via logs that `steps_reach` criteria were failing validation due to expecting `config.target_steps` while the database stored `config.target_count`. Activation date checks were also confirmed to be working correctly.
+    - **Fix:** Modified the handler `api/src/services/quest-criteria-handlers/steps_reach.ts` to correctly check for and use `config.target_count`, aligning it with the stored data format.
 4.  **Authentication Fix (Idle Timeout):**
-    *   **Diagnosis:** Identified that multiple `401 Unauthorized` errors occurred upon returning to the app after >1 hour idle, indicating the Supabase token expired and the existing retry logic in `authenticatedFetch` (which reused the stale token) was insufficient.
-    *   **Fix:** Modified `authenticatedFetch` in `src/lib/apiClient.ts` to proactively attempt `supabase.auth.refreshSession()` upon receiving a 401 error. If successful, it updates the Authorization header with the new token before retrying the request. If the refresh fails, it throws the 401 error immediately without retrying.
+    - **Diagnosis:** Identified that multiple `401 Unauthorized` errors occurred upon returning to the app after >1 hour idle, indicating the Supabase token expired and the existing retry logic in `authenticatedFetch` (which reused the stale token) was insufficient.
+    - **Fix:** Modified `authenticatedFetch` in `src/lib/apiClient.ts` to proactively attempt `supabase.auth.refreshSession()` upon receiving a 401 error. If successful, it updates the Authorization header with the new token before retrying the request. If the refresh fails, it throws the 401 error immediately without retrying.
 
 ---
 
