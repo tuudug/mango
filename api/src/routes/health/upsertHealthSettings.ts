@@ -17,7 +17,7 @@ export const upsertHealthSettings = async (
     return; // Ensure return is separate
   }
 
-  const { daily_steps_goal } = req.body;
+  const { daily_steps_goal, weight_goal } = req.body; // Extract weight_goal
 
   // Validate input
   if (
@@ -28,6 +28,17 @@ export const upsertHealthSettings = async (
     res.status(400).json({
       message:
         "Invalid input: daily_steps_goal must be a non-negative integer.",
+    });
+    return; // Explicit return after sending response
+  }
+
+  // Validate weight_goal: must be null or a positive number
+  if (
+    weight_goal !== null &&
+    (typeof weight_goal !== "number" || weight_goal <= 0)
+  ) {
+    res.status(400).json({
+      message: "Invalid input: weight_goal must be null or a positive number.",
     });
     return; // Explicit return after sending response
   }
@@ -46,6 +57,7 @@ export const upsertHealthSettings = async (
         {
           user_id: user.id,
           daily_steps_goal: daily_steps_goal,
+          weight_goal: weight_goal, // Add weight_goal to upsert data
           // created_at and updated_at are handled by defaults/triggers
         },
         {

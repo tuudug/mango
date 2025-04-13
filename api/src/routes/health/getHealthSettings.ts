@@ -16,7 +16,7 @@ export const getHealthSettings = async (req: Request, res: Response) => {
   try {
     const { data, error } = await supabase
       .from("manual_health_settings")
-      .select("daily_steps_goal")
+      .select("daily_steps_goal, weight_goal") // Select both goals
       .eq("user_id", user.id) // Use user.id from the check above
       .maybeSingle(); // Use maybeSingle to handle case where no settings exist yet
 
@@ -29,10 +29,16 @@ export const getHealthSettings = async (req: Request, res: Response) => {
       return; // Explicit return after sending response
     }
 
-    // If no settings found for the user, return the default
+    // If no settings found for the user, return defaults (null for weight goal initially)
     const settings = data
-      ? { daily_steps_goal: data.daily_steps_goal }
-      : { daily_steps_goal: 10000 };
+      ? {
+          daily_steps_goal: data.daily_steps_goal ?? 10000, // Default if null in DB
+          weight_goal: data.weight_goal, // Can be null
+        }
+      : {
+          daily_steps_goal: 10000,
+          weight_goal: null, // Default weight goal is null
+        };
 
     res.status(200).json(settings);
     return; // Ensure void return type for handler

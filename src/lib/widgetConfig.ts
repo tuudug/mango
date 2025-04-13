@@ -20,6 +20,7 @@ import {
   TrendingUp, // Import icon for Habit Streaks
   Type, // Icon for Text Display
   Swords, // Icon for Active Quests Summary
+  Scale, // Icon for Weight Tracker
 } from "lucide-react";
 import { GridItem } from "./dashboardConfig"; // Import GridItem for config type
 
@@ -57,6 +58,7 @@ export type WidgetType =
   | "Habit Streaks" // Add Habit Streaks type
   | "Text Display" // Add Text Display type
   | "Active Quests Summary"
+  | "Weight Tracker" // Add Weight Tracker type
   | "Placeholder";
 
 // Available widgets for the toolbox - Add Habit Streaks
@@ -80,6 +82,7 @@ export const availableWidgets: WidgetType[] = [
   "Habit Streaks", // Add Habit Streaks to toolbox
   "Text Display", // Add Text Display to toolbox
   "Active Quests Summary",
+  "Weight Tracker", // Add Weight Tracker to toolbox
   // Placeholder is not available in the toolbox
 ];
 
@@ -108,6 +111,7 @@ export const defaultWidgetLayouts: Record<
   "Text Display": { w: 4, h: 3, minW: 2, minH: 2 }, // Add Text Display layout
   Placeholder: { w: 12, h: 7, minW: 8, minH: 5 },
   "Active Quests Summary": { w: 4, h: 4, minW: 2, minH: 2 },
+  "Weight Tracker": { w: 4, h: 4, minW: 3, minH: 3 }, // Add Weight Tracker layout
 };
 
 // Widget Metadata: Icon, Accent Color (Left Border), and Group - Add Habit Streaks
@@ -218,6 +222,12 @@ export const widgetMetadata: Record<
     colorAccentClass: "border-l-yellow-400",
     group: "Tracking",
   },
+  "Weight Tracker": {
+    // Add Weight Tracker metadata
+    icon: Scale,
+    colorAccentClass: "border-l-purple-400", // Use purple like Goal Tracker
+    group: "Tracking",
+  },
 };
 
 // --- NEW: Widget Configuration Component Mapping ---
@@ -253,4 +263,5 @@ export const widgetConfigComponents: Record<
   "Text Display": TextDisplayConfig, // Map to the new config component
   Placeholder: null,
   "Active Quests Summary": null,
+  "Weight Tracker": null, // No specific config component needed
 };

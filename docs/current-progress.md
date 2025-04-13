@@ -1,3 +1,41 @@
+# Current Progress: Weight Tracking Implementation (As of 2025-04-14 ~12:07 AM)
+
+## Goal: Implement manual weight tracking, goal setting, and a dashboard widget with visualization.
+
+## Implementation Progress:
+
+1.  **Database Schema (Supabase):**
+    - Added `weight_goal` column (`numeric`, nullable) to `manual_health_settings` table. (Requires manual SQL execution by user).
+2.  **Backend API (`/api/health`):**
+    - Updated `GET /settings` (`getHealthSettings.ts`) to fetch and return `weight_goal`.
+    - Updated `PUT /settings` (`upsertHealthSettings.ts`) to accept, validate, and save `weight_goal`.
+    - Updated `GET /` (`getHealthEntries.ts`) to include `weight_goal` in the `healthSettings` part of the response.
+    - Ensured `POST /manual` and `DELETE /manual/:id` handle entries with `type: 'weight'`.
+3.  **Frontend Context (`src/contexts/HealthContext.tsx`):**
+    - Updated `HealthSettings` interface to include `weight_goal: number | null`.
+    - Updated `fetchHealthData` to process and store `weight_goal`.
+    - Updated `updateHealthSettings` to accept and validate the full `HealthSettings` object including `weight_goal`.
+4.  **Frontend Panel (`src/components/datasources/HealthDataSource.tsx`):**
+    - Added "Weight Goal (kg)" input to the Settings section.
+    - Added "Add Manual Weight Entry (Today)" form (date input removed, uses current date).
+    - Updated "Recorded Health Data" list to display weight entries with units (kg) and a Scale icon.
+    - Removed date input from "Add Manual Step Entry" form (now uses current date).
+5.  **Frontend Widget (`src/widgets/WeightTrackerWidget.tsx`):**
+    - Created new widget component `WeightTrackerWidget.tsx`.
+    - Displays latest weight, weight goal, and difference from goal.
+    - Includes a "+" button in the header to open a quick entry modal.
+    - Added a minimalistic `recharts` area chart showing weight trend (last 30 days, using temporary fake data for now).
+    - Chart includes gradient fill (purple), solid horizontal grid lines, dynamic Y-axis based on data range (+/- 2kg buffer), and custom tooltip.
+6.  **Frontend Modal (`src/components/WeightEntryModal.tsx`):**
+    - Created reusable modal component for quick weight entry.
+    - Includes date (defaults to today) and weight inputs.
+    - Calls `addManualHealthEntry` context function on submit.
+7.  **Widget Registration:**
+    - Added "Weight Tracker" type, default layout, and metadata (Scale icon, purple accent, Tracking group) to `src/lib/widgetConfig.ts`.
+    - Added component mapping to `src/components/DashboardGridItem.tsx`.
+
+---
+
 # Current Progress: Yuzu Chat Implementation & Refinements (As of 2025-04-11 ~5:53 PM)
 
 ## Goal: Implement basic Yuzu chat with LLM integration, context awareness, and suggested replies.

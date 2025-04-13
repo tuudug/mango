@@ -25,6 +25,7 @@ export interface HealthEntry {
 // Define the structure for health settings
 export interface HealthSettings {
   daily_steps_goal: number;
+  weight_goal: number | null; // Add weight_goal
 }
 
 // Define the shape of the context data
@@ -73,7 +74,7 @@ export const HealthProvider: React.FC<HealthProviderProps> = ({ children }) => {
   );
   // Add state for health settings
   const [healthSettings, setHealthSettings] = useState<HealthSettings | null>(
-    null
+    null // Initial state remains null until fetched
   );
   const { session } = useAuth();
   const { showToast } = useToast();
@@ -85,15 +86,22 @@ export const HealthProvider: React.FC<HealthProviderProps> = ({ children }) => {
     setIsLoading(true);
     setError(null);
     try {
+      // Expect updated HealthSettings structure from API
       const data = await authenticatedFetch<{
         healthEntries: HealthEntry[];
         isGoogleHealthConnected: boolean;
-        healthSettings: HealthSettings; // Expect settings in response
+        healthSettings: HealthSettings;
       }>("/api/health", "GET", session);
 
       setHealthData(data.healthEntries || []);
       setIsGoogleHealthConnected(data.isGoogleHealthConnected);
-      setHealthSettings(data.healthSettings || { daily_steps_goal: 10000 }); // Set settings, provide default if missing
+      // Set settings, provide defaults if missing from response (though API should provide them)
+      setHealthSettings(
+        data.healthSettings || {
+          daily_steps_goal: 10000,
+          weight_goal: null,
+        }
+      );
       setLastFetchTime(new Date());
       console.log(
         "Google Health Connected Status (from backend):",
@@ -141,7 +149,8 @@ export const HealthProvider: React.FC<HealthProviderProps> = ({ children }) => {
       setLastFetchTime(null);
       setHealthSettings(null); // Clear settings on logout
     }
-  }, [session, fetchHealthDataIfNeeded]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session]); // Removed fetchHealthDataIfNeeded dependency as it causes loops sometimes
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -290,6 +299,7 @@ export const HealthProvider: React.FC<HealthProviderProps> = ({ children }) => {
   };
 
   // --- Settings Update Function ---
+  // Accepts the full HealthSettings object
   const updateHealthSettings = async (settingsToUpdate: HealthSettings) => {
     if (!session) {
       setError("You must be logged in to update settings.");
@@ -301,11 +311,26 @@ export const HealthProvider: React.FC<HealthProviderProps> = ({ children }) => {
       return;
     }
     // Basic validation on frontend too
+    // Validate steps goal
     if (
       settingsToUpdate.daily_steps_goal < 0 ||
       !Number.isInteger(settingsToUpdate.daily_steps_goal)
     ) {
       setError("Invalid goal: Steps goal must be a non-negative integer.");
+      showToast({
+        title: "Validation Error",
+        description: "Steps goal must be a non-negative integer.",
+        variant: "error",
+      });
+      return;
+    }
+    // Validate weight goal
+    if (
+      settingsToUpdate.weight_goal !== null &&
+      (typeof settingsToUpdate.weight_goal !== "number" ||
+        settingsToUpdate.weight_goal <= 0)
+    ) {
+      setError("Invalid goal: Weight goal must be null or a positive number.");
       showToast({
         title: "Validation Error",
         description: "Steps goal must be a non-negative integer.",

@@ -1,5 +1,15 @@
 [
   {
+    "version": "0.2.6",
+    "date": "2025-04-14",
+    "data": [
+      "Added Weight Tracking! Set your goal in the Health Data panel.",
+      "New Widget: Added 'Weight Tracker' widget to visualize your progress with a chart.",
+      "Weight Tracker widget includes a quick-add button (+) to easily log today's weight.",
+      "Manual step and weight entries in the Health Data panel now automatically use today's date."
+    ]
+  },
+  {
     "version": "0.2.5",
     "date": "2025-04-11",
     "data": [

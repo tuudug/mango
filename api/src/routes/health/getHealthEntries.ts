@@ -15,6 +15,7 @@ import { updateQuestProgress } from "../../services/questService"; // Import que
 // Define the expected structure for health settings
 interface HealthSettings {
   daily_steps_goal: number;
+  weight_goal: number | null; // Add weight_goal (can be null)
 }
 
 export const getHealthEntries = async (
@@ -298,12 +299,15 @@ export const getHealthEntries = async (
     const finalHealthEntries = Object.values(aggregatedData);
 
     // 3. Fetch Health Settings
-    let healthSettings: HealthSettings = { daily_steps_goal: 10000 }; // Default settings
+    let healthSettings: HealthSettings = {
+      daily_steps_goal: 10000,
+      weight_goal: null,
+    }; // Default settings
     try {
       const { data: settingsData, error: settingsError } =
         await supabaseUserClient
           .from("manual_health_settings")
-          .select("daily_steps_goal")
+          .select("daily_steps_goal, weight_goal") // Select both goals
           .eq("user_id", currentUserId)
           .maybeSingle();
 
@@ -314,7 +318,11 @@ export const getHealthEntries = async (
         );
         // Don't fail the whole request, just use defaults
       } else if (settingsData) {
-        healthSettings = { daily_steps_goal: settingsData.daily_steps_goal };
+        // Assign fetched values, keeping defaults if null in DB
+        healthSettings = {
+          daily_steps_goal: settingsData.daily_steps_goal ?? 10000,
+          weight_goal: settingsData.weight_goal, // Assign fetched weight_goal (can be null)
+        };
       }
     } catch (settingsErr) {
       console.error(

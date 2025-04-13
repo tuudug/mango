@@ -35,6 +35,7 @@ import { StepsTrackerWidget } from "../widgets/StepsTrackerWidget";
 
 import { TextDisplayWidget } from "../widgets/TextDisplayWidget"; // Import the new widget
 import { ActiveQuestsSummaryWidget } from "../widgets/ActiveQuestsSummaryWidget";
+import { WeightTrackerWidget } from "../widgets/WeightTrackerWidget"; // Import Weight Tracker
 import TodoListWidget from "../widgets/TodoList/index";
 
 // --- Update Props Interface ---
@@ -79,6 +80,7 @@ const widgetComponentMap: Record<
   "Habit Streaks": HabitStreakWidget,
   "Text Display": TextDisplayWidget, // Add the new widget mapping
   "Active Quests Summary": ActiveQuestsSummaryWidget,
+  "Weight Tracker": WeightTrackerWidget, // Add Weight Tracker mapping
   Placeholder: PlaceholderWidget,
 };
 
