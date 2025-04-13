@@ -8,6 +8,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef, // Import useRef
   useState,
 } from "react";
 
@@ -64,6 +65,9 @@ interface FinanceContextType {
   goToPreviousWeek: () => void;
   goToNextWeek: () => void;
   goToCurrentWeek: () => void;
+  // Expose fetch functions needed by FetchManager
+  fetchSettings: () => Promise<void>;
+  fetchTodaysEntries: () => Promise<void>;
 }
 
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
@@ -95,10 +99,10 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({
     WeeklyExpenseSummary[]
   >([]);
   const [isLoadingWeeklyEntries, setIsLoadingWeeklyEntries] = useState(true);
-  const [hasFetchedInitialData, setHasFetchedInitialData] = useState(false); // Flag to track initial fetch
-  const [lastFetchTime, setLastFetchTime] = useState<Date | null>(null); // Track last fetch time
-
-  const REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+  // Removed hasFetchedInitialData state
+  // Removed lastFetchTime state
+  // Removed REFRESH_INTERVAL_MS constant
+  const initialFetchDoneRef = useRef(false); // Ref to track initial fetch
 
   // --- Fetch Functions ---
 
@@ -119,10 +123,13 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({
       // Destructure to omit current_balance before setting state
       const { current_balance: _current_balance, ...relevantSettings } = data;
       setSettings(relevantSettings);
-      setLastFetchTime(new Date()); // Update timestamp on successful fetch
-      console.log("Finance settings loaded:", relevantSettings);
+      // Removed setLastFetchTime
+      console.log(
+        "[FinanceContext] Finance settings loaded:",
+        relevantSettings
+      ); // Prefixed log
     } catch (err) {
-      console.error("Error fetching finance settings:", err);
+      console.error("[FinanceContext] Error fetching finance settings:", err); // Prefixed log
       const message =
         err instanceof Error ? err.message : "Failed to load finance settings";
       setError(message);
@@ -153,10 +160,13 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({
         session
       );
       setTodaysExpenses(data);
-      setLastFetchTime(new Date()); // Update timestamp on successful fetch
-      console.log("Today's finance entries loaded:", data);
+      // Removed setLastFetchTime
+      console.log("[FinanceContext] Today's finance entries loaded:", data); // Prefixed log
     } catch (err) {
-      console.error("Error fetching today's finance entries:", err);
+      console.error(
+        "[FinanceContext] Error fetching today's finance entries:",
+        err
+      ); // Prefixed log
       const message =
         err instanceof Error
           ? err.message
@@ -198,13 +208,13 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({
           session
         );
         setWeeklyExpensesData(data);
-        setLastFetchTime(new Date()); // Update timestamp on successful fetch
+        // Removed setLastFetchTime
         console.log(
-          `Weekly expenses loaded for week starting ${startDateStr}:`,
+          `[FinanceContext] Weekly expenses loaded for week starting ${startDateStr}:`, // Prefixed log
           data
         );
       } catch (err) {
-        console.error("Error fetching weekly expenses:", err);
+        console.error("[FinanceContext] Error fetching weekly expenses:", err); // Prefixed log
         const message =
           err instanceof Error ? err.message : "Failed to load weekly expenses";
         setError(message);
@@ -223,62 +233,21 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({
 
   // --- Data Fetching Logic ---
 
-  // Function to fetch all data if interval elapsed
-  const fetchDataIfNeeded = useCallback(() => {
-    if (
-      !session ||
-      isAuthLoading ||
-      isLoadingSettings ||
-      isLoadingEntries ||
-      isLoadingWeeklyEntries
-    ) {
-      return; // Don't fetch if not logged in or already loading
-    }
+  // Removed fetchDataIfNeeded function
 
-    const now = new Date();
-    if (
-      !lastFetchTime ||
-      now.getTime() - lastFetchTime.getTime() > REFRESH_INTERVAL_MS
-    ) {
-      console.log("Finance refresh interval elapsed, fetching data...");
-      // Fetch all relevant data
-      fetchSettings();
-      fetchTodaysEntries();
-      // Fetch weekly expenses for the *currently selected* week
-      fetchWeeklyExpenses(currentReportWeekStart);
-    } else {
-      console.log("Skipping finance fetch, refresh interval not elapsed.");
-    }
-  }, [
-    session,
-    isAuthLoading,
-    isLoadingSettings,
-    isLoadingEntries,
-    isLoadingWeeklyEntries,
-    lastFetchTime,
-    fetchSettings,
-    fetchTodaysEntries,
-    fetchWeeklyExpenses,
-    currentReportWeekStart, // Include week start as it's used in the fetch call
-  ]);
-
-  // Effect for initial fetch based on Auth State
+  // Effect for initial fetch based on Auth State - only fetch once
   useEffect(() => {
-    console.log("FinanceDataSource: Auth Effect Triggered", {
-      isAuthLoading,
-      sessionExists: !!session,
-      hasFetched: hasFetchedInitialData,
-    });
-    // Fetch only if auth is ready, session exists, AND initial data hasn't been fetched yet
-    if (!isAuthLoading && session && !hasFetchedInitialData) {
-      console.log("FinanceDataSource: Fetching initial data (first time)...");
-      setHasFetchedInitialData(true); // Set flag BEFORE fetching
+    if (!isAuthLoading && session && !initialFetchDoneRef.current) {
+      console.log(
+        "[FinanceContext] Session detected for the first time, fetching initial data..."
+      ); // Prefixed log
+      initialFetchDoneRef.current = true; // Set flag BEFORE fetching
       // Call individual fetches directly for the very first load
       fetchSettings();
       fetchTodaysEntries();
       fetchWeeklyExpenses(currentReportWeekStart);
     } else if (!isAuthLoading && !session) {
-      console.log("FinanceDataSource: Clearing data and reset flags on logout");
+      console.log("[FinanceContext] Clearing data and reset flags on logout"); // Prefixed log
       setSettings(null);
       setTodaysExpenses([]);
       setWeeklyExpensesData([]);
@@ -286,15 +255,15 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({
       setIsLoadingEntries(false);
       setIsLoadingWeeklyEntries(false);
       setError(null);
-      setHasFetchedInitialData(false); // Reset initial fetch flag
-      setLastFetchTime(null); // Reset refresh timestamp
+      initialFetchDoneRef.current = false; // Reset initial fetch flag
+      // Removed setLastFetchTime
       // Reset week start on logout? Maybe not necessary if UI resets.
       // setCurrentReportWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }));
     }
   }, [
     isAuthLoading,
     session,
-    hasFetchedInitialData,
+    // Removed hasFetchedInitialData dependency
     fetchSettings,
     fetchTodaysEntries,
     fetchWeeklyExpenses,
@@ -306,7 +275,7 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({
   useEffect(() => {
     if (!isAuthLoading && session) {
       console.log(
-        "FinanceDataSource: Week changed, fetching weekly expenses for:",
+        "[FinanceContext] Week changed, fetching weekly expenses for:", // Prefixed log
         currentReportWeekStart
       );
       fetchWeeklyExpenses(currentReportWeekStart);
@@ -385,7 +354,7 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({
         });
         return true;
       } catch (err) {
-        console.error("Error adding expense:", err);
+        console.error("[FinanceContext] Error adding expense:", err); // Prefixed log
         const message =
           err instanceof Error ? err.message : "Failed to add expense";
         setError(message);
@@ -455,7 +424,7 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({
         showToast({ title: "Expense Deleted", variant: "success" });
         return true;
       } catch (err) {
-        console.error("Error deleting expense:", err);
+        console.error("[FinanceContext] Error deleting expense:", err); // Prefixed log
         setTodaysExpenses(originalExpenses); // Revert optimistic update
         // Refetch weekly data on error as well to be safe
         fetchWeeklyExpenses(currentReportWeekStart); // Don't await
@@ -507,7 +476,7 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({
         showToast({ title: "Finance Settings Updated", variant: "success" });
         return true;
       } catch (err) {
-        console.error("Error updating finance settings:", err);
+        console.error("[FinanceContext] Error updating finance settings:", err); // Prefixed log
         const message =
           err instanceof Error ? err.message : "Failed to update settings";
         setError(message);
@@ -543,21 +512,7 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({
     );
   }, []);
 
-  // Effect for window visibility change
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        console.log(
-          "Finance Window became visible, checking if fetch needed..."
-        );
-        fetchDataIfNeeded(); // Use the interval-checking function
-      }
-    };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, [fetchDataIfNeeded]);
+  // Removed window visibility change useEffect hook
 
   // --- Context Value ---
   const calculatedRemainingToday = useMemo(() => {
@@ -591,6 +546,9 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({
       goToPreviousWeek,
       goToNextWeek,
       goToCurrentWeek,
+      // Add fetch functions to value
+      fetchSettings,
+      fetchTodaysEntries,
     }),
     [
       settings,
@@ -608,6 +566,9 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({
       goToPreviousWeek,
       goToNextWeek,
       goToCurrentWeek,
+      // Add fetch functions to dependencies
+      fetchSettings,
+      fetchTodaysEntries,
     ]
   );
 

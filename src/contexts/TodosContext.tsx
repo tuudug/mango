@@ -1,16 +1,18 @@
+import { ApiError, authenticatedFetch } from "@/lib/apiClient"; // Import the new utility and error class
 import React, {
   createContext,
-  useState,
-  useEffect,
-  useContext,
   ReactNode,
   useCallback,
+  useContext,
+  useEffect,
+  // Removed duplicate useContext
   useMemo,
+  useRef,
+  useState,
 } from "react";
 import { useAuth } from "./AuthContext";
-import { useToast } from "./ToastContext"; // Import useToast
-import { authenticatedFetch, ApiError } from "@/lib/apiClient"; // Import the new utility and error class
 import { useQuests } from "./QuestsContext"; // Import useQuests
+import { useToast } from "./ToastContext"; // Import useToast
 
 // Define the structure of a todo item from backend
 export interface TodoItem {
@@ -39,7 +41,7 @@ interface TodosContextType {
   nestedTodos: NestedTodoItem[];
   isLoading: boolean;
   error: string | null;
-  fetchTodos: () => Promise<void>;
+  fetchTodos: () => Promise<void>; // This is the main fetch function
   addTodo: (
     title: string,
     parentId?: string | null,
@@ -54,8 +56,7 @@ interface TodosContextType {
   ) => Promise<void>;
   breakdownTodo: (todo: TodoItem) => Promise<void>;
   moveTodo: (id: string, direction: "up" | "down") => Promise<void>; // Added moveTodo
-  fetchTodosIfNeeded: () => void;
-  lastFetchTime: Date | null;
+  // Removed fetchTodosIfNeeded and lastFetchTime
   togglingTodoId: string | null;
   editingTodoId: string | null;
 }
@@ -93,15 +94,15 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
   const [todos, setTodos] = useState<TodoItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [lastFetchTime, setLastFetchTime] = useState<Date | null>(null);
+  // Removed lastFetchTime state
   const [togglingTodoId, setTogglingTodoId] = useState<string | null>(null);
   const [editingTodoId, setEditingTodoId] = useState<string | null>(null);
   const { session } = useAuth();
   const { showToast } = useToast();
   const { fetchQuests: fetchQuestsData } = useQuests(); // Get fetchQuests from QuestsContext
+  const initialFetchDoneRef = useRef(false); // Ref to track initial fetch
 
-  const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
-
+  // Removed REFRESH_INTERVAL_MS constant
   // Removed getAuthHeaders as it's handled by authenticatedFetch
 
   const fetchTodos = useCallback(async () => {
@@ -116,9 +117,9 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
         session
       );
       setTodos(data.todoItems || []);
-      setLastFetchTime(new Date());
+      // Removed setLastFetchTime
     } catch (e) {
-      console.error("Failed to fetch todos:", e);
+      console.error("[TodosContext] Failed to fetch todos:", e); // Prefixed log
       // ApiError has a message property, other errors might too
       const errorMsg = e instanceof Error ? e.message : "Failed to fetch todos";
       setError(errorMsg);
@@ -133,41 +134,25 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
     }
   }, [session, showToast]); // Removed getAuthHeaders from dependencies
 
-  const fetchTodosIfNeeded = useCallback(() => {
-    if (isLoading) return;
-    const now = new Date();
-    if (
-      !lastFetchTime ||
-      now.getTime() - lastFetchTime.getTime() > REFRESH_INTERVAL_MS
-    ) {
-      console.log("Todo refresh interval elapsed, fetching...");
+  // Removed fetchTodosIfNeeded function
+
+  // Effect to fetch todos when session changes - only fetch once
+  useEffect(() => {
+    if (session && !initialFetchDoneRef.current) {
+      console.log(
+        "[TodosContext] Session detected for the first time, fetching initial todos..."
+      ); // Prefixed log
+      initialFetchDoneRef.current = true; // Mark initial fetch as done
       fetchTodos();
-    } else {
-      console.log("Skipping todo fetch, refresh interval not elapsed.");
-    }
-  }, [isLoading, lastFetchTime, fetchTodos]);
-
-  useEffect(() => {
-    if (session) {
-      fetchTodosIfNeeded();
-    } else {
+    } else if (!session) {
+      // Clear data and reset flag on logout
       setTodos([]);
-      setLastFetchTime(null);
+      // Removed setLastFetchTime
+      initialFetchDoneRef.current = false; // Reset flag
     }
-  }, [session, fetchTodosIfNeeded]); // Added fetchTodosIfNeeded dependency
+  }, [session, fetchTodos]); // Depend on session and fetchTodos
 
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        console.log("Todo Window became visible, checking if fetch needed...");
-        fetchTodosIfNeeded();
-      }
-    };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, [fetchTodosIfNeeded]);
+  // Removed visibility change useEffect hook
 
   const addTodo = async (
     title: string,
@@ -193,7 +178,7 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
       // Refetch after successful add
       await fetchTodos();
     } catch (e) {
-      console.error("Failed to add todo:", e);
+      console.error("[TodosContext] Failed to add todo:", e); // Prefixed log
       const errorMsg = e instanceof Error ? e.message : "Failed to add todo";
       setError(errorMsg);
       showToast({
@@ -289,13 +274,15 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
 
       // Trigger quest refresh if todo was marked complete, with a short delay
       if (updatedTodo.is_completed === true) {
-        console.log(`Todo ${id} completed, triggering delayed quest refresh.`);
+        console.log(
+          `[TodosContext] Todo ${id} completed, triggering delayed quest refresh.`
+        ); // Prefixed log
         setTimeout(() => fetchQuestsData({ forceRefresh: true }), 750); // Delay 750ms
       }
     } catch (e) {
       // Revert optimistic update on error
       setTodos(originalTodos);
-      console.error("Failed to toggle todo:", e);
+      console.error("[TodosContext] Failed to toggle todo:", e); // Prefixed log
       const errorMsg = e instanceof Error ? e.message : "Failed to toggle todo";
       setError(errorMsg);
       showToast({
@@ -343,7 +330,7 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
     } catch (e) {
       // Revert optimistic update on error
       setTodos(originalTodos);
-      console.error("Failed to edit todo:", e);
+      console.error("[TodosContext] Failed to edit todo:", e); // Prefixed log
       const errorMsg = e instanceof Error ? e.message : "Failed to edit todo";
       setError(errorMsg);
       showToast({
@@ -404,7 +391,7 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
     } catch (e) {
       // Revert optimistic update on error
       setTodos(originalTodos);
-      console.error("Failed to reorder todos:", e);
+      console.error("[TodosContext] Failed to reorder todos:", e); // Prefixed log
       const errorMsg =
         e instanceof Error ? e.message : "Failed to reorder todos";
       setError(errorMsg);
@@ -438,10 +425,12 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
       const parent = todos.find((t) => t.id === todo.parent_id);
       if (parent) {
         parentTitle = parent.title;
-        console.log(`Found parent title for breakdown: "${parentTitle}"`);
+        console.log(
+          `[TodosContext] Found parent title for breakdown: "${parentTitle}"`
+        ); // Prefixed log
       } else {
         console.warn(
-          `Parent todo with id ${todo.parent_id} not found in context state.`
+          `[TodosContext] Parent todo with id ${todo.parent_id} not found in context state.` // Prefixed log
         );
       }
     }
@@ -502,7 +491,7 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
         });
       } else {
         // General error handling
-        console.error("Failed to break down todo:", e);
+        console.error("[TodosContext] Failed to break down todo:", e); // Prefixed log
         const errorMsg =
           e instanceof Error ? e.message : "Failed to break down task";
         setError(errorMsg);
@@ -572,7 +561,7 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
     } catch (e) {
       // Revert optimistic update on error
       setTodos(originalTodos);
-      console.error(`Failed to move todo ${direction}:`, e);
+      console.error(`[TodosContext] Failed to move todo ${direction}:`, e); // Prefixed log
       const errorMsg =
         e instanceof Error ? e.message : `Failed to move todo ${direction}`;
       setError(errorMsg);
@@ -603,8 +592,7 @@ export const TodosProvider: React.FC<TodosProviderProps> = ({ children }) => {
     reorderTodos,
     breakdownTodo,
     moveTodo, // Add moveTodo to context value
-    fetchTodosIfNeeded,
-    lastFetchTime,
+    // Removed fetchTodosIfNeeded and lastFetchTime
     togglingTodoId,
     editingTodoId,
   };

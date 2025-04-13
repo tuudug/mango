@@ -238,6 +238,7 @@ These components handle the interaction and persistence of core application data
 - **[x] Live Resizing:** Widgets now update appearance during resize drag, not just after.
 - **[x] Timezone Consistency:** Fixed issue where daily resets (e.g., Daily Allowance, Habit checks) could occur at inconsistent times depending on user timezone vs. server time (UTC). Backend now uses user's timezone provided by the frontend.
 - **[x] Auth Context Refactor:** Separated initial load effect from auth state change listener to prevent potential infinite loops (v0.2.2).
+- **[x] Centralized Fetching:** Implemented `FetchManagerContext` to control data fetching frequency (cooldown on focus), provide manual refresh, and prevent redundant fetches on auth state changes.
 
 ## LLM Prompting Considerations
 

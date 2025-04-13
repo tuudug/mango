@@ -1,20 +1,19 @@
-import React, { useState, useMemo } from "react";
-import { useHealth } from "@/contexts/HealthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Scale, CirclePlus, TrendingUp, TrendingDown } from "lucide-react";
 import { WeightEntryModal } from "@/components/WeightEntryModal"; // Import the modal
+import { useHealth } from "@/contexts/HealthContext";
+import { format, parseISO, subDays } from "date-fns"; // Import date-fns helpers
+import { CirclePlus, TrendingDown, TrendingUp } from "lucide-react";
+import { useMemo, useState } from "react";
 import {
-  ResponsiveContainer,
-  AreaChart, // Use AreaChart
-  Area, // Use Area
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer, // Use Area
   Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid, // Import CartesianGrid
-  // Defs is NOT exported, use SVG <defs> directly
 } from "recharts"; // Import recharts components
-import { format, parseISO, subDays } from "date-fns"; // Import date-fns helpers
 
 // Define the props your widget expects (must include id, w, h)
 interface WidgetProps {

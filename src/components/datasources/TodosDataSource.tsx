@@ -5,9 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area"; // Import ScrollArea
 import { useTodos } from "@/contexts/TodosContext";
-import { ListChecks, X, Trash2 } from "lucide-react";
-import React, { useState, useEffect } from "react";
-import { addMinutes, differenceInSeconds } from "date-fns"; // Import more date-fns
+import { ListChecks, Trash2, X } from "lucide-react";
+import React, { useState } from "react";
 
 // Define props including onClose
 interface TodosDataSourceProps {
@@ -23,44 +22,12 @@ export function TodosDataSource({ onClose }: TodosDataSourceProps) {
     addTodo,
     deleteTodo,
     toggleTodo,
-    lastFetchTime, // Get last fetch time
+    // Removed lastFetchTime import
   } = useTodos();
   const [newTodoText, setNewTodoText] = useState("");
-  const [nextSyncCountdown, setNextSyncCountdown] = useState<string>(""); // State for countdown
+  // Removed nextSyncCountdown state
 
-  // Countdown timer effect
-  useEffect(() => {
-    let intervalId: NodeJS.Timeout | null = null;
-
-    const updateCountdown = () => {
-      if (lastFetchTime) {
-        const nextSyncTime = addMinutes(lastFetchTime, 5); // 5 minutes after last fetch
-        const now = new Date();
-        const secondsRemaining = differenceInSeconds(nextSyncTime, now);
-
-        if (secondsRemaining > 0) {
-          const minutes = Math.floor(secondsRemaining / 60);
-          const seconds = secondsRemaining % 60;
-          setNextSyncCountdown(
-            `${minutes}m ${seconds < 10 ? "0" : ""}${seconds}s`
-          );
-        } else {
-          setNextSyncCountdown("now");
-          if (intervalId) clearInterval(intervalId);
-        }
-      } else {
-        setNextSyncCountdown("");
-        if (intervalId) clearInterval(intervalId);
-      }
-    };
-
-    updateCountdown();
-    intervalId = setInterval(updateCountdown, 1000);
-
-    return () => {
-      if (intervalId) clearInterval(intervalId);
-    };
-  }, [lastFetchTime]);
+  // Removed the entire countdown timer useEffect hook
 
   const handleAddTodo = async (e: React.FormEvent) => {
     // Make async
@@ -195,20 +162,7 @@ export function TodosDataSource({ onClose }: TodosDataSourceProps) {
             )}
           </div>
 
-          {/* Sync Status Footer */}
-          <div className="mt-auto pt-2 border-t border-gray-700 text-center">
-            {isLoading ? (
-              <p className="text-xs text-gray-400">Syncing...</p>
-            ) : lastFetchTime && nextSyncCountdown ? (
-              <p className="text-xs text-gray-400">
-                Next sync in: {nextSyncCountdown}
-              </p>
-            ) : (
-              <p className="text-xs text-gray-400">Not synced yet.</p>
-            )}
-            {/* Optional Refresh Button */}
-            {/* <Button variant="link" size="sm" onClick={fetchTodosIfNeeded} disabled={isLoading}>Refresh</Button> */}
-          </div>
+          {/* Removed Sync Status Footer */}
         </ScrollArea>
       </CardContent>
     </Card>

@@ -1,23 +1,24 @@
 import { Button } from "@/components/ui/button";
 import { cn, compareVersions } from "@/lib/utils";
 import {
-  Bot,
+  Bot, // Import Target icon for Quests button
+  DownloadCloud,
   Milestone,
   Pencil,
+  Target,
   User,
-  Target, // Import Target icon for Quests button
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChangelogModal } from "./ChangelogModal";
 // Import the panel components
-import { YuzuPanel } from "./YuzuPanel";
 import { PathsPage } from "./PathsPage";
 import { UserProfilePanel } from "./UserProfilePanel";
+import { YuzuPanel } from "./YuzuPanel";
 import { CalendarDataSource } from "./datasources/CalendarDataSource";
-import { HealthDataSource } from "./datasources/HealthDataSource";
-import { TodosDataSource } from "./datasources/TodosDataSource";
 import { FinanceDataSource } from "./datasources/FinanceDataSource";
 import { HabitsDataSource } from "./datasources/HabitsDataSource";
+import { HealthDataSource } from "./datasources/HealthDataSource";
+import { TodosDataSource } from "./datasources/TodosDataSource";
 // Import the changelog data
 import changelogData from "../../public/changelog.json";
 // Import types and constants needed for PathsPage
@@ -36,9 +37,11 @@ import {
   savePathStateToLocalStorage,
 } from "./dashboard/utils";
 // Import the new data source config
-import { dataSourceConfig, DataSourceId } from "@/lib/dataSourceConfig";
-import { QuestsPanel } from "./datasources/QuestsPanel";
 import { useAuth } from "@/contexts/AuthContext"; // Import useAuth
+import { useFetchManager } from "@/contexts/FetchManagerContext"; // Import FetchManager hook
+import { dataSourceConfig, DataSourceId } from "@/lib/dataSourceConfig";
+import { formatDistanceToNow } from "date-fns"; // Import formatDistanceToNow
+import { QuestsPanel } from "./datasources/QuestsPanel";
 
 interface LeftSidebarProps {
   isToolboxOpen: boolean;
@@ -80,6 +83,8 @@ export function LeftSidebar({
 }: LeftSidebarProps) {
   const { showToast } = useToast();
   const { level, xp } = useAuth(); // Get level and xp from AuthContext
+  const { lastFetchTimestamp, triggerGlobalFetch, isFetching } =
+    useFetchManager(); // Get fetch manager state and function
 
   // Consolidated state for panel visibility
   const [panelOpenState, setPanelOpenState] =
@@ -306,6 +311,8 @@ export function LeftSidebar({
             <Milestone size={20} />
             <span className="sr-only">Paths</span>
           </Button>
+
+          {/* Manual Fetch Button - REMOVED FROM HERE */}
         </nav>
         {/* Data Sources Section */}
         <nav className="mt-6 flex flex-col items-center gap-3 border-t border-gray-700 pt-4">
@@ -332,6 +339,37 @@ export function LeftSidebar({
               )
           )}
         </nav>
+
+        {/* Manual Fetch Button - MOVED HERE */}
+        <div className="mt-4 pt-4 border-t border-gray-700 flex justify-center">
+          <TooltipProvider delayDuration={100}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={`h-10 w-10 rounded-lg text-gray-400 ${
+                    isFetching ? "animate-spin" : ""
+                  }`} // Add spin animation when fetching
+                  onClick={() => triggerGlobalFetch(true)} // Force fetch
+                  title="Manual Fetch"
+                  disabled={isFetching} // Disable while fetching
+                >
+                  <DownloadCloud size={20} /> {/* Changed icon */}
+                  <span className="sr-only">Manual Fetch</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                {lastFetchTimestamp
+                  ? `Last fetched: ${formatDistanceToNow(lastFetchTimestamp, {
+                      addSuffix: true,
+                    })}` // Use relative time
+                  : "Never fetched"}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+
         {/* User Profile Section */}
         <div className="mt-auto flex w-full flex-col items-center gap-1 border-t border-gray-700 pt-3 pb-2">
           <Button

@@ -29,7 +29,7 @@ export function HabitHeatmapWidget({ id, w: _w, h: _h }: WidgetProps) {
   const {
     habits,
     habitEntries, // Get entries from context
-    fetchInitialDataIfNeeded, // Get the interval-checking function
+    // Removed fetchInitialDataIfNeeded import
     isLoadingHabits,
     isLoadingEntries, // Get entry loading state
   } = useHabits();
@@ -48,21 +48,7 @@ export function HabitHeatmapWidget({ id, w: _w, h: _h }: WidgetProps) {
     return habits.find((h) => h.id === selectedHabitId) || null;
   }, [habits, selectedHabitId, isLoadingHabits]);
 
-  // Effect to trigger data fetch if needed when selected habit changes
-  useEffect(() => {
-    // Only trigger fetch if a habit is selected and habits are loaded
-    if (selectedHabitId && !isLoadingHabits) {
-      console.log(
-        `[HabitHeatmapWidget ${id}] Selected habit changed to ${selectedHabitId}, triggering fetchIfNeeded.`
-      );
-      fetchInitialDataIfNeeded(); // Call the interval-aware fetch function
-    }
-    // Clear processed data if no habit is selected or habits are loading
-    if (!selectedHabitId || isLoadingHabits) {
-      setProcessedEntries({});
-      setError(null);
-    }
-  }, [selectedHabitId, fetchInitialDataIfNeeded, isLoadingHabits, id]); // Depend on selected ID and the fetch function
+  // Removed useEffect hook that called fetchInitialDataIfNeeded
 
   // Effect to process entries whenever they change in the context or selected habit changes
   useEffect(() => {

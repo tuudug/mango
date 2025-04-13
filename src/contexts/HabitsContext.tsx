@@ -4,7 +4,9 @@ import React, {
   useContext,
   ReactNode,
   useCallback,
+  // Removed duplicate useContext
   useEffect,
+  useRef, // Added useRef
 } from "react";
 import { useAuth } from "./AuthContext";
 import { useToast } from "./ToastContext";
@@ -63,7 +65,7 @@ interface HabitsContextType {
   getEntriesForDate: (date: string) => HabitEntry[]; // Helper to get entries for a specific date
   hasEntryForDate: (habitId: string, date: string) => boolean; // Helper to check if entry exists
   uncheckOnceDailyHabit: (habitId: string, date: string) => Promise<boolean>; // Add uncheck function type
-  fetchInitialDataIfNeeded: () => Promise<void>; // Expose the interval-checking fetch function
+  // Removed fetchInitialDataIfNeeded from type
 }
 
 const HabitsContext = createContext<HabitsContextType | undefined>(undefined);
@@ -76,16 +78,17 @@ export const HabitsProvider: React.FC<{ children: ReactNode }> = ({
   const [isLoadingHabits, setIsLoadingHabits] = useState(false);
   const [isLoadingEntries, setIsLoadingEntries] = useState(false); // Separate loading for entries
   const [error, setError] = useState<string | null>(null);
-  const [lastFetchTime, setLastFetchTime] = useState<Date | null>(null); // Track last fetch time
+  // Removed lastFetchTime state
   const { session } = useAuth();
   const { showToast } = useToast();
   const { fetchQuests: fetchQuestsData } = useQuests(); // Get fetchQuests from QuestsContext
+  const initialFetchDoneRef = useRef(false); // Ref to track initial fetch
 
-  const REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+  // Removed REFRESH_INTERVAL_MS constant
 
   const handleError = useCallback(
     (operation: string, error: unknown) => {
-      console.error(`HabitsContext Error (${operation}):`, error);
+      console.error(`[HabitsContext] Error (${operation}):`, error); // Prefixed log
       const errorMsg =
         error instanceof ApiError
           ? error.message
@@ -374,80 +377,33 @@ export const HabitsProvider: React.FC<{ children: ReactNode }> = ({
     [habitEntries]
   );
 
-  // Fetch initial habits and recent entries if needed
-  const fetchInitialDataIfNeeded = useCallback(async () => {
-    // Make async
-    if (!session || isLoadingHabits || isLoadingEntries) return; // Don't fetch if loading or not logged in
+  // Removed fetchInitialDataIfNeeded function
 
-    const now = new Date();
-    if (
-      !lastFetchTime ||
-      now.getTime() - lastFetchTime.getTime() > REFRESH_INTERVAL_MS
-    ) {
-      console.log("Habits refresh interval elapsed, fetching initial data...");
-      try {
-        // Fetch recent entries arguments
-        const today = dayjs().format("YYYY-MM-DD");
-        const weekAgo = dayjs().subtract(7, "day").format("YYYY-MM-DD");
-
-        // Wait for both fetches to settle
-        await Promise.allSettled([
-          fetchHabits(),
-          fetchHabitEntries(weekAgo, today),
-        ]);
-
-        // Update timestamp ONLY after both fetches are done
-        setLastFetchTime(new Date());
-        console.log("Habits data fetch complete, timestamp updated.");
-      } catch (error) {
-        // Although Promise.allSettled doesn't throw, good practice to have a catch
-        console.error("Error during habits data fetch:", error);
-        // Don't update timestamp on error
-      }
-    } else {
-      console.log(
-        "Skipping habits initial data fetch, refresh interval not elapsed."
-      );
-    }
-  }, [
-    session,
-    isLoadingHabits,
-    isLoadingEntries,
-    lastFetchTime,
-    fetchHabits,
-    fetchHabitEntries,
-  ]);
-
-  // Effect to trigger initial fetch based on session
+  // Effect to trigger initial fetch based on session - only fetch once
   useEffect(() => {
-    if (session) {
-      fetchInitialDataIfNeeded();
-    } else {
-      // Clear data on logout
+    if (session && !initialFetchDoneRef.current) {
+      // Fetch data directly when session becomes available for the first time
+      console.log(
+        "[HabitsContext] Session detected for the first time, fetching initial data..."
+      ); // Prefixed log
+      initialFetchDoneRef.current = true; // Mark initial fetch as done
+      const today = dayjs().format("YYYY-MM-DD");
+      const weekAgo = dayjs().subtract(7, "day").format("YYYY-MM-DD");
+      fetchHabits();
+      fetchHabitEntries(weekAgo, today);
+    } else if (!session) {
+      // Clear data and reset flag on logout
       setHabits([]);
       setHabitEntries([]);
       setError(null);
-      setLastFetchTime(null); // Clear timestamp on logout
+      // Removed setLastFetchTime
       setIsLoadingHabits(false);
       setIsLoadingEntries(false);
+      initialFetchDoneRef.current = false; // Reset flag
     }
-  }, [session, fetchInitialDataIfNeeded]);
+  }, [session, fetchHabits, fetchHabitEntries]); // Depend on session and fetch functions
 
-  // Optional: Add effect for window visibility change like in TodosContext
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        console.log(
-          "Habits Window became visible, checking if fetch needed..."
-        );
-        fetchInitialDataIfNeeded();
-      }
-    };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, [fetchInitialDataIfNeeded]);
+  // Removed window visibility change useEffect hook
 
   const value = {
     habits,
@@ -465,7 +421,7 @@ export const HabitsProvider: React.FC<{ children: ReactNode }> = ({
     getEntriesForDate,
     hasEntryForDate,
     uncheckOnceDailyHabit, // Add the new function to the context value
-    fetchInitialDataIfNeeded,
+    // Removed fetchInitialDataIfNeeded from value
   };
 
   return (

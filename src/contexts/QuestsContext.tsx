@@ -6,7 +6,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
-  useRef,
+  useRef, // Keep useRef
   useState,
 } from "react";
 import { useAuth } from "./AuthContext";
@@ -94,26 +94,18 @@ export const QuestsProvider: React.FC<{ children: ReactNode }> = ({
   // Re-add the missing useState for generationState
   const [generationState, setGenerationState] =
     useState<QuestGenerationState | null>(null);
-  const lastFetchTimestampRef = useRef<number>(0); // Track last fetch time
+  // Removed lastFetchTimestampRef
   const { showToast } = useToast();
   const { session, fetchUserProgress } = useAuth(); // Get fetchUserProgress from AuthContext
+  const initialFetchDoneRef = useRef(false); // Ref to track initial fetch
 
   // Fetch quests and potentially generation state
   const fetchQuests = useCallback(
-    async (options: { forceRefresh?: boolean } = {}) => {
-      const { forceRefresh = false } = options;
+    async (_options: { forceRefresh?: boolean } = {}) => {
+      // Removed forceRefresh option and cooldown logic
       if (!session) return;
 
-      const now = Date.now();
-      const fiveMinutes = 5 * 60 * 1000;
-
-      // Check timestamp if not forcing refresh
-      if (!forceRefresh && now - lastFetchTimestampRef.current < fiveMinutes) {
-        console.log("Quests fetch skipped, too soon since last fetch.");
-        return;
-      }
-
-      console.log(`Fetching quests... (Forced: ${forceRefresh})`);
+      console.log(`[QuestsContext] Fetching quests...`); // Prefixed log
       setIsLoading(true);
       try {
         // TODO: Modify backend GET /api/quests to optionally include generationState
@@ -124,7 +116,7 @@ export const QuestsProvider: React.FC<{ children: ReactNode }> = ({
           session
         );
         setQuests(data ?? []);
-        lastFetchTimestampRef.current = Date.now(); // Update timestamp on success
+        // Removed timestamp update
 
         // Placeholder: Fetch generation state separately if needed
         // const genState = await authenticatedFetch<QuestGenerationState>('/api/quests/generation-state', 'GET', session);
@@ -148,29 +140,23 @@ export const QuestsProvider: React.FC<{ children: ReactNode }> = ({
     [session, showToast]
   ); // Keep dependencies minimal for the core fetch logic
 
-  // Initial fetch on session change
+  // Initial fetch on session change - only fetch once
   useEffect(() => {
-    if (session) {
+    if (session && !initialFetchDoneRef.current) {
+      console.log(
+        "[QuestsContext] Session detected for the first time, fetching initial quests..."
+      ); // Prefixed log
+      initialFetchDoneRef.current = true; // Mark initial fetch as done
       fetchQuests({ forceRefresh: true }); // Force refresh on initial load/login
-    } else {
+    } else if (!session) {
       setQuests([]);
       setGenerationState(null); // Clear state on logout
-      lastFetchTimestampRef.current = 0; // Reset timestamp on logout
+      // Removed timestamp reset
+      initialFetchDoneRef.current = false; // Reset flag
     }
   }, [session, fetchQuests]); // fetchQuests dependency is okay here
 
-  // Refetch on window focus (with interval check)
-  useEffect(() => {
-    const handleFocus = () => {
-      console.log("Window focused, checking to refetch quests...");
-      fetchQuests(); // Call without forceRefresh to respect interval
-    };
-
-    window.addEventListener("focus", handleFocus);
-    return () => {
-      window.removeEventListener("focus", handleFocus);
-    };
-  }, [fetchQuests]); // Re-attach listener if fetchQuests identity changes
+  // Removed window focus useEffect hook
 
   const updateQuestInState = (updatedQuest: Quest) => {
     setQuests((prevQuests) =>
@@ -196,7 +182,7 @@ export const QuestsProvider: React.FC<{ children: ReactNode }> = ({
         }
         return null;
       } catch (error) {
-        console.error("Failed to activate quest:", error);
+        console.error("[QuestsContext] Failed to activate quest:", error); // Prefixed log
         showToast({
           title: "Error Activating Quest",
           description:
@@ -231,7 +217,7 @@ export const QuestsProvider: React.FC<{ children: ReactNode }> = ({
         }
         return null;
       } catch (error) {
-        console.error("Failed to cancel quest:", error);
+        console.error("[QuestsContext] Failed to cancel quest:", error); // Prefixed log
         showToast({
           title: "Error Cancelling Quest",
           description:
@@ -273,7 +259,7 @@ export const QuestsProvider: React.FC<{ children: ReactNode }> = ({
         }
         return null;
       } catch (error) {
-        console.error("Failed to claim quest:", error);
+        console.error("[QuestsContext] Failed to claim quest:", error); // Prefixed log
         showToast({
           title: "Error Claiming Quest",
           description:
@@ -323,7 +309,10 @@ export const QuestsProvider: React.FC<{ children: ReactNode }> = ({
           });
         }
       } catch (error) {
-        console.error(`Failed to generate ${type} quests:`, error);
+        console.error(
+          `[QuestsContext] Failed to generate ${type} quests:`,
+          error
+        ); // Prefixed log
         showToast({
           title: `Generate ${type} Quests Error`,
           description:

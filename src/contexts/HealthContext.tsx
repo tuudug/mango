@@ -5,6 +5,7 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useRef, // Import useRef
   useState,
 } from "react";
 import { useAuth } from "./AuthContext";
@@ -43,8 +44,7 @@ interface HealthContextType {
   isGoogleHealthConnected: boolean;
   connectGoogleHealth: () => void;
   disconnectGoogleHealth: () => Promise<void>;
-  fetchHealthDataIfNeeded: () => void;
-  lastFetchTime: Date | null;
+  // Removed fetchHealthDataIfNeeded and lastFetchTime
   // Add week navigation state and functions for steps display
   currentStepsWeekStart: Date;
   goToPreviousStepsWeek: () => void;
@@ -67,7 +67,7 @@ export const HealthProvider: React.FC<HealthProviderProps> = ({ children }) => {
   const [error, setError] = useState<string | null>(null);
   const [isGoogleHealthConnected, setIsGoogleHealthConnected] =
     useState<boolean>(false);
-  const [lastFetchTime, setLastFetchTime] = useState<Date | null>(null);
+  // Removed lastFetchTime state
   // Initialize week start state
   const [currentStepsWeekStart, setCurrentStepsWeekStart] = useState<Date>(
     startOfWeek(new Date(), { weekStartsOn: 1 }) // Monday as start
@@ -78,8 +78,9 @@ export const HealthProvider: React.FC<HealthProviderProps> = ({ children }) => {
   );
   const { session } = useAuth();
   const { showToast } = useToast();
+  const initialFetchDoneRef = useRef(false); // Ref to track initial fetch
 
-  const REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+  // Removed REFRESH_INTERVAL_MS constant
 
   const fetchHealthData = useCallback(async () => {
     if (!session) return;
@@ -102,14 +103,17 @@ export const HealthProvider: React.FC<HealthProviderProps> = ({ children }) => {
           weight_goal: null,
         }
       );
-      setLastFetchTime(new Date());
+      // Removed setLastFetchTime
       console.log(
-        "Google Health Connected Status (from backend):",
+        "[HealthContext] Google Health Connected Status (from backend):", // Prefixed log
         data.isGoogleHealthConnected
       );
-      console.log("Fetched Health Settings:", data.healthSettings);
+      console.log(
+        "[HealthContext] Fetched Health Settings:",
+        data.healthSettings
+      ); // Prefixed log
     } catch (e) {
-      console.error("Failed to fetch health data:", e);
+      console.error("[HealthContext] Failed to fetch health data:", e); // Prefixed log
       const errorMsg =
         e instanceof Error ? e.message : "Failed to fetch health data";
       setError(errorMsg);
@@ -126,46 +130,27 @@ export const HealthProvider: React.FC<HealthProviderProps> = ({ children }) => {
     }
   }, [session, showToast]);
 
-  const fetchHealthDataIfNeeded = useCallback(() => {
-    if (isLoading) return;
-    const now = new Date();
-    if (
-      !lastFetchTime ||
-      now.getTime() - lastFetchTime.getTime() > REFRESH_INTERVAL_MS
-    ) {
-      console.log("Health refresh interval elapsed, fetching...");
-      fetchHealthData();
-    } else {
-      console.log("Skipping health fetch, refresh interval not elapsed.");
-    }
-  }, [isLoading, lastFetchTime, fetchHealthData]);
+  // Removed fetchHealthDataIfNeeded function
 
+  // Effect to fetch data when session changes - only fetch once
   useEffect(() => {
-    if (session) {
-      fetchHealthDataIfNeeded();
-    } else {
+    if (session && !initialFetchDoneRef.current) {
+      console.log(
+        "[HealthContext] Session detected for the first time, fetching initial data..."
+      ); // Prefixed log
+      initialFetchDoneRef.current = true; // Mark initial fetch as done
+      fetchHealthData();
+    } else if (!session) {
+      // Clear data and reset flag on logout
       setHealthData([]);
       setIsGoogleHealthConnected(false);
-      setLastFetchTime(null);
+      // Removed setLastFetchTime
       setHealthSettings(null); // Clear settings on logout
+      initialFetchDoneRef.current = false; // Reset flag
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session]); // Removed fetchHealthDataIfNeeded dependency as it causes loops sometimes
+  }, [session, fetchHealthData]); // Depend on session and fetchHealthData
 
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        console.log(
-          "Health Window became visible, checking if fetch needed..."
-        );
-        fetchHealthDataIfNeeded();
-      }
-    };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, [fetchHealthDataIfNeeded]);
+  // Removed visibility change useEffect hook
 
   const addManualHealthEntry = async (entry: {
     entry_date: string;
@@ -193,7 +178,7 @@ export const HealthProvider: React.FC<HealthProviderProps> = ({ children }) => {
       await fetchHealthData();
       showToast({ title: "Health Entry Added", variant: "success" });
     } catch (e) {
-      console.error("Failed to add manual health entry:", e);
+      console.error("[HealthContext] Failed to add manual health entry:", e); // Prefixed log
       const errorMsg =
         e instanceof Error ? e.message : "Failed to add health entry";
       setError(errorMsg);
@@ -234,7 +219,7 @@ export const HealthProvider: React.FC<HealthProviderProps> = ({ children }) => {
       await fetchHealthData();
       showToast({ title: "Google Health Disconnected", variant: "success" });
     } catch (e) {
-      console.error("Failed to disconnect Google Health:", e);
+      console.error("[HealthContext] Failed to disconnect Google Health:", e); // Prefixed log
       const errorMsg =
         e instanceof Error ? e.message : "Failed to disconnect Google Health";
       setError(errorMsg);
@@ -270,7 +255,7 @@ export const HealthProvider: React.FC<HealthProviderProps> = ({ children }) => {
       await fetchHealthData();
       showToast({ title: "Health Entry Deleted", variant: "success" });
     } catch (e) {
-      console.error("Failed to delete manual health entry:", e);
+      console.error("[HealthContext] Failed to delete manual health entry:", e); // Prefixed log
       const errorMsg =
         e instanceof Error ? e.message : "Failed to delete health entry";
       setError(errorMsg);
@@ -352,7 +337,7 @@ export const HealthProvider: React.FC<HealthProviderProps> = ({ children }) => {
       await fetchHealthData();
       showToast({ title: "Health Settings Updated", variant: "success" });
     } catch (e) {
-      console.error("Failed to update health settings:", e);
+      console.error("[HealthContext] Failed to update health settings:", e); // Prefixed log
       const errorMsg =
         e instanceof Error ? e.message : "Failed to update settings";
       setError(errorMsg);
@@ -379,8 +364,7 @@ export const HealthProvider: React.FC<HealthProviderProps> = ({ children }) => {
     isGoogleHealthConnected,
     connectGoogleHealth,
     disconnectGoogleHealth,
-    fetchHealthDataIfNeeded,
-    lastFetchTime,
+    // Removed fetchHealthDataIfNeeded and lastFetchTime
     // Expose week navigation
     currentStepsWeekStart,
     goToPreviousStepsWeek,

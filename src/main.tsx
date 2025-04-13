@@ -14,12 +14,14 @@ import { PomodoroProvider } from "./contexts/PomodoroContext.tsx";
 import { AmbienceProvider } from "./contexts/AmbienceContext.tsx"; // Import AmbienceProvider
 import { HabitsProvider } from "./contexts/HabitsContext.tsx"; // Import HabitsProvider
 import { QuestsProvider } from "./contexts/QuestsContext.tsx"; // Import QuestsProvider
+import { FetchManagerProvider } from "./contexts/FetchManagerContext.tsx"; // Import FetchManagerProvider
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <ThemeProvider>
       <ToastProvider>
         <AuthProvider>
+          {/* Moved FetchManagerProvider inside other data providers */}
           <CalendarProvider>
             <HealthProvider>
               {/* Corrected Nesting Order */}
@@ -29,7 +31,11 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
                     <FinanceProvider>
                       <PomodoroProvider>
                         <AmbienceProvider>
-                          <App />
+                          <FetchManagerProvider>
+                            {" "}
+                            {/* Wrap App */}
+                            <App />
+                          </FetchManagerProvider>
                         </AmbienceProvider>
                       </PomodoroProvider>
                     </FinanceProvider>
@@ -38,6 +44,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
               </QuestsProvider>
             </HealthProvider>
           </CalendarProvider>
+          {/* Removed FetchManagerProvider closing tag from here */}
         </AuthProvider>
       </ToastProvider>
     </ThemeProvider>

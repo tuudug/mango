@@ -1,21 +1,20 @@
 import { Button } from "@/components/ui/button"; // Keep one Button import
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Label } from "@/components/ui/label"; // Import Label
-import { useHealth } from "@/contexts/HealthContext";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { HealthSettings, useHealth } from "@/contexts/HealthContext";
+import { format } from "date-fns"; // For relative time, ADD format
 import {
-  HeartPulse,
-  X,
-  Link,
-  Unlink,
-  Trash2,
   AlertTriangle,
-  Scale, // Import Scale icon for weight
+  HeartPulse,
+  Link,
+  Scale,
+  Trash2,
+  Unlink,
+  X,
 } from "lucide-react";
-import React, { useState, useEffect } from "react"; // Import useEffect
-import { formatDistanceToNow, format } from "date-fns"; // For relative time, ADD format
-import { HealthSettings } from "@/contexts/HealthContext"; // Import HealthSettings type
+import React, { useEffect, useState } from "react"; // Import useEffect
 
 // Define props including onClose
 interface HealthDataSourceProps {
@@ -33,7 +32,7 @@ export function HealthDataSource({ onClose }: HealthDataSourceProps) {
     isGoogleHealthConnected,
     connectGoogleHealth,
     disconnectGoogleHealth,
-    lastFetchTime,
+    // Removed lastFetchTime import
     healthSettings, // Get settings
     updateHealthSettings, // Get update function
   } = useHealth();
@@ -41,23 +40,11 @@ export function HealthDataSource({ onClose }: HealthDataSourceProps) {
   // Remove newStepsDate state
   const [newWeight, setNewWeight] = useState(""); // State for new weight value
   // Remove newWeightDate state
-  const [timeAgo, setTimeAgo] = useState<string>("");
+  // Removed timeAgo state
   const [stepsGoalInput, setStepsGoalInput] = useState<string>(""); // State for steps goal input
   const [weightGoalInput, setWeightGoalInput] = useState<string>(""); // State for weight goal input
 
-  // Update relative time display periodically
-  useEffect(() => {
-    const updateDisplay = () => {
-      if (lastFetchTime) {
-        setTimeAgo(formatDistanceToNow(lastFetchTime, { addSuffix: true }));
-      } else {
-        setTimeAgo("");
-      }
-    };
-    updateDisplay(); // Initial update
-    const intervalId = setInterval(updateDisplay, 60000); // Update every minute
-    return () => clearInterval(intervalId); // Cleanup interval
-  }, [lastFetchTime]);
+  // Removed the entire relative time display useEffect hook
 
   // Effect to initialize/update goal inputs when settings load/change
   useEffect(() => {
@@ -413,18 +400,7 @@ export function HealthDataSource({ onClose }: HealthDataSourceProps) {
             )}
           </div>
 
-          {/* Sync Status Footer */}
-          <div className="mt-auto pt-2 border-t border-gray-700 text-center">
-            {lastFetchTime ? (
-              <p className="text-xs text-gray-400">Last synced: {timeAgo}</p>
-            ) : isLoading ? (
-              <p className="text-xs text-gray-400">Syncing...</p>
-            ) : (
-              <p className="text-xs text-gray-400">Not synced yet.</p>
-            )}
-            {/* Optionally add a manual refresh button */}
-            {/* <Button variant="link" size="sm" onClick={fetchHealthDataIfNeeded} disabled={isLoading}>Refresh</Button> */}
-          </div>
+          {/* Removed Sync Status Footer */}
 
           {/* Warning card about client-side storage */}
           <div className="mt-6 p-3 bg-yellow-900/30 border border-yellow-800 rounded-lg">

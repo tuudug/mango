@@ -6,6 +6,7 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useRef, // Import useRef
   useState,
 } from "react";
 import { useAuth } from "./AuthContext"; // Import useAuth to get session token
@@ -24,8 +25,7 @@ interface CalendarContextType {
   connectGoogleCalendar: () => void;
   disconnectGoogleCalendar: () => Promise<void>;
   confirmGoogleConnection: () => void;
-  fetchEventsIfNeeded: () => void;
-  lastFetchTime: Date | null; // Expose last fetch time
+  // Removed fetchEventsIfNeeded and lastFetchTime
 }
 
 // Create the context with a default value
@@ -46,12 +46,12 @@ export const CalendarProvider: React.FC<CalendarProviderProps> = ({
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [isGoogleConnected, setIsGoogleConnected] = useState<boolean>(false);
-  const [lastFetchTime, setLastFetchTime] = useState<Date | null>(null); // Track last fetch time
+  // Removed lastFetchTime state
   const { session } = useAuth(); // Get session from AuthContext
   const { showToast } = useToast(); // Get showToast
+  const initialFetchDoneRef = useRef(false); // Ref to track initial fetch
 
-  const REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
-
+  // Removed REFRESH_INTERVAL_MS constant
   // Removed getAuthHeaders helper
 
   // Function to fetch events from the backend API
@@ -69,13 +69,13 @@ export const CalendarProvider: React.FC<CalendarProviderProps> = ({
 
       setEvents(data.events || []); // Ensure events is always an array
       setIsGoogleConnected(data.isGoogleConnected);
-      setLastFetchTime(new Date()); // Update last fetch time on success
+      // Removed setLastFetchTime
       console.log(
-        "Google Connected Status (from backend):",
+        "[CalendarContext] Google Connected Status (from backend):", // Prefixed log
         data.isGoogleConnected
       );
     } catch (e) {
-      console.error("Failed to fetch calendar events:", e);
+      console.error("[CalendarContext] Failed to fetch calendar events:", e); // Prefixed log
       const errorMsg =
         e instanceof Error ? e.message : "Failed to fetch calendar data";
       setError(errorMsg);
@@ -91,46 +91,25 @@ export const CalendarProvider: React.FC<CalendarProviderProps> = ({
     }
   }, [session, showToast]); // Removed getAuthHeaders from dependencies
 
-  // Throttled fetch function - logic remains the same
-  const fetchEventsIfNeeded = useCallback(() => {
-    if (isLoading) return;
+  // Removed fetchEventsIfNeeded function
 
-    const now = new Date();
-    if (
-      !lastFetchTime ||
-      now.getTime() - lastFetchTime.getTime() > REFRESH_INTERVAL_MS
-    ) {
-      console.log("Refresh interval elapsed, fetching events...");
+  // Initial fetch logic - only fetch once when session becomes available
+  useEffect(() => {
+    if (session && !initialFetchDoneRef.current) {
+      console.log(
+        "[CalendarContext] Session detected for the first time, fetching initial events..."
+      ); // Prefixed log
       fetchEvents();
-    } else {
-      console.log("Skipping fetch, refresh interval not elapsed.");
-    }
-  }, [isLoading, lastFetchTime, fetchEvents]);
-
-  // Initial fetch logic remains the same
-  useEffect(() => {
-    if (session) {
-      fetchEventsIfNeeded();
-    } else {
+      initialFetchDoneRef.current = true; // Mark initial fetch as done
+    } else if (!session) {
+      // Clear data and reset flag on logout
       setEvents([]);
-      setLastFetchTime(null);
       setIsGoogleConnected(false);
+      initialFetchDoneRef.current = false; // Reset flag
     }
-  }, [session, fetchEventsIfNeeded]); // Added fetchEventsIfNeeded dependency
+  }, [session, fetchEvents]); // Depend on session and fetchEvents
 
-  // Visibility change logic remains the same
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        console.log("Window became visible, checking if fetch needed...");
-        fetchEventsIfNeeded();
-      }
-    };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, [fetchEventsIfNeeded]);
+  // Removed visibility change useEffect hook
 
   // Function to add a new manual event via backend
   const addManualEvent = async (eventData: { title: string; date: string }) => {
@@ -157,7 +136,7 @@ export const CalendarProvider: React.FC<CalendarProviderProps> = ({
       await fetchEvents();
       showToast({ title: "Event Added", variant: "success" });
     } catch (e) {
-      console.error("Failed to add manual event:", e);
+      console.error("[CalendarContext] Failed to add manual event:", e); // Prefixed log
       const errorMsg = e instanceof Error ? e.message : "Failed to add event";
       setError(errorMsg);
       showToast({
@@ -195,7 +174,7 @@ export const CalendarProvider: React.FC<CalendarProviderProps> = ({
       await fetchEvents();
       showToast({ title: "Event Deleted", variant: "success" });
     } catch (e) {
-      console.error("Failed to delete manual event:", e);
+      console.error("[CalendarContext] Failed to delete manual event:", e); // Prefixed log
       const errorMsg =
         e instanceof Error ? e.message : "Failed to delete event";
       setError(errorMsg);
@@ -240,7 +219,10 @@ export const CalendarProvider: React.FC<CalendarProviderProps> = ({
       await fetchEvents();
       showToast({ title: "Google Calendar Disconnected", variant: "success" });
     } catch (e) {
-      console.error("Failed to disconnect Google Calendar:", e);
+      console.error(
+        "[CalendarContext] Failed to disconnect Google Calendar:",
+        e
+      ); // Prefixed log
       const errorMsg =
         e instanceof Error ? e.message : "Failed to disconnect Google Calendar";
       setError(errorMsg);
@@ -256,9 +238,11 @@ export const CalendarProvider: React.FC<CalendarProviderProps> = ({
     }
   };
 
-  // Function called after successful OAuth redirect - remains the same
+  // Function called after successful OAuth redirect
   const confirmGoogleConnection = () => {
-    console.log("Confirming Google Connection - setting state and fetching.");
+    console.log(
+      "[CalendarContext] Confirming Google Connection - setting state and fetching."
+    ); // Prefixed log
     setIsGoogleConnected(true); // Optimistically set state
     fetchEvents(); // Trigger fetch to get actual data
   };
@@ -275,8 +259,7 @@ export const CalendarProvider: React.FC<CalendarProviderProps> = ({
     connectGoogleCalendar,
     disconnectGoogleCalendar,
     confirmGoogleConnection,
-    fetchEventsIfNeeded,
-    lastFetchTime,
+    // Removed fetchEventsIfNeeded and lastFetchTime
   };
 
   return (

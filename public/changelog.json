@@ -1,5 +1,15 @@
 [
   {
+    "version": "0.2.7",
+    "date": "2025-04-14",
+    "data": [
+      "Improved data syncing: Fetches now happen less often automatically (every 3 minutes on focus) to reduce noise.",
+      "Added a manual refresh button (cloud icon) in the sidebar to sync all data immediately.",
+      "Removed individual 'last synced' times from data panels.",
+      "Internal: Centralized data fetching logic for better performance and maintainability."
+    ]
+  },
+  {
     "version": "0.2.6",
     "date": "2025-04-14",
     "data": [

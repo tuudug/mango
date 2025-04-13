@@ -19,7 +19,6 @@ export function HabitStreakWidget({ id, w: _w, h: _h }: WidgetProps) {
   const {
     habits,
     habitEntries: contextHabitEntries, // Rename context entries
-    fetchInitialDataIfNeeded, // Get the interval-checking function
     isLoadingHabits,
     isLoadingEntries, // Get entry loading state
   } = useHabits();
@@ -55,14 +54,13 @@ export function HabitStreakWidget({ id, w: _w, h: _h }: WidgetProps) {
       console.log(
         `[HabitStreakWidget ${id}] Selected habit changed to ${selectedHabitId}, triggering fetchIfNeeded.`
       );
-      fetchInitialDataIfNeeded(); // Call the interval-aware fetch function
     }
     // Clear streaks if no habit is selected or habits are loading
     if (!selectedHabitId || isLoadingHabits) {
       setStreaks({ current: 0, longest: 0 });
       setError(null);
     }
-  }, [selectedHabitId, fetchInitialDataIfNeeded, isLoadingHabits, id]); // Depend on selected ID and the fetch function
+  }, [selectedHabitId, isLoadingHabits, id]); // Depend on selected ID and the fetch function
 
   // Effect to calculate streaks whenever entries change in the context or selected habit changes
   useEffect(() => {

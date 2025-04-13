@@ -3,9 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area"; // Import ScrollArea
 import { useCalendar } from "@/contexts/CalendarContext";
-import { CalendarDays, X, Link, Unlink, AlertTriangle } from "lucide-react";
-import React, { useState, useEffect } from "react";
-import { addMinutes, differenceInSeconds } from "date-fns"; // Removed formatDistanceToNow
+import { AlertTriangle, CalendarDays, Link, Unlink, X } from "lucide-react";
+import React, { useState } from "react";
 
 interface CalendarDataSourceProps {
   onClose?: () => void;
@@ -22,47 +21,14 @@ export function CalendarDataSource({ onClose }: CalendarDataSourceProps) {
     isGoogleConnected,
     connectGoogleCalendar,
     disconnectGoogleCalendar,
-    lastFetchTime, // Get last fetch time
+    // Removed lastFetchTime import
   } = useCalendar();
   const [newEventTitle, setNewEventTitle] = useState("");
   const [newEventDate, setNewEventDate] = useState("");
-  const [nextSyncCountdown, setNextSyncCountdown] = useState<string>(""); // State for countdown
+  // Removed nextSyncCountdown state
   // Removed timeAgo state
 
-  // Countdown timer effect
-  useEffect(() => {
-    let intervalId: NodeJS.Timeout | null = null;
-
-    const updateCountdown = () => {
-      if (lastFetchTime) {
-        const nextSyncTime = addMinutes(lastFetchTime, 5); // 5 minutes after last fetch
-        const now = new Date();
-        const secondsRemaining = differenceInSeconds(nextSyncTime, now);
-
-        if (secondsRemaining > 0) {
-          const minutes = Math.floor(secondsRemaining / 60);
-          const seconds = secondsRemaining % 60;
-          setNextSyncCountdown(
-            `${minutes}m ${seconds < 10 ? "0" : ""}${seconds}s`
-          );
-        } else {
-          // Time elapsed, should be syncing or waiting for next trigger
-          setNextSyncCountdown("now");
-          if (intervalId) clearInterval(intervalId); // Stop interval once countdown reaches zero
-        }
-      } else {
-        setNextSyncCountdown(""); // Clear if no last fetch time
-        if (intervalId) clearInterval(intervalId);
-      }
-    };
-
-    updateCountdown(); // Initial calculation
-    intervalId = setInterval(updateCountdown, 1000); // Update every second
-
-    return () => {
-      if (intervalId) clearInterval(intervalId); // Cleanup interval
-    };
-  }, [lastFetchTime]); // Rerun when lastFetchTime changes
+  // Removed the entire countdown timer useEffect hook
 
   const handleAddEvent = async (e: React.FormEvent) => {
     // Make async
@@ -225,20 +191,7 @@ export function CalendarDataSource({ onClose }: CalendarDataSourceProps) {
             )}
           </div>
 
-          {/* Sync Status Footer */}
-          <div className="mt-auto pt-2 border-t border-gray-700 text-center">
-            {isLoading ? (
-              <p className="text-xs text-gray-400">Syncing...</p>
-            ) : lastFetchTime && nextSyncCountdown ? (
-              <p className="text-xs text-gray-400">
-                Next sync in: {nextSyncCountdown}
-              </p>
-            ) : (
-              <p className="text-xs text-gray-400">Not synced yet.</p>
-            )}
-            {/* Optional Refresh Button */}
-            {/* <Button variant="link" size="sm" onClick={fetchEventsIfNeeded} disabled={isLoading}>Refresh</Button> */}
-          </div>
+          {/* Removed Sync Status Footer */}
           <div className="mt-6 p-3 bg-yellow-900/30 border border-yellow-800 rounded-lg">
             <div className="flex items-start gap-2">
               <AlertTriangle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
