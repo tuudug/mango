@@ -8,6 +8,7 @@ type NotificationPermission = UserSettings["notification_permission"];
 // Define expected request body structure
 interface UpdateSettingsRequestBody {
   notification_permission?: NotificationPermission;
+  timezone?: string; // Add optional timezone string
   // Add other settings here in the future if needed
 }
 
@@ -17,7 +18,9 @@ export const updateUserSettings = async (
 ): Promise<void> => {
   const userId = req.userId;
   const supabase = req.supabase;
-  const { notification_permission }: UpdateSettingsRequestBody = req.body;
+  // Destructure timezone as well
+  const { notification_permission, timezone }: UpdateSettingsRequestBody =
+    req.body;
 
   if (!userId || !supabase) {
     res
@@ -35,15 +38,38 @@ export const updateUserSettings = async (
     return;
   }
 
+  // Add validation for timezone if provided
+  if (timezone && typeof timezone !== "string") {
+    res.status(400).json({ error: "Invalid type for timezone" });
+    return;
+  }
+  // Basic check for plausible timezone format (optional, could be more robust)
+  if (timezone && !/^[A-Za-z_]+\/[A-Za-z_]+$/.test(timezone)) {
+    console.warn(
+      `[UpdateSettings] Received potentially invalid timezone format: ${timezone}`
+    );
+    // Decide whether to reject or proceed - for now, we'll proceed but log a warning.
+    // To reject:
+    // res.status(400).json({ error: "Invalid timezone format. Expected Zone/Region (e.g., America/New_York)" });
+    // return;
+  }
+
   // Build the update object dynamically based on provided fields
   const settingsToUpdate: Partial<UserSettings> = {};
   if (notification_permission !== undefined) {
     settingsToUpdate.notification_permission = notification_permission;
   }
+  if (timezone !== undefined) {
+    // Allow null to clear the timezone, but only if explicitly provided as null
+    // If just omitted from request, don't change it.
+    // The DB column is nullable.
+    settingsToUpdate.timezone = timezone;
+  }
   // Add other settings updates here...
   // settingsToUpdate.some_other_setting = req.body.some_other_setting;
 
-  if (Object.keys(settingsToUpdate).length === 0) {
+  // Check if at least one valid setting was provided in the original request
+  if (notification_permission === undefined && timezone === undefined) {
     res.status(400).json({ error: "No valid settings provided for update" });
     return;
   }

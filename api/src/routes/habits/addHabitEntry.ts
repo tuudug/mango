@@ -131,55 +131,7 @@ export const addHabitEntry = async (
         );
       });
 
-      // 2. Create Notification if enabled (New Logic)
-      // Use an async IIFE to run this in the background without awaiting
-      (async () => {
-        try {
-          // Fetch habit details to check enable_notification flag and get name
-          const { data: habitData, error: habitError } = await supabase
-            .from("manual_habits")
-            .select("name, enable_notification")
-            .eq("id", entryForQuest.habit_id)
-            .single();
-
-          if (habitError) {
-            console.error(
-              `[Notification Trigger] Error fetching habit ${entryForQuest.habit_id} details:`,
-              habitError
-            );
-            return; // Don't proceed if habit fetch fails
-          }
-
-          if (habitData && habitData.enable_notification) {
-            // If notifications are enabled for this habit, create one
-            const notificationBody = `Habit '${habitData.name}' completed!`;
-            const { error: notificationError } = await supabase
-              .from("notifications")
-              .insert({
-                user_id: userId,
-                type: "habit_completion",
-                body: notificationBody,
-                related_entity_id: entryForQuest.habit_id,
-              });
-
-            if (notificationError) {
-              console.error(
-                `[Notification Trigger] Error creating notification for habit ${entryForQuest.habit_id}:`,
-                notificationError
-              );
-            } else {
-              console.log(
-                `[Notification Trigger] Notification created for habit ${entryForQuest.habit_id} completion.`
-              );
-            }
-          }
-        } catch (notificationCatchError) {
-          console.error(
-            `[Notification Trigger] Unexpected error creating notification for habit ${entryForQuest.habit_id}:`,
-            notificationCatchError
-          );
-        }
-      })(); // Immediately invoke the async function
+      // Notification creation logic removed (was incorrectly triggered on completion)
     }
   } catch (err) {
     console.error("Unexpected error adding habit entry:", err);

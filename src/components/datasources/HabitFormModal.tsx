@@ -234,7 +234,7 @@ export function HabitFormModal({
               htmlFor="enable_notification"
               className="text-right text-gray-400"
             >
-              Notify on Completion
+              Reminder Notification
             </Label>
             {/* Use Controller for checkbox integration */}
             <Controller
@@ -253,7 +253,8 @@ export function HabitFormModal({
                     htmlFor="enable_notification"
                     className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-gray-300"
                   >
-                    Send an in-app message when this habit is logged.
+                    Enable push notification reminder at the specified time.
+                    (Requires a reminder time to be set)
                   </Label>
                 </div>
               )}

@@ -1,71 +1,63 @@
-# Notification System Progress & Next Steps
+# Notification System Progress & Architecture (v0.3.0)
 
-This document outlines the current state and future tasks for the Mango app's notification system.
+This document outlines the implementation and workflow of the Mango app's reminder-based push notification system.
 
-## Current State (As of 2025-04-14 ~8:50 PM)
+## Previous State (Before v0.3.0)
 
-An initial foundation for an **in-app notification system** has been implemented. This system allows users to view messages within the application interface.
+An initial foundation for an **in-app notification system** existed, allowing users to view messages within the app. However, notifications were incorrectly triggered upon habit _completion_ rather than based on scheduled reminders.
 
-**Implemented Features:**
+## Current State (As of 2025-04-15 ~1:49 AM)
 
-1.  **Database:**
-    - `notifications` table: Stores notification details (message, type, read status, etc.).
-    - `user_settings` table: Stores user preferences, including browser notification permission status (`granted`/`denied`/`default`).
-    - `manual_habits` table: Includes an `enable_notification` flag (currently tied to the incorrect completion trigger).
-2.  **Backend API:**
-    - Endpoints to fetch notifications (`GET /api/notifications`).
-    - Endpoints to mark notifications as read (`PUT /api/notifications/:id/read`, `PUT /api/notifications/read-all`).
-    - Endpoint to save notification permission preference (`PUT /api/user/settings`).
-3.  **Frontend:**
-    - `NotificationContext`: Manages notification state, permission status, and API interactions.
-    - Browser Permission Request: Asks for browser notification permission on app load if not already set (`App.tsx`).
-    - In-App Panel: A dedicated panel (`NotificationsPanel.tsx`) displays fetched notifications, accessible via a Bell icon in the main header (`DashboardHeader.tsx`).
-    - Unread Indicator: The Bell icon shows a badge when unread notifications exist.
-    - Permission Display: The user profile panel (`UserProfilePanel.tsx`) shows the current browser notification permission status.
-    - Habit Form Toggle: A checkbox exists in the habit form (`HabitFormModal.tsx`) related to `enable_notification`.
+The system has been refactored to deliver **reminder-based push notifications** using the Web Push API. This allows users to receive reminders even when the application tab/window is closed or not in the foreground.
 
-**Incorrect Implementation:**
+**Key Components & Workflow:**
 
-- **Trigger:** Currently, notifications are incorrectly generated _after_ a habit is marked complete, based on the `enable_notification` flag. This is not the desired behavior.
+1.  **User Configuration (Habit Form - `HabitFormModal.tsx`):**
 
-## Next Steps: Refactor to Reminder-Based Push Notifications
+    - Users can set a specific `reminder_time` (HH:MM) for a habit.
+    - Users can check the "Enable Reminder Notification" checkbox (`enable_notification` field in `manual_habits` table). Both the time and the checkbox must be set for a reminder to be active.
 
-The primary goal now is to refactor the system to send **reminder notifications** based on the `reminder_time` set for habits, using **browser/OS push notifications** so they can be received even when the app is closed.
+2.  **User Configuration (Profile Panel - `UserProfilePanel.tsx`):**
 
-**Task Breakdown:**
+    - Users must first grant browser-level notification permission (`Notification.requestPermission()`). The current status (`granted`, `denied`, `default`) is displayed.
+    - If permission is granted, users can click "Subscribe to Reminders".
+      - This uses the browser's `PushManager` API (`registration.pushManager.subscribe()`) along with the application's VAPID public key (`VITE_VAPID_PUBLIC_KEY` from `.env`) to generate a unique `PushSubscription` object for that browser/device.
+      - This subscription object (containing an `endpoint` URL and cryptographic `keys`) is sent to the backend API (`POST /api/user/push-subscriptions`).
+    - Users can click "Unsubscribe Reminders".
+      - This retrieves the current subscription object.
+      - It sends the unique `endpoint` to the backend API (`DELETE /api/user/push-subscriptions`).
+      - If the backend confirms deletion (or if the subscription wasn't found there - 404), it calls `subscription.unsubscribe()` locally in the browser to invalidate the subscription.
 
-1.  **Remove Incorrect Completion Trigger:**
-    - Modify `api/src/routes/habits/addHabitEntry.ts`: Remove the logic that inserts into the `notifications` table upon habit completion.
-2.  **Refactor Habit Form UI:**
-    - Modify `src/components/datasources/HabitFormModal.tsx`:
-      - Change the label for the `enable_notification` checkbox from "Notify on Completion" to something like "Enable Reminder Notification".
-      - Potentially make setting a `reminder_time` conditional on this checkbox being checked, or vice-versa, for clarity.
-3.  **Backend - Scheduled Function (Supabase Edge Function):**
-    - Create a new Supabase Edge Function scheduled to run frequently (e.g., every minute via cron).
-    - Implement logic within the function to:
-      - Query the `manual_habits` table for all habits that have `enable_notification` set to `true` and a `reminder_time` matching the current time (minute precision).
-      - **Crucially:** Account for user timezones. This likely requires storing the user's timezone (e.g., in `user_settings`) and performing timezone conversions during the query or processing.
-      - For each due reminder, retrieve the necessary user ID and habit details (name).
-      - Retrieve the user's push notification subscription details (see step 5).
-      - Construct the notification payload (title, body).
-      - Send the push notification using a web push library (e.g., `web-push`) and the user's subscription details.
-      - **(Optional but Recommended):** Insert a corresponding record into the `notifications` table so the reminder also appears in the in-app panel.
-4.  **Frontend - Service Worker & Push API:**
-    - Enhance the existing PWA setup (`vite.config.ts`, potentially `src/service-worker.ts` or similar) to handle push events.
-    - Implement a Service Worker (`sw.js` or similar) that listens for `push` events.
-    - When a push event is received, use `self.registration.showNotification()` to display the OS-level notification using the payload sent from the Edge Function.
-    - Handle notification clicks (e.g., focus the app window).
-5.  **Frontend/Backend - Push Subscription Management:**
-    - **Database:** Create a new table (e.g., `push_subscriptions`) to store user push subscription objects (endpoint, keys). Ensure RLS allows users to manage their own subscriptions.
-    - **Frontend UI:** Add UI elements (likely in Account Settings or User Profile) to:
-      - Allow users to subscribe to push notifications (using `registration.pushManager.subscribe()`).
-      - Display the current subscription status.
-      - Allow users to unsubscribe (`subscription.unsubscribe()`).
-    - **Frontend Logic:** When a user subscribes, send the subscription object to the backend.
-    - **Backend API:** Create new API endpoints (e.g., `POST /api/user/push-subscriptions`, `DELETE /api/user/push-subscriptions/:endpoint`) to save and delete subscription details in the `push_subscriptions` table.
-6.  **User Timezone Handling:**
-    - **Backend:** Ensure the `PUT /api/user/settings` endpoint can also save the user's timezone (e.g., from `Intl.DateTimeFormat().resolvedOptions().timeZone` sent via a header like `X-User-Timezone`).
-    - **Database:** Add a `timezone` column to the `user_settings` table.
-    - **Scheduled Function:** Utilize the stored timezone when querying for due reminders.
+3.  **Backend Storage:**
 
-This outlines the significant work required to transition from the current basic in-app system to a fully functional reminder-based push notification system.
+    - `user_settings` table: Stores the user's IANA `timezone` (e.g., 'America/New_York'), crucial for sending reminders at the correct local time. This is saved via `PUT /api/user/settings`.
+    - `push_subscriptions` table: Securely stores the `endpoint`, `p256dh` key, and `auth` key for each user subscription, linked via `user_id`. Managed by the `/api/user/push-subscriptions` endpoints.
+    - `manual_habits` table: Stores the `reminder_time` and `enable_notification` flag for each habit.
+
+4.  **Backend - Scheduled Task (Edge Function - `supabase/functions/send-reminders/index.ts`):**
+
+    - **Trigger:** This function is invoked every minute via a `pg_cron` job scheduled using SQL (`SELECT cron.schedule(...)`). The cron job uses `pg_net.http_post` to call the function's invocation URL, passing the `SUPABASE_SERVICE_ROLE_KEY` for authentication.
+    - **Execution:**
+      - The function gets the current UTC time.
+      - It queries the `manual_habits` table for habits where `enable_notification` is true and `reminder_time` is not null. It joins `user_settings` to fetch the user's `timezone`.
+      - It iterates through the potential habits. For each habit:
+        - It converts the current UTC time to the user's specific timezone (defaulting to UTC if none is set).
+        - It compares the current minute in the user's timezone (HH:MM) with the habit's `reminder_time`. If they don't match, it skips this habit.
+        - If the times match, it fetches all active `push_subscriptions` for that `user_id` from the database.
+        - If subscriptions exist, it constructs the notification payload (JSON with `title` and `body`).
+        - It uses the `web-push` library (configured with VAPID public/private keys and admin email from environment variables/secrets) to send the payload to each subscription endpoint.
+        - **Error Handling:** If `web-push` returns a 404 or 410 status code (indicating an expired/invalid subscription), the function deletes that specific subscription record from the `push_subscriptions` table.
+      - **(Optional Logging):** After successfully sending a push notification, it can insert a record into the main `notifications` table so the reminder also appears in the user's in-app notification panel.
+
+5.  **Frontend - Service Worker (`src/sw.ts`):**
+    - **Registration:** The service worker is registered and managed by the PWA setup (`vite-plugin-pwa` using `injectManifest`).
+    - **`push` Event Listener:** When the browser receives a push message from the push service (triggered by the Edge Function sending via `web-push`):
+      - The listener extracts the payload (title, body) sent by the Edge Function.
+      - It calls `self.registration.showNotification(title, options)` to display the notification to the user via the browser/OS notification system.
+    - **`notificationclick` Event Listener:** When the user clicks on the displayed notification:
+      - The listener closes the notification.
+      - It attempts to focus an existing window/tab of the application or opens a new one if none are found.
+
+**Summary Flow:**
+
+User sets reminder & subscribes -> Cron job triggers Edge Function every minute -> Edge Function checks timezones & finds due habits -> Function fetches subscriptions -> Function sends push message via web-push library -> Browser receives push -> Service Worker listens & shows notification -> User clicks notification -> Service Worker focuses/opens app.

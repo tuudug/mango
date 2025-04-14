@@ -13,7 +13,10 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: "autoUpdate",
+      // registerType: "autoUpdate", // No longer needed with injectManifest
+      strategies: "injectManifest", // Use custom SW
+      srcDir: "src", // Directory containing the SW source file
+      filename: "sw.ts", // Name of the SW source file
       includeAssets: ["favicon.ico", "apple-touch-icon.png", "mask-icon.svg"],
       manifest: {
         name: "Mango",
@@ -40,9 +43,13 @@ export default defineConfig({
         ],
       },
       // Add this configuration
-      workbox: {
-        // Ensure API requests are not intercepted by the service worker's navigation fallback.
-        navigateFallbackDenylist: [/^\/api/],
+      // workbox: { // Workbox options are configured within sw.ts when using injectManifest
+      //   // Ensure API requests are not intercepted by the service worker's navigation fallback.
+      //   navigateFallbackDenylist: [/^\/api/],
+      // },
+      devOptions: {
+        enabled: true, // Enable PWA features in dev mode for testing SW
+        type: "module", // Needed for SW in dev mode
       },
     }),
   ],

@@ -71,6 +71,60 @@
     - Fixed React Hook order errors in `App.tsx`.
     - Corrected duplicate imports caused by faulty replace operations.
 
-## Current State & Next Steps:
+## Current State:
 
-The foundation for viewing in-app notifications is built, but the _trigger_ mechanism is incorrect (based on completion, not reminders). The next phase involves refactoring to implement **reminder-based push notifications**.
+The foundation for viewing in-app notifications is built, but the _trigger_ mechanism was incorrect (based on completion, not reminders). This has now been refactored.
+
+---
+
+# Current Progress: Reminder Push Notification System (As of 2025-04-15 ~1:47 AM)
+
+## Goal: Refactor the notification system to send reminder-based push notifications using Web Push API, allowing notifications even when the app is closed.
+
+## Implementation Progress:
+
+1.  **Database Schema:**
+    - Added `timezone` column to `user_settings` table to store user's IANA timezone.
+    - Created `push_subscriptions` table (`id`, `user_id`, `endpoint`, `p256dh`, `auth`, `created_at`) to store user Web Push subscription details, with RLS policies.
+    - Regenerated Supabase types (`api/src/types/supabase.ts`).
+2.  **Backend API (`api/src/routes`):**
+    - Removed incorrect notification trigger logic from `habits/addHabitEntry.ts`.
+    - Updated `user/updateSettings.ts` handler (`PUT /api/user/settings`) to accept and save the `timezone`.
+    - Created `user/pushSubscriptions.ts` handlers for adding (`POST /api/user/push-subscriptions`) and deleting (`DELETE /api/user/push-subscriptions`) user push subscriptions.
+    - Registered new push subscription routes in `user.ts`.
+3.  **Backend - Scheduled Task (`supabase/functions/send-reminders/index.ts`):**
+    - Created a Supabase Edge Function (`send-reminders`) designed to be triggered by a cron schedule (e.g., every minute).
+    - Function logic:
+      - Fetches habits due for a reminder based on the current minute, joining `user_settings` to get the user's timezone.
+      - Filters habits by comparing the stored `reminder_time` (HH:MM) with the current time converted to the user's specific timezone.
+      - Fetches the user's stored push subscriptions from the `push_subscriptions` table.
+      - Uses the `web-push` library (configured with VAPID keys set as environment variables/secrets) to send a push notification payload (title, body) to each valid subscription endpoint.
+      - Includes logic to delete expired/invalid subscriptions (HTTP 404/410 responses) from the database.
+      - Optionally logs the sent reminder to the in-app `notifications` table.
+4.  **Frontend - Service Worker (`src/sw.ts` & `vite.config.ts`):**
+    - Created a custom service worker file (`src/sw.ts`).
+    - Added event listeners within the service worker for:
+      - `push`: To receive push messages, parse the payload (title, body), and display an OS-level notification using `self.registration.showNotification()`.
+      - `notificationclick`: To handle user clicks on the notification (closes notification, focuses/opens the app window).
+    - Updated `vite.config.ts` to use the `injectManifest` strategy, pointing to `src/sw.ts`, ensuring the custom service worker logic is included in the build.
+5.  **Frontend UI (`src/components/UserProfilePanel.tsx`):**
+    - Added state management to track push subscription status (`isSubscribed`, loading states).
+    - Implemented logic to check the current push subscription status on component mount using `navigator.serviceWorker.ready` and `registration.pushManager.getSubscription()`.
+    - Added "Subscribe to Reminders" and "Unsubscribe Reminders" buttons, visible only when browser notification permission is granted.
+    - Implemented `subscribeUser` function:
+      - Checks for VAPID public key (`VITE_VAPID_PUBLIC_KEY` env var).
+      - Uses `registration.pushManager.subscribe()` to get a new `PushSubscription` object from the browser.
+      - Sends the subscription object to the backend (`POST /api/user/push-subscriptions`) using `authenticatedFetch`.
+      - Handles errors and updates UI state.
+    - Implemented `unsubscribeUser` function:
+      - Gets the current subscription using `registration.pushManager.getSubscription()`.
+      - Sends the subscription endpoint to the backend (`DELETE /api/user/push-subscriptions`) using `authenticatedFetch`.
+      - If backend deletion is successful (or 404), calls `subscription.unsubscribe()` locally.
+      - Handles errors and updates UI state.
+    - Ensured `authenticatedFetch` calls use the correct function signature (url, method, session, body).
+6.  **Frontend UI (`src/components/datasources/HabitFormModal.tsx`):**
+    - Updated the label for the `enable_notification` checkbox from "Notify on Completion" to "Enable Reminder Notification" for clarity.
+
+## Current State:
+
+The reminder-based push notification system is implemented across the stack. Final steps involve configuration (VAPID keys, Edge Function deployment/scheduling) and testing.

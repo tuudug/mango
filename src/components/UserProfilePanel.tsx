@@ -1,21 +1,250 @@
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/contexts/AuthContext"; // Import useAuth
-import { useNotification } from "@/contexts/NotificationContext"; // Import useNotification
-import { LogOut, Settings, User, X, Bell, BellOff } from "lucide-react"; // Import Bell icons
+import { useAuth } from "@/contexts/AuthContext";
+import { useNotification } from "@/contexts/NotificationContext";
+import {
+  LogOut,
+  Settings,
+  User,
+  X,
+  Bell,
+  BellOff,
+  Loader2,
+} from "lucide-react"; // Added Loader2
+import { useState, useEffect, useCallback } from "react"; // Added hooks
+import { useToast } from "@/contexts/ToastContext"; // Added useToast
+import { authenticatedFetch } from "@/lib/apiClient"; // Added authenticatedFetch
+
+// Helper function to convert VAPID public key
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
 
 interface UserProfilePanelProps {
   onClose: () => void; // Function to close the panel
 }
 
 export function UserProfilePanel({ onClose }: UserProfilePanelProps) {
-  const { user, signOut } = useAuth(); // Get user and signOut function
-  const { permissionStatus, requestPermission } = useNotification(); // Get notification status and request function
+  const { user, session, signOut } = useAuth(); // Get session object
+  const { permissionStatus, requestPermission } = useNotification();
+  const { showToast } = useToast(); // Corrected function name
+
+  // State for push subscription status
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [isSubscriptionLoading, setIsSubscriptionLoading] = useState(true); // Loading initial status
+  const [isActionLoading, setIsActionLoading] = useState(false); // Loading subscribe/unsubscribe actions
+
+  // VAPID public key from environment variables (ensure this is set in your .env)
+  const vapidPublicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
 
   // Use user email or a fallback
   const username = user?.email || "User";
   // Placeholder data for level/points
   const level = 1;
   const points = 150;
+
+  // --- Push Subscription Logic ---
+
+  // Check current subscription status on mount
+  useEffect(() => {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+      console.warn("Push notifications not supported by this browser.");
+      setIsSubscriptionLoading(false);
+      return;
+    }
+
+    navigator.serviceWorker.ready
+      .then((registration) => {
+        return registration.pushManager.getSubscription();
+      })
+      .then((subscription) => {
+        setIsSubscribed(!!subscription);
+      })
+      .catch((error) => {
+        console.error("Error checking push subscription:", error);
+        showToast({
+          title: "Error checking subscription status",
+          variant: "error",
+        });
+      })
+      .finally(() => {
+        setIsSubscriptionLoading(false);
+      });
+  }, [showToast]); // Added showToast dependency
+
+  const subscribeUser = useCallback(async () => {
+    if (!vapidPublicKey) {
+      console.error("VAPID public key not found. Set VITE_VAPID_PUBLIC_KEY.");
+      showToast({
+        title: "Configuration error",
+        description: "Notification key missing.",
+        variant: "error",
+      });
+      return;
+    }
+    if (!("serviceWorker" in navigator)) {
+      showToast({
+        title: "Browser not supported",
+        description: "Service workers needed for notifications.",
+        variant: "warning",
+      });
+      return;
+    }
+
+    setIsActionLoading(true);
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const existingSubscription =
+        await registration.pushManager.getSubscription();
+
+      if (existingSubscription) {
+        console.log("User is already subscribed.");
+        setIsSubscribed(true); // Sync state just in case
+        showToast({ title: "Already Subscribed", variant: "info" });
+        return;
+      }
+
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+      });
+
+      console.log("User subscribed:", subscription);
+
+      // Send subscription to backend using correct arguments
+      // Assuming the backend expects the subscription object directly
+      // The function returns the parsed JSON body on success, or throws ApiError
+      await authenticatedFetch(
+        "/api/user/push-subscriptions", // url
+        "POST", // method
+        session, // session object
+        subscription.toJSON() // body (convert PushSubscription to plain JSON)
+      );
+
+      // If authenticatedFetch throws, the catch block below handles it.
+      // If it succeeds, we can proceed.
+      showToast({ title: "Subscribed to Notifications", variant: "success" });
+      setIsSubscribed(true);
+    } catch (error) {
+      console.error("Failed to subscribe user:", error);
+      // Attempt to unsubscribe locally if the backend save failed but local subscription succeeded
+      try {
+        const registration = await navigator.serviceWorker.ready;
+        const currentSubscription =
+          await registration.pushManager.getSubscription();
+        if (currentSubscription) {
+          await currentSubscription.unsubscribe();
+          console.log("Cleaned up local subscription after backend failure.");
+        }
+      } catch (cleanupError) {
+        console.error("Error during subscription cleanup:", cleanupError);
+      }
+      showToast({
+        title: "Subscription Failed",
+        description: String(error instanceof Error ? error.message : error), // Show error message
+        variant: "error",
+      });
+      setIsSubscribed(false); // Ensure state reflects failure
+    } finally {
+      setIsActionLoading(false);
+    }
+  }, [vapidPublicKey, showToast, session]); // Correct dependency array placement
+
+  const unsubscribeUser = useCallback(async () => {
+    if (!("serviceWorker" in navigator)) {
+      showToast({
+        title: "Browser not supported",
+        description: "Service workers needed for notifications.",
+        variant: "warning",
+      });
+      return;
+    }
+    setIsActionLoading(true);
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.getSubscription();
+
+      if (subscription) {
+        let backendDeletionSuccessful = false;
+        try {
+          // Send delete request to backend first using correct arguments
+          await authenticatedFetch(
+            "/api/user/push-subscriptions", // url
+            "DELETE", // method
+            session, // session object
+            { endpoint: subscription.endpoint } // body
+          );
+          // If it doesn't throw, backend deletion was successful (204 No Content)
+          backendDeletionSuccessful = true;
+          console.log("Backend subscription deleted successfully.");
+        } catch (error) {
+          // Check if the error was a 404 (Subscription not found on backend)
+          if (error instanceof Error && (error as any).status === 404) {
+            console.warn(
+              "Subscription not found on backend, proceeding with local unsubscribe."
+            );
+            backendDeletionSuccessful = true; // Treat as success for local cleanup
+          } else {
+            // Rethrow other backend errors
+            console.error("Failed to delete subscription on server:", error);
+            showToast({
+              title: "Server Unsubscription Failed",
+              description: String(
+                error instanceof Error ? error.message : error
+              ),
+              variant: "error",
+            });
+            // Do not proceed with local unsubscribe if backend failed unexpectedly
+            backendDeletionSuccessful = false;
+          }
+        }
+
+        // Only unsubscribe locally if backend deletion was successful or ignored (404)
+        if (backendDeletionSuccessful) {
+          const unsubscribed = await subscription.unsubscribe();
+          if (unsubscribed) {
+            console.log("User unsubscribed successfully.");
+            showToast({
+              title: "Unsubscribed from Notifications",
+              variant: "success",
+            });
+            setIsSubscribed(false);
+          } else {
+            console.error("Failed to unsubscribe locally.");
+            showToast({
+              title: "Local Unsubscription Failed",
+              variant: "error",
+            });
+          }
+        }
+        // Removed the 'else' block that handled response.ok/status checks,
+        // as errors are now handled by the catch block above.
+      } else {
+        console.log("No active subscription found to unsubscribe.");
+        showToast({ title: "Not Subscribed", variant: "info" });
+        setIsSubscribed(false); // Sync state
+      }
+    } catch (error) {
+      console.error("Failed to unsubscribe user:", error);
+      showToast({
+        title: "Unsubscription Failed",
+        description: String(error),
+        variant: "error",
+      });
+    } finally {
+      setIsActionLoading(false);
+    }
+  }, [showToast, session]); // Added session dependency
+
+  // --- End Push Subscription Logic ---
 
   return (
     <aside className="h-full w-72 bg-gray-800 border-l border-gray-700 shadow-lg flex flex-col">
@@ -56,9 +285,49 @@ export function UserProfilePanel({ onClose }: UserProfilePanelProps) {
             Notifications
           </h4>
           {permissionStatus === "granted" && (
-            <div className="flex items-center gap-2 text-sm text-green-400">
-              <Bell size={16} />
-              <span>Enabled</span>
+            <div className="flex flex-col gap-2 text-sm">
+              <div className="flex items-center gap-2 text-green-400">
+                <Bell size={16} />
+                <span>Browser Permission Granted</span>
+              </div>
+              {/* Push Subscription Button */}
+              {isSubscriptionLoading ? (
+                <Button size="sm" disabled className="justify-center">
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Checking Status...
+                </Button>
+              ) : isSubscribed ? (
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={unsubscribeUser}
+                  disabled={isActionLoading}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  {isActionLoading && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
+                  Unsubscribe Reminders
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="default"
+                  onClick={subscribeUser}
+                  disabled={isActionLoading || !vapidPublicKey} // Disable if key missing
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  {isActionLoading && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
+                  Subscribe to Reminders
+                </Button>
+              )}
+              {!vapidPublicKey && (
+                <p className="text-xs text-red-400 mt-1">
+                  Push notification key not configured.
+                </p>
+              )}
             </div>
           )}
           {permissionStatus === "denied" && (
