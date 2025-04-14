@@ -159,7 +159,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
   }, [permissionStatus, showToast, updateStoredPermission]); // Update dependency array
 
   const fetchNotifications = useCallback(
-    async (force?: boolean) => {
+    async (_force?: boolean) => {
       // TODO: Integrate with FetchManagerContext cooldown logic if needed
       if (!session) return; // Only fetch if logged in
       setIsLoading(true);
