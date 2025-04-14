@@ -1,15 +1,18 @@
 import React, { useState, useRef, useEffect } from "react";
+// Removed duplicate import
 import { Button } from "@/components/ui/button";
-import { Bot, X, SendHorizontal, User, Info } from "lucide-react";
+import { Bot, X, SendHorizontal, User, Info } from "lucide-react"; // Remove Bell import
 import { authenticatedFetch } from "@/lib/apiClient";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
+// Remove useNotification import
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+// Remove NotificationsPanel import
 
 interface YuzuPanelProps {
   onClose: () => void;
@@ -46,6 +49,7 @@ export function YuzuPanel({ onClose }: YuzuPanelProps) {
   const [now, setNow] = useState(Date.now());
   const { showToast } = useToast();
   const { session } = useAuth();
+  // Remove unreadCount and isNotificationsOpen state
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -162,23 +166,30 @@ export function YuzuPanel({ onClose }: YuzuPanelProps) {
   }, [history, loading]);
 
   return (
-    <aside className="h-full w-full bg-gray-800 border-l border-gray-700 shadow-lg flex flex-col">
+    // Add relative positioning to the main container for absolute positioning of the panel
+    <aside className="relative h-full w-full bg-gray-800 border-l border-gray-700 shadow-lg flex flex-col">
       {/* Header */}
       <div className="p-4 border-b border-gray-700 flex justify-between items-center flex-shrink-0">
         <div className="flex items-center gap-2">
           <Bot className="w-5 h-5 text-indigo-400" />
           <h2 className="text-lg font-semibold text-gray-100">Yuzu</h2>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7"
-          onClick={onClose}
-        >
-          <X size={16} />
-        </Button>
-      </div>
-
+        {/* Container for buttons */}
+        <div className="flex items-center gap-1">
+          {/* REMOVED Notification Button */}
+          {/* Close Button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={onClose}
+          >
+            <X size={16} />
+          </Button>
+        </div>{" "}
+        {/* Close the button container div */}
+      </div>{" "}
+      {/* Close the header div */}
       {/* Chat Area */}
       <div
         className="flex-1 p-4 overflow-y-auto space-y-4"
@@ -219,7 +230,6 @@ export function YuzuPanel({ onClose }: YuzuPanelProps) {
           </div>
         )}
       </div>
-
       {/* Suggestions Area */}
       {suggestions.length > 0 && (
         <div className="flex flex-wrap gap-2 px-3 py-2 border-t border-b border-gray-700 bg-gray-800">
@@ -237,7 +247,6 @@ export function YuzuPanel({ onClose }: YuzuPanelProps) {
           ))}
         </div>
       )}
-
       {/* Limit Info Area */}
       {typeof remainingMessages === "number" &&
         typeof resetTimestamp === "number" && (
@@ -268,7 +277,6 @@ export function YuzuPanel({ onClose }: YuzuPanelProps) {
             </TooltipProvider>
           </div>
         )}
-
       {/* Input Area */}
       <div className="p-3 border-t border-gray-700 flex items-center gap-2 flex-shrink-0">
         <input
@@ -292,6 +300,7 @@ export function YuzuPanel({ onClose }: YuzuPanelProps) {
           <span className="sr-only">Send</span>
         </Button>
       </div>
+      {/* REMOVED Conditional Notification Panel */}
     </aside>
   );
 }

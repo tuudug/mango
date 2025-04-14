@@ -209,6 +209,7 @@ export type Database = {
       manual_habits: {
         Row: {
           created_at: string
+          enable_notification: boolean
           id: string
           log_type: Database["public"]["Enums"]["habit_log_type"]
           name: string
@@ -219,6 +220,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          enable_notification?: boolean
           id?: string
           log_type?: Database["public"]["Enums"]["habit_log_type"]
           name: string
@@ -229,6 +231,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          enable_notification?: boolean
           id?: string
           log_type?: Database["public"]["Enums"]["habit_log_type"]
           name?: string
@@ -287,6 +290,7 @@ export type Database = {
           id: string
           updated_at: string
           user_id: string
+          weight_goal: number | null
         }
         Insert: {
           created_at?: string
@@ -294,6 +298,7 @@ export type Database = {
           id?: string
           updated_at?: string
           user_id: string
+          weight_goal?: number | null
         }
         Update: {
           created_at?: string
@@ -301,6 +306,7 @@ export type Database = {
           id?: string
           updated_at?: string
           user_id?: string
+          weight_goal?: number | null
         }
         Relationships: []
       }
@@ -360,6 +366,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      notifications: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          is_read: boolean
+          read_at: string | null
+          related_entity_id: string | null
+          title: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          read_at?: string | null
+          related_entity_id?: string | null
+          title?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          read_at?: string | null
+          related_entity_id?: string | null
+          title?: string | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       quest_criteria: {
         Row: {
@@ -541,6 +583,27 @@ export type Database = {
           last_daily_generated_at?: string | null
           last_weekly_generated_at?: string | null
           next_weekly_reset_allowed_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_settings: {
+        Row: {
+          created_at: string
+          notification_permission: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          notification_permission?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          notification_permission?: string | null
           updated_at?: string
           user_id?: string
         }

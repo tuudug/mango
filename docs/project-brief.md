@@ -239,6 +239,20 @@ These components handle the interaction and persistence of core application data
 - **[x] Timezone Consistency:** Fixed issue where daily resets (e.g., Daily Allowance, Habit checks) could occur at inconsistent times depending on user timezone vs. server time (UTC). Backend now uses user's timezone provided by the frontend.
 - **[x] Auth Context Refactor:** Separated initial load effect from auth state change listener to prevent potential infinite loops (v0.2.2).
 - **[x] Centralized Fetching:** Implemented `FetchManagerContext` to control data fetching frequency (cooldown on focus), provide manual refresh, and prevent redundant fetches on auth state changes.
+- **[✓] In-App Notification Foundation:** (v0.2.6 - Partially Implemented, Needs Refactor)
+  - [x] Database: Added `notifications` and `user_settings` tables. Added `enable_notification` to `manual_habits`.
+  - [x] Backend API: Added `/api/notifications` (GET, PUT read status) and `/api/user/settings` (PUT permission) routes.
+  - [x] Frontend Context: Created `NotificationContext` for state management (permission, messages) and API calls. Integrated fetch into `FetchManagerContext`.
+  - [x] Frontend UI: Added permission request in `App.tsx`, status display in `UserProfilePanel.tsx`, notification panel (`NotificationsPanel.tsx`), and trigger button/badge in `DashboardHeader.tsx`.
+  - [ ] **Refactor Needed:** Current implementation incorrectly triggers notifications on habit _completion_ via `POST /api/habits/entries` and the `enable_notification` flag in `HabitFormModal`. This needs to be removed and replaced with a reminder-based system.
+- [ ] **Reminder Notification System:** (v0.3.0 - Planned)
+  - [ ] Backend: Supabase Edge Function scheduled to run periodically (e.g., every minute).
+  - [ ] Backend: Function logic to query habits with `reminder_time` matching the current time (considering user timezone).
+  - [ ] Backend: Logic to send push notifications via Web Push API.
+  - [ ] Frontend: Implement Service Worker for receiving push notifications.
+  - [ ] Frontend: Implement UI for managing push notification subscriptions.
+  - [ ] Frontend: Store push subscription details securely (e.g., in a new `push_subscriptions` table).
+  - [ ] Frontend: Refactor `enable_notification` checkbox in `HabitFormModal` to "Enable Reminder Notification".
 
 ## LLM Prompting Considerations
 

@@ -14,6 +14,7 @@ import { PomodoroProvider } from "./contexts/PomodoroContext.tsx";
 import { AmbienceProvider } from "./contexts/AmbienceContext.tsx"; // Import AmbienceProvider
 import { HabitsProvider } from "./contexts/HabitsContext.tsx"; // Import HabitsProvider
 import { QuestsProvider } from "./contexts/QuestsContext.tsx"; // Import QuestsProvider
+import { NotificationProvider } from "./contexts/NotificationContext.tsx"; // Import NotificationProvider
 import { FetchManagerProvider } from "./contexts/FetchManagerContext.tsx"; // Import FetchManagerProvider
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
@@ -31,11 +32,12 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
                     <FinanceProvider>
                       <PomodoroProvider>
                         <AmbienceProvider>
-                          <FetchManagerProvider>
-                            {" "}
-                            {/* Wrap App */}
-                            <App />
-                          </FetchManagerProvider>
+                          {/* Wrap FetchManagerProvider with NotificationProvider */}
+                          <NotificationProvider>
+                            <FetchManagerProvider>
+                              <App />
+                            </FetchManagerProvider>
+                          </NotificationProvider>
                         </AmbienceProvider>
                       </PomodoroProvider>
                     </FinanceProvider>

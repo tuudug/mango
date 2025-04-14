@@ -14,6 +14,7 @@ import { useHabits } from "./HabitsContext";
 import { useHealth } from "./HealthContext";
 import { useQuests } from "./QuestsContext";
 import { useTodos } from "./TodosContext";
+import { useNotification } from "./NotificationContext"; // Import useNotification
 import { useToast } from "./ToastContext";
 import dayjs from "dayjs"; // Import dayjs for date calculations
 
@@ -53,6 +54,7 @@ export const FetchManagerProvider: React.FC<{ children: ReactNode }> = ({
   const { fetchHealthData } = useHealth();
   const { fetchQuests: fetchQuestsData } = useQuests(); // Corrected name
   const { fetchTodos } = useTodos();
+  const { fetchNotifications } = useNotification(); // Get notification fetch function
   // --- End Hooks ---
 
   // Update refs when state changes
@@ -110,6 +112,7 @@ export const FetchManagerProvider: React.FC<{ children: ReactNode }> = ({
           fetchHealthData(),
           fetchQuestsData(),
           fetchTodos(),
+          fetchNotifications(), // Add notification fetch
         ]);
 
         const fetchEndTime = Date.now();
@@ -147,6 +150,7 @@ export const FetchManagerProvider: React.FC<{ children: ReactNode }> = ({
       fetchHealthData,
       fetchQuestsData,
       fetchTodos,
+      fetchNotifications, // Add to dependencies
       showToast,
     ] // Add all fetch functions as dependencies
   );

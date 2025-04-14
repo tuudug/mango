@@ -1,6 +1,8 @@
 import { useState } from "react";
-// Removed: import { useRegisterSW } from "virtual:pwa-register/react";
 import { Button } from "@/components/ui/button";
+import { Bell } from "lucide-react"; // Import Bell icon
+import { useNotification } from "@/contexts/NotificationContext"; // Import notification hook
+// Removed NotificationsPanel import
 import {
   Tooltip,
   TooltipContent,
@@ -15,37 +17,32 @@ const latestVersion =
     ? changelogData[0].version
     : "?.?.?";
 
-// Define props for the header, including PWA update props
+// Define props for the header, including PWA update props AND notification toggle
 interface DashboardHeaderProps {
   updateSW: () => void;
   needRefresh: boolean;
+  onToggleNotifications: () => void; // Add prop to toggle panel in parent
 }
 
 export function DashboardHeader({
   updateSW,
   needRefresh,
+  onToggleNotifications, // Destructure new prop
 }: DashboardHeaderProps) {
   // Accept props
-  // Removed: const [isChecking, setIsChecking] = useState(true); // No longer needed here
   const [isUpdating, setIsUpdating] = useState(false); // Keep state for update process
-
-  // Removed: useRegisterSW hook call
-
-  // Removed: useEffect for checking offlineReady - App.tsx handles SW registration
+  const { unreadCount } = useNotification(); // Get notification count
+  // Removed isNotificationsOpen state
 
   const handleUpdate = async () => {
     if (!needRefresh || isUpdating) return; // Prevent multiple clicks
 
     setIsUpdating(true); // Indicate update is in progress
 
-    // Add listener for controller change *before* triggering update
-    // Use { once: true } so the listener cleans itself up
-    // This logic remains relevant as it ensures reload happens after update
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.addEventListener(
         "controllerchange",
         () => {
-          // Reload ONLY after the new worker has taken control
           console.log("Service worker controller changed, reloading page.");
           window.location.reload();
         },
@@ -55,16 +52,12 @@ export function DashboardHeader({
 
     try {
       console.log("Calling updateSW prop function...");
-      // Call the prop function passed down from App.tsx
       updateSW();
       console.log("updateSW prop function called.");
-      // Reload is now handled by the 'controllerchange' listener
     } catch (error) {
       console.error("Failed to trigger service worker update:", error);
       setIsUpdating(false); // Reset updating state on error
     }
-    // Note: We don't set isUpdating back to false on success,
-    // because the page should reload via the listener.
   };
 
   // Determine button state and content based on props
@@ -75,22 +68,18 @@ export function DashboardHeader({
   let showIndicator = false;
   let pulseAnimation = "";
 
-  // Removed: isChecking logic
   if (isUpdating) {
-    // Add state for when update is in progress
     buttonIcon = <Loader2 className="h-5 w-5 animate-spin" />;
     tooltipContent = "Updating...";
     ariaLabel = "Updating application...";
     isDisabled = true;
   } else if (needRefresh) {
-    // Use the needRefresh prop
     tooltipContent = "Update available";
     ariaLabel = "Update available";
     isDisabled = false;
     showIndicator = true;
     pulseAnimation = "animate-pulse";
   } else {
-    // No update available (and not checking anymore)
     tooltipContent = "Up to date";
     ariaLabel = "Up to date";
     isDisabled = true;
@@ -105,35 +94,63 @@ export function DashboardHeader({
           v{latestVersion}
         </span>
       </div>
-      {/* Right side: Update Button */}
-      <div className="relative">
-        <TooltipProvider delayDuration={100}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleUpdate}
-                disabled={isDisabled}
-                className={`relative ${pulseAnimation} ${
-                  isDisabled && !isUpdating // Adjusted condition
-                    ? "opacity-50 cursor-not-allowed"
-                    : ""
-                }`}
-                aria-label={ariaLabel}
-              >
-                {buttonIcon}
-                {showIndicator && (
-                  <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-gray-800" />
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>{tooltipContent}</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>{" "}
-      </div>{" "}
+      {/* Right side: Buttons */}
+      <div className="flex items-center gap-2">
+        {/* Update Button */}
+        <div className="relative">
+          <TooltipProvider delayDuration={100}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleUpdate}
+                  disabled={isDisabled}
+                  className={`relative ${pulseAnimation} ${
+                    isDisabled && !isUpdating
+                      ? "opacity-50 cursor-not-allowed"
+                      : ""
+                  }`}
+                  aria-label={ariaLabel}
+                >
+                  {buttonIcon}
+                  {showIndicator && (
+                    <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-gray-800" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{tooltipContent}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+        {/* Notification Button */}
+        <div className="relative">
+          <TooltipProvider delayDuration={100}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onToggleNotifications} // Call prop function
+                  className="relative text-gray-400 hover:text-white"
+                  aria-label="Notifications"
+                >
+                  <Bell className="h-5 w-5" />
+                  {unreadCount > 0 && (
+                    <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-gray-800" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Notifications</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      </div>
+      {/* REMOVED Conditional Rendering of NotificationsPanel */}
     </header>
   );
 }

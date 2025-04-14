@@ -29,3 +29,48 @@
     - Corrected duplicate `useContext` imports in `HabitsContext` and `TodosContext`.
 
 ---
+
+# Current Progress: In-App Notification System Foundation (As of 2025-04-14 ~8:50 PM)
+
+## Goal: Implement the basic infrastructure for an in-app notification system. (Note: Initial implementation triggered notifications on habit _completion_, which was incorrect. This needs refactoring to trigger based on habit _reminders_.)
+
+## Implementation Progress:
+
+1.  **Database Schema:**
+    - Created `notifications` table (`id`, `user_id`, `created_at`, `type`, `title`, `body`, `is_read`, `read_at`, `related_entity_id`) with RLS.
+    - Created `user_settings` table (`user_id`, `notification_permission`, `created_at`, `updated_at`) with RLS.
+    - Added `enable_notification` boolean column to `manual_habits` table.
+    - Updated Supabase types (`api/src/types/supabase.ts`).
+2.  **Backend API (`api/src/routes`):**
+    - Created `notifications.ts` router with endpoints:
+      - `GET /`: Fetch user's notifications (all or filtered by `read` status).
+      - `PUT /:id/read`: Mark a specific notification as read.
+      - `PUT /read-all`: Mark all user's unread notifications as read.
+    - Created `user/updateSettings.ts` handler and added `PUT /api/user/settings` route to `user.ts` router for saving notification permission preference.
+    - **(Incorrect Implementation - Needs Removal/Refactor):** Modified `habits/addHabitEntry.ts` (`POST /api/habits/entries`) to insert a notification into the `notifications` table upon successful habit entry creation _if_ the habit's `enable_notification` flag was true.
+    - Registered `notificationsRoutes` and `userRoutes` (with the new settings route) in `server.ts`.
+3.  **Frontend Context (`src/contexts`):**
+    - Created `NotificationContext.tsx` to manage:
+      - Browser notification permission status (`permissionStatus`).
+      - Fetched notifications (`notifications`, `unreadCount`).
+      - Loading state (`isLoading`).
+      - Functions: `requestPermission`, `fetchNotifications`, `markAsRead`, `markAllAsRead`.
+    - Implemented `updateStoredPermission` within the context to call `PUT /api/user/settings`.
+    - Wrapped `FetchManagerProvider` with `NotificationProvider` in `main.tsx` (corrected nesting order).
+    - Integrated `fetchNotifications` call into `FetchManagerContext.tsx`.
+    - Updated `HabitsContext.tsx` to include `enable_notification` in the `Habit` type definition.
+4.  **Frontend UI (`src/components`):**
+    - Added logic to `App.tsx` to call `requestPermission` from `NotificationContext` on initial load if status is 'default'. Refactored to fix React Hook order errors.
+    - Added "Notify on Completion" checkbox (`enable_notification`) to `HabitFormModal.tsx`.
+    - Created `NotificationsPanel.tsx` component to display notifications list, show relative timestamps, and allow marking as read (individually/all).
+    - Added notification indicator (Bell icon + unread badge) to `DashboardHeader.tsx`.
+    - Added state and toggle logic to `Dashboard.tsx` to manage the visibility of `NotificationsPanel`, rendering it as a right-side overlay.
+    - Added display of browser notification permission status (`Granted`/`Denied`/`Not Requested`) to `UserProfilePanel.tsx`.
+5.  **Bug Fixes:**
+    - Resolved various TypeScript errors related to middleware usage, async function return types, and hook dependencies.
+    - Fixed React Hook order errors in `App.tsx`.
+    - Corrected duplicate imports caused by faulty replace operations.
+
+## Current State & Next Steps:
+
+The foundation for viewing in-app notifications is built, but the _trigger_ mechanism is incorrect (based on completion, not reminders). The next phase involves refactoring to implement **reminder-based push notifications**.

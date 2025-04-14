@@ -22,6 +22,7 @@ export interface Habit {
   type: "positive" | "negative";
   reminder_time: string | null;
   log_type: "once_daily" | "multiple_daily";
+  enable_notification: boolean; // Add the new field
   created_at: string;
   updated_at: string;
 }
@@ -43,10 +44,12 @@ interface HabitsContextType {
   error: string | null;
   fetchHabits: () => Promise<void>;
   addHabit: (
+    // Omit now includes enable_notification implicitly if it's added to Habit
     newHabitData: Omit<Habit, "id" | "user_id" | "created_at" | "updated_at">
   ) => Promise<Habit | null>;
   updateHabit: (
     habitId: string,
+    // Omit now includes enable_notification implicitly if it's added to Habit
     updateData: Partial<
       Omit<Habit, "id" | "user_id" | "created_at" | "updated_at">
     >

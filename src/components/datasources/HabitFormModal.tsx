@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"; // Import Select components
+import { Checkbox } from "@/components/ui/checkbox"; // Import Checkbox
 import { Habit } from "@/contexts/HabitsContext"; // Import Habit type
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect } from "react";
@@ -32,8 +33,10 @@ const habitFormSchema = z.object({
     required_error: "Log frequency is required",
   }),
   reminder_time: z.string().optional().nullable(), // Optional time string HH:MM
+  enable_notification: z.boolean().optional(), // Make optional, handle default in useForm
 });
 
+// Type will now have enable_notification as optional boolean
 type HabitFormData = z.infer<typeof habitFormSchema>;
 
 interface HabitFormModalProps {
@@ -63,6 +66,7 @@ export function HabitFormModal({
       type: "positive",
       log_type: "once_daily",
       reminder_time: null,
+      enable_notification: false, // Add default value
     },
   });
 
@@ -78,6 +82,8 @@ export function HabitFormModal({
           reminder_time: initialData.reminder_time
             ? initialData.reminder_time.substring(0, 5)
             : null,
+          // Use nullish coalescing for potentially undefined boolean from DB
+          enable_notification: initialData.enable_notification ?? false,
         });
       } else {
         reset({
@@ -86,16 +92,18 @@ export function HabitFormModal({
           type: "positive",
           log_type: "once_daily",
           reminder_time: null,
+          enable_notification: false, // Reset to default
         });
       }
     }
   }, [initialData, isEditing, reset, isOpen]);
 
   const handleFormSubmit = async (data: HabitFormData) => {
-    // Ensure empty string reminder_time becomes null
+    // Ensure empty string reminder_time becomes null and handle optional boolean
     const dataToSubmit = {
       ...data,
       reminder_time: data.reminder_time || null,
+      enable_notification: data.enable_notification ?? false, // Ensure boolean is sent
     };
     await onSubmit(dataToSubmit);
     // Keep modal open on error, close on success (handled by parent calling onOpenChange(false))
@@ -219,6 +227,39 @@ export function HabitFormModal({
               {errors.reminder_time.message}
             </p>
           )}
+
+          {/* Enable Notification */}
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label
+              htmlFor="enable_notification"
+              className="text-right text-gray-400"
+            >
+              Notify on Completion
+            </Label>
+            {/* Use Controller for checkbox integration */}
+            <Controller
+              name="enable_notification"
+              control={control}
+              render={({ field }) => (
+                <div className="col-span-3 flex items-center space-x-2">
+                  <Checkbox
+                    id="enable_notification"
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                    disabled={isSubmitting}
+                    className="border-gray-600 data-[state=checked]:bg-blue-600 data-[state=checked]:text-white"
+                  />
+                  <Label
+                    htmlFor="enable_notification"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-gray-300"
+                  >
+                    Send an in-app message when this habit is logged.
+                  </Label>
+                </div>
+              )}
+            />
+          </div>
+          {/* No error message needed for boolean usually */}
 
           <DialogFooter>
             <DialogClose asChild>
