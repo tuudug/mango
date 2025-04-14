@@ -1,9 +1,15 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Bot, X, SendHorizontal, User } from "lucide-react";
+import { Bot, X, SendHorizontal, User, Info } from "lucide-react";
 import { authenticatedFetch } from "@/lib/apiClient";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface YuzuPanelProps {
   onClose: () => void;
@@ -33,6 +39,11 @@ export function YuzuPanel({ onClose }: YuzuPanelProps) {
   const [loading, setLoading] = useState(false);
   const [msgId, setMsgId] = useState(2);
   const [suggestions, setSuggestions] = useState<string[]>(INITIAL_SUGGESTIONS);
+  const [remainingMessages, setRemainingMessages] = useState<number | null>(
+    null
+  );
+  const [resetTimestamp, setResetTimestamp] = useState<number | null>(null);
+  const [now, setNow] = useState(Date.now());
   const { showToast } = useToast();
   const { session } = useAuth();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -40,6 +51,13 @@ export function YuzuPanel({ onClose }: YuzuPanelProps) {
   useEffect(() => {
     setSuggestions(INITIAL_SUGGESTIONS);
   }, []);
+
+  useEffect(() => {
+    if (resetTimestamp) {
+      const interval = setInterval(() => setNow(Date.now()), 1000);
+      return () => clearInterval(interval);
+    }
+  }, [resetTimestamp]);
 
   const handleSend = async (overrideMessage?: string) => {
     const trimmed = (overrideMessage ?? message).trim();
@@ -59,6 +77,8 @@ export function YuzuPanel({ onClose }: YuzuPanelProps) {
       const data = await authenticatedFetch<{
         yuzuResponse: string;
         suggestions?: string[];
+        remaining?: number;
+        resetTime?: number;
       }>("/api/yuzu/message", "POST", session, {
         message: trimmed,
         history: [...history, userMsg].slice(-10),
@@ -78,17 +98,48 @@ export function YuzuPanel({ onClose }: YuzuPanelProps) {
       } else {
         setSuggestions([]);
       }
-    } catch (err) {
-      showToast({
-        title: "Yuzu Error",
-        description: "Failed to get a response. Please try again.",
-        variant: "destructive",
-      });
+      if (typeof data.remaining === "number")
+        setRemainingMessages(data.remaining);
+      if (typeof data.resetTime === "number") setResetTimestamp(data.resetTime);
+    } catch (err: any) {
+      if (err && err.response && err.response.status === 429) {
+        const errorData = err.response.data;
+        setRemainingMessages(0);
+        if (typeof errorData.resetTime === "number")
+          setResetTimestamp(errorData.resetTime);
+        showToast({
+          title: "Yuzu Limit Reached",
+          description:
+            errorData && typeof errorData.resetTime === "number"
+              ? `You have reached the hourly limit. Limit resets ${formatResetTime(
+                  errorData.resetTime
+                )}.`
+              : "You have reached the hourly limit.",
+          variant: "destructive",
+        });
+      } else {
+        showToast({
+          title: "Yuzu Error",
+          description: "Failed to get a response. Please try again.",
+          variant: "destructive",
+        });
+      }
       setSuggestions([]);
     } finally {
       setLoading(false);
     }
   };
+
+  function formatResetTime(reset: number) {
+    const diff = Math.max(0, reset - now);
+    if (diff < 60 * 1000) return "in less than a minute";
+    if (diff < 60 * 60 * 1000) return `in ${Math.ceil(diff / 60000)} min`;
+    const date = new Date(reset);
+    return `at ${date.getHours().toString().padStart(2, "0")}:${date
+      .getMinutes()
+      .toString()
+      .padStart(2, "0")}`;
+  }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -187,6 +238,37 @@ export function YuzuPanel({ onClose }: YuzuPanelProps) {
         </div>
       )}
 
+      {/* Limit Info Area */}
+      {typeof remainingMessages === "number" &&
+        typeof resetTimestamp === "number" && (
+          <div className="px-4 py-2 text-xs text-gray-300 bg-gray-800 border-t border-b border-gray-700 flex items-center gap-3">
+            <span>
+              Messages remaining:{" "}
+              <span
+                className={
+                  remainingMessages === 0 ? "text-red-400" : "text-indigo-300"
+                }
+              >
+                {remainingMessages}/10
+              </span>
+            </span>
+            <span>Resets {formatResetTime(resetTimestamp)}</span>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="ml-auto flex items-center cursor-pointer">
+                    <Info className="w-4 h-4 text-gray-400 hover:text-indigo-300" />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="top" align="end" className="max-w-xs">
+                  Yuzu chat is temporarily limited to 10 messages per hour. This
+                  is a temporary restriction.
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+        )}
+
       {/* Input Area */}
       <div className="p-3 border-t border-gray-700 flex items-center gap-2 flex-shrink-0">
         <input
@@ -196,13 +278,13 @@ export function YuzuPanel({ onClose }: YuzuPanelProps) {
           onKeyPress={handleKeyPress}
           placeholder="Send a message..."
           className="flex-1 px-3 py-1.5 border border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-gray-700 text-gray-100 placeholder-gray-500"
-          disabled={loading}
+          disabled={loading || remainingMessages === 0}
         />
         <Button
           variant="ghost"
           size="icon"
           onClick={() => handleSend()}
-          disabled={!message.trim() || loading}
+          disabled={!message.trim() || loading || remainingMessages === 0}
           className="h-8 w-8 text-indigo-400 disabled:text-gray-600"
           title="Send Message"
         >

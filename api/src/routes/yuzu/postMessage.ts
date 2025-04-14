@@ -2,6 +2,10 @@ import { Request, Response } from "express";
 import { generateChatResponse } from "../../services/geminiService";
 import { getUserContextSummary } from "../../services/userContextService";
 
+const yuzuRateLimit = new Map();
+const YUZU_LIMIT = 10;
+const YUZU_WINDOW_MS = 60 * 60 * 1000;
+
 /**
  * POST /api/yuzu/message
  * Body: { message: string }
@@ -9,6 +13,35 @@ import { getUserContextSummary } from "../../services/userContextService";
  */
 export async function postMessage(req: Request, res: Response): Promise<void> {
   try {
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+    const now = Date.now();
+    let record = yuzuRateLimit.get(userId);
+    if (record) {
+      if (now >= record.resetTime) {
+        record = { count: 0, resetTime: now + YUZU_WINDOW_MS };
+        yuzuRateLimit.set(userId, record);
+      }
+    } else {
+      record = { count: 0, resetTime: now + YUZU_WINDOW_MS };
+      yuzuRateLimit.set(userId, record);
+    }
+    if (record.count >= YUZU_LIMIT) {
+      res
+        .status(429)
+        .json({
+          error: "Yuzu chat limit reached.",
+          remaining: 0,
+          resetTime: record.resetTime,
+        });
+      return;
+    }
+    record.count += 1;
+    yuzuRateLimit.set(userId, record);
+
     const userMessage =
       typeof req.body.message === "string" ? req.body.message.trim() : "";
     if (!userMessage) {
@@ -18,8 +51,6 @@ export async function postMessage(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    // Fetch user context from all data sources
-    const userId = req.user?.id;
     const supabase = req.supabase;
     let userContext = "";
     if (userId && supabase) {
@@ -82,7 +113,12 @@ User message: "${userMessage}"
 
     const { yuzuResponse, suggestions } = await generateChatResponse(prompt);
 
-    res.status(200).json({ yuzuResponse, suggestions });
+    res.status(200).json({
+      yuzuResponse,
+      suggestions,
+      remaining: Math.max(0, YUZU_LIMIT - record.count),
+      resetTime: record.resetTime,
+    });
   } catch (error) {
     console.error("Error in Yuzu postMessage:", error);
     res.status(500).json({ error: "Failed to generate Yuzu response." });
