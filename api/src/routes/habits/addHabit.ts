@@ -9,6 +9,7 @@ interface AddHabitRequestBody {
   type: "positive" | "negative";
   reminder_time?: string | null; // Optional, format HH:MM:SS or HH:MM
   log_type: "once_daily" | "multiple_daily";
+  enable_notification?: boolean; // Add the missing field
 }
 
 export const addHabit = async (
@@ -18,15 +19,19 @@ export const addHabit = async (
   const userId = req.userId;
   // Use the request-scoped Supabase client from the middleware
   const supabase = req.supabase;
-  const { name, type, reminder_time, log_type }: AddHabitRequestBody = req.body;
+  const {
+    name,
+    type,
+    reminder_time,
+    log_type,
+    enable_notification, // Destructure the new field
+  }: AddHabitRequestBody = req.body;
 
   // Ensure middleware attached the client and userId
   if (!userId || !supabase) {
-    res
-      .status(401)
-      .json({
-        error: "User not authenticated properly or Supabase client missing",
-      });
+    res.status(401).json({
+      error: "User not authenticated properly or Supabase client missing",
+    });
     return;
   }
 
@@ -61,6 +66,7 @@ export const addHabit = async (
         type: type,
         reminder_time: reminder_time || null, // Ensure null if empty/undefined
         log_type: log_type,
+        enable_notification: enable_notification ?? false, // Include and default to false if null/undefined
       })
       .select() // Return the newly created habit
       .single(); // Expect only one row back

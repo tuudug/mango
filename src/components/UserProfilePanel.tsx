@@ -33,7 +33,8 @@ interface UserProfilePanelProps {
 }
 
 export function UserProfilePanel({ onClose }: UserProfilePanelProps) {
-  const { user, session, signOut } = useAuth(); // Get session object
+  // Get userSettings from useAuth as well
+  const { user, session, signOut, userSettings } = useAuth();
   const { permissionStatus, requestPermission } = useNotification();
   const { showToast } = useToast(); // Corrected function name
 
@@ -328,6 +329,13 @@ export function UserProfilePanel({ onClose }: UserProfilePanelProps) {
                   Push notification key not configured.
                 </p>
               )}
+              {/* Display Timezone */}
+              <div className="mt-2 pt-2 border-t border-gray-600/50">
+                <p className="text-xs text-gray-400">Detected Timezone:</p>
+                <p className="text-sm text-gray-200">
+                  {userSettings?.timezone ?? "Not set"}
+                </p>
+              </div>
             </div>
           )}
           {permissionStatus === "denied" && (

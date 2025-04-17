@@ -239,13 +239,33 @@ These components handle the interaction and persistence of core application data
 - **[x] Timezone Consistency:** Fixed issue where daily resets (e.g., Daily Allowance, Habit checks) could occur at inconsistent times depending on user timezone vs. server time (UTC). Backend now uses user's timezone provided by the frontend.
 - **[x] Auth Context Refactor:** Separated initial load effect from auth state change listener to prevent potential infinite loops (v0.2.2).
 - **[x] Centralized Fetching:** Implemented `FetchManagerContext` to control data fetching frequency (cooldown on focus), provide manual refresh, and prevent redundant fetches on auth state changes.
-- **[x] Reminder Push Notification System:** (v0.3.0 - Implemented, Needs Config/Testing)
-  - [x] **Database:** Added `timezone` to `user_settings`. Created `push_subscriptions` table. Regenerated types.
-  - [x] **Backend API:** Removed incorrect completion trigger (`addHabitEntry.ts`). Updated settings endpoint (`updateSettings.ts`) for timezone. Added push subscription management endpoints (`pushSubscriptions.ts`, registered in `user.ts`).
-  - [x] **Backend Scheduled Task:** Created `send-reminders` Edge Function (`supabase/functions/send-reminders/index.ts`) using `web-push`, timezone logic, and VAPID keys (requires deployment & scheduling via `pg_cron`).
-  - [x] **Frontend Service Worker:** Created custom `sw.ts` with `push` and `notificationclick` listeners. Updated `vite.config.ts` to use `injectManifest`.
-  - [x] **Frontend UI (Subscription):** Added subscribe/unsubscribe logic and buttons to `UserProfilePanel.tsx`.
-  - [x] **Frontend UI (Habit Form):** Relabeled `enable_notification` checkbox in `HabitFormModal.tsx`.
+- **[x] Reminder Push Notification System:** (v0.3.0 - Refactored to API-based)
+  - [x] **Database:** Added `timezone` to `user_settings`. Created `push_subscriptions` table. Regenerated types (`api/`, `src/`).
+  - [x] **Backend API:**
+    - Removed incorrect completion trigger (`addHabitEntry.ts`).
+    - Added `GET /api/user/settings` endpoint (`getUserSettings.ts`).
+    - Updated `PUT /api/user/settings` endpoint (`updateSettings.ts`) to handle timezone.
+    - Added push subscription management endpoints (`pushSubscriptions.ts`, registered in `user.ts`).
+    - Fixed `addHabit.ts` and `updateHabit.ts` to correctly save `enable_notification`.
+  - [x] **Backend Scheduled Task (API Server):**
+    - Removed Supabase Edge Function (`send-reminders`).
+    - Created `api/src/services/reminderService.ts` to handle reminder checks and push sending.
+    - Uses `node-cron` in `api/src/server.ts` to run `reminderService` every 15 mins (UTC).
+    - Service fetches habits, user timezones, calculates local time interval, compares, logs notifications, and sends pushes via `web-push`. Uses `supabaseAdmin` client.
+  - [x] **Frontend Service Worker (`src/sw.ts`):**
+    - Created custom `sw.ts` with `push` and `notificationclick` listeners.
+    - Updated `vite.config.ts` to use `injectManifest`.
+    - **Added:** Posts `REFETCH_DATA` message to clients on `push` event.
+  - [x] **Frontend UI (Subscription & Timezone):**
+    - Added subscribe/unsubscribe logic and buttons to `UserProfilePanel.tsx`.
+    - Added display of detected/stored timezone in `UserProfilePanel.tsx`.
+    - `AuthContext.tsx` now fetches settings, detects timezone via `Intl`, and updates `user_settings` via API if timezone is null.
+  - [x] **Frontend UI (Habit Form):**
+    - Relabeled `enable_notification` checkbox in `HabitFormModal.tsx`.
+    - Replaced time input with a `Select` dropdown enforcing 15-minute intervals.
+    - Fixed modal crash related to empty select item value.
+  - [x] **Frontend - Push Refetch:** `FetchManagerContext.tsx` listens for `REFETCH_DATA` message from service worker and triggers forced data refresh.
+  - [x] **Cleanup:** Removed unused `push_notification_queue` table and related backend files.
 
 ## LLM Prompting Considerations
 

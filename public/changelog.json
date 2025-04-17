@@ -1,5 +1,16 @@
 [
   {
+    "version": "0.2.9",
+    "date": "2025-04-17",
+    "data": [
+      "Habit Reminders: Notifications should now be delivered reliably!",
+      "Habit Reminders: Reminder times are now selected in 15-minute intervals.",
+      "Habit Reminders: Your detected timezone is now shown in the User Profile panel and used for reminders.",
+      "Internal: Refactored notification system to run within the main API server instead of Edge Functions for improved reliability.",
+      "Internal: App data now automatically refreshes when a push notification is received."
+    ]
+  },
+  {
     "version": "0.2.8",
     "date": "2025-04-15",
     "data": [

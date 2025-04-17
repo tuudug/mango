@@ -11,19 +11,26 @@ import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabaseClient";
 import { useToast } from "./ToastContext";
 import { authenticatedFetch } from "@/lib/apiClient";
+import { Database } from "../types/supabase"; // Correct relative path for types
 
 interface UserProgress {
   xp: number;
   level: number;
 }
 
+// Define UserSettings type based on Supabase schema
+type UserSettings = Database["public"]["Tables"]["user_settings"]["Row"] | null;
+
+// Define the main context type *once*
 interface AuthContextType {
   session: Session | null;
   user: User | null;
+  userSettings: UserSettings; // Add user settings state
   isLoading: boolean;
   xp: number;
   level: number;
   fetchUserProgress: () => Promise<void>;
+  // fetchUserSettings: () => Promise<void>; // Maybe combine fetching
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signUpWithEmail: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -40,10 +47,13 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const [userSettings, setUserSettings] = useState<UserSettings>(null); // Add state for settings
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [xp, setXp] = useState<number>(0);
   const [level, setLevel] = useState<number>(1);
   const { showToast } = useToast();
+  const [initialTimezoneCheckDone, setInitialTimezoneCheckDone] =
+    useState(false); // Flag to prevent multiple checks
 
   // Function to fetch user progress (XP and Level)
   const fetchUserProgress = useCallback(
@@ -52,27 +62,87 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (!currentSession) {
         setXp(0);
         setLevel(1);
+        // Also clear settings if no session
+        setUserSettings(null);
+        setInitialTimezoneCheckDone(false); // Reset flag on sign out
         return;
       }
 
-      console.log("Fetching user progress...");
+      // console.log("Fetching user progress..."); // Reduce noise
       try {
         const progress = await authenticatedFetch<UserProgress>(
           "/api/user/progress",
           "GET",
           currentSession
         );
-        setXp(progress.xp);
-        setLevel(progress.level);
-        console.log("User progress updated:", progress);
+        setXp(progress.xp ?? 0); // Use nullish coalescing for safety
+        setLevel(progress.level ?? 1);
+        // console.log("User progress updated:", progress);
       } catch (error) {
-        console.error("Failed to fetch user progress:", error);
+        console.error("[AuthContext] Failed to fetch user progress:", error);
         setXp(0);
         setLevel(1);
       }
     },
     []
-  ); // No dependencies needed here as session is passed in
+  );
+
+  // Function to fetch user settings
+  const fetchUserSettings = useCallback(
+    async (currentSession: Session | null) => {
+      if (!currentSession) {
+        setUserSettings(null);
+        setInitialTimezoneCheckDone(false); // Reset flag
+        return;
+      }
+      // console.log("Fetching user settings...");
+      try {
+        const settings = await authenticatedFetch<UserSettings>(
+          "/api/user/settings",
+          "GET",
+          currentSession
+        );
+        setUserSettings(settings); // settings can be null if not found
+        // console.log("User settings updated:", settings);
+        return settings; // Return settings for immediate use
+      } catch (error) {
+        console.error("[AuthContext] Failed to fetch user settings:", error);
+        setUserSettings(null);
+        return null;
+      }
+    },
+    []
+  );
+
+  // Function to update user settings (specifically timezone for now)
+  const updateTimezoneSetting = useCallback(
+    async (timezone: string, currentSession: Session | null) => {
+      if (!currentSession || !timezone) return;
+      console.log(
+        `[AuthContext] Attempting to update timezone to: ${timezone}`
+      );
+      try {
+        const updatedSettings = await authenticatedFetch<UserSettings>(
+          "/api/user/settings",
+          "PUT",
+          currentSession,
+          { timezone } // Send only the timezone field
+        );
+        setUserSettings(updatedSettings); // Update local state with the response
+        console.log(
+          "[AuthContext] Timezone updated successfully:",
+          updatedSettings
+        );
+      } catch (error) {
+        console.error(
+          "[AuthContext] Failed to update timezone setting:",
+          error
+        );
+        // Optionally show a toast to the user
+      }
+    },
+    []
+  );
 
   // Effect for initial session check (runs once)
   useEffect(() => {
@@ -80,10 +150,42 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     supabase.auth
       .getSession()
       .then(async ({ data: { session: initialSession } }) => {
-        setSession(initialSession);
-        setUser(initialSession?.user ?? null);
-        // Fetch progress immediately after setting initial session
-        await fetchUserProgress(initialSession);
+        // Fetch initial data in parallel
+        const [fetchedSession, fetchedSettings] = await Promise.all([
+          supabase.auth.getSession(),
+          fetchUserSettings(initialSession), // Fetch settings early
+        ]);
+
+        const currentInitialSession = fetchedSession.data.session;
+        setSession(currentInitialSession);
+        setUser(currentInitialSession?.user ?? null);
+        setUserSettings(fetchedSettings); // Set initial settings state
+
+        // Fetch progress after session is confirmed
+        await fetchUserProgress(currentInitialSession);
+
+        // Check timezone after fetching initial settings
+        if (
+          currentInitialSession &&
+          fetchedSettings?.timezone === null &&
+          !initialTimezoneCheckDone
+        ) {
+          const detectedTimezone =
+            Intl.DateTimeFormat().resolvedOptions().timeZone;
+          if (detectedTimezone) {
+            console.log(
+              `[AuthContext] User timezone is null, attempting to set detected timezone: ${detectedTimezone}`
+            );
+            await updateTimezoneSetting(
+              detectedTimezone,
+              currentInitialSession
+            );
+            setInitialTimezoneCheckDone(true); // Mark as done for this session load
+          }
+        } else if (fetchedSettings?.timezone) {
+          setInitialTimezoneCheckDone(true); // Mark as done if timezone already exists
+        }
+
         setIsLoading(false);
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -120,35 +222,61 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       async (event, currentSession) => {
         // Make listener async
         console.log("Supabase Auth Event:", event, currentSession);
-        // Update session/user state first
+        // Fetch settings and progress in parallel when auth state changes
+        const [newSettings] = await Promise.all([
+          fetchUserSettings(currentSession),
+          fetchUserProgress(currentSession), // Fetch progress as well
+        ]);
+
+        // Update session/user state
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
+        setUserSettings(newSettings); // Update settings state
 
-        // Stop loading regardless of event, except maybe initial? (Handled by initial effect now)
-        setIsLoading(false); // Ensure loading stops
+        // Stop loading
+        setIsLoading(false);
 
         if (event === "SIGNED_IN") {
           if (currentSession?.access_token) {
             await establishServerSession(currentSession.access_token);
           }
-          // Fetch user progress after sign in state is set
-          await fetchUserProgress(currentSession);
+          // Check timezone after sign-in if needed
+          if (
+            currentSession &&
+            newSettings?.timezone === null &&
+            !initialTimezoneCheckDone
+          ) {
+            const detectedTimezone =
+              Intl.DateTimeFormat().resolvedOptions().timeZone;
+            if (detectedTimezone) {
+              console.log(
+                `[AuthContext] User timezone is null after SIGNED_IN, attempting to set detected timezone: ${detectedTimezone}`
+              );
+              await updateTimezoneSetting(detectedTimezone, currentSession);
+              setInitialTimezoneCheckDone(true); // Mark as done
+            }
+          } else if (newSettings?.timezone) {
+            setInitialTimezoneCheckDone(true); // Mark as done if timezone exists
+          }
         } else if (event === "SIGNED_OUT") {
-          // Reset progress on sign out
-          setXp(0);
-          setLevel(1);
-        } else if (event === "TOKEN_REFRESHED") {
-          // Optionally re-fetch progress if needed after token refresh
-          await fetchUserProgress(currentSession);
+          // Reset progress and settings state handled by fetchUserSettings/fetchUserProgress called above
+          setInitialTimezoneCheckDone(false); // Reset flag on sign out
         }
-        // PASSWORD_RECOVERY doesn't need special handling here anymore
+        // TOKEN_REFRESHED - progress/settings already fetched above
+        // PASSWORD_RECOVERY - no specific action needed here
       }
     );
 
     return () => {
       authListener?.subscription.unsubscribe();
     };
-  }, [fetchUserProgress]); // Keep fetchUserProgress dependency here for the listener
+    // Add fetchUserSettings and updateTimezoneSetting to dependencies
+  }, [
+    fetchUserProgress,
+    fetchUserSettings,
+    updateTimezoneSetting,
+    initialTimezoneCheckDone,
+  ]);
 
   // --- Other functions remain the same ---
 
@@ -263,17 +391,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     () => ({
       session,
       user,
+      userSettings, // Expose settings
       isLoading,
       xp,
       level,
-      fetchUserProgress: () => fetchUserProgress(session), // Expose a version that uses current session state
+      fetchUserProgress: () => fetchUserProgress(session),
+      // fetchUserSettings: () => fetchUserSettings(session), // Expose if needed elsewhere
       signInWithEmail,
       signUpWithEmail,
       signOut,
       resetPasswordForEmail,
       updatePassword,
     }),
-    [session, user, isLoading, xp, level, fetchUserProgress] // Keep fetchUserProgress in outer scope dependency
+    // Add userSettings to dependency array
+    [session, user, userSettings, isLoading, xp, level, fetchUserProgress]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

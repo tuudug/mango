@@ -127,4 +127,57 @@ The foundation for viewing in-app notifications is built, but the _trigger_ mech
 
 ## Current State:
 
-The reminder-based push notification system is implemented across the stack. Final steps involve configuration (VAPID keys, Edge Function deployment/scheduling) and testing.
+The reminder-based push notification system was initially implemented using a Supabase Edge Function but faced runtime compatibility issues. It has now been refactored.
+
+---
+
+# Current Progress: API-Based Reminder System & Timezone Handling (As of 2025-04-17)
+
+## Goal: Refactor the reminder notification system to run reliably within the API server, handle timezones correctly, and improve related UI/UX.
+
+## Implementation Progress:
+
+1.  **Architecture Change:**
+    - Removed the Supabase Edge Function (`supabase/functions/send-reminders`) due to dependency and runtime issues.
+    - Moved all reminder logic into the main Node.js API server (`/api`).
+2.  **Backend Reminder Service (`api/src/services/reminderService.ts`):**
+    - Created a new service responsible for checking and sending reminders.
+    - Uses `node-cron` (scheduled in `api/src/server.ts`) to run precisely every 15 minutes (00, 15, 30, 45) based on UTC.
+    - Fetches all enabled habits with reminder times using the `supabaseAdmin` client (service role key) to bypass RLS.
+    - For each habit, fetches the user's specific timezone from `user_settings`.
+    - Calculates the current 15-minute interval in the user's local timezone (using `dayjs` and the fetched timezone).
+    - Compares the stored `reminder_time` (HH:MM:SS) with the calculated local interval time (HH:MM:SS).
+    - If times match:
+      - Logs an in-app notification to the `notifications` table.
+      - Fetches user's `push_subscriptions`.
+      - Sends push notifications via `web-push` library to subscribed devices.
+      - Handles `web-push` errors, including deleting invalid subscriptions (404/410).
+3.  **Timezone Auto-Detection & Saving:**
+    - Added `GET /api/user/settings` endpoint (`api/src/routes/user/getUserSettings.ts`).
+    - Updated `src/contexts/AuthContext.tsx`:
+      - Fetches `user_settings` on initial load/login.
+      - Detects browser timezone using `Intl.DateTimeFormat().resolvedOptions().timeZone`.
+      - If `user_settings.timezone` is null, automatically calls `PUT /api/user/settings` to save the detected timezone.
+      - Exposes `userSettings` (including timezone) via the context.
+4.  **Frontend UI Updates:**
+    - **Habit Form (`src/components/datasources/HabitFormModal.tsx`):**
+      - Replaced the `input type="time"` with a `Select` dropdown for `reminder_time`.
+      - Dropdown enforces selection of 15-minute intervals (00, 15, 30, 45).
+      - Fixed crash related to the "None" option in the select dropdown.
+    - **User Profile (`src/components/UserProfilePanel.tsx`):**
+      - Now displays the user's detected/stored timezone below the notification subscription buttons.
+    - **Service Worker (`src/sw.ts`):**
+      - Added logic to the `push` event listener to `postMessage({ type: 'REFETCH_DATA' })` to all open app clients.
+    - **Fetch Manager (`src/contexts/FetchManagerContext.tsx`):**
+      - Added a listener for messages from the service worker.
+      - Triggers a forced global data fetch (`triggerGlobalFetch(true)`) upon receiving the `REFETCH_DATA` message.
+5.  **API Fixes:**
+    - Corrected `api/src/routes/habits/addHabit.ts` and `api/src/routes/habits/updateHabit.ts` to properly save the `enable_notification` boolean value.
+6.  **Cleanup:**
+    - Removed the unused `push_notification_queue` database table.
+    - Deleted the unused `api/src/services/pushQueueProcessor.ts` file.
+    - Deleted the local `supabase/functions/send-reminders` directory.
+
+## Current State:
+
+The reminder notification system is now fully implemented within the API server, scheduled via `node-cron`, handles user timezones correctly, and integrates with the frontend for UI updates and push-triggered data refreshing. Requires VAPID keys to be configured in the API environment.

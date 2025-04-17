@@ -186,6 +186,36 @@ export const FetchManagerProvider: React.FC<{ children: ReactNode }> = ({
     };
   }, [triggerGlobalFetch]); // triggerGlobalFetch has its own dependencies
 
+  // Effect for listening to messages from the Service Worker
+  useEffect(() => {
+    const handleServiceWorkerMessage = (event: MessageEvent) => {
+      if (event.data && event.data.type === "REFETCH_DATA") {
+        console.log(
+          "[FetchManager] Received REFETCH_DATA message from Service Worker. Triggering forced fetch."
+        );
+        // Force fetch to bypass cooldown, as push indicates potentially new data
+        triggerGlobalFetch(true);
+      }
+    };
+
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.addEventListener(
+        "message",
+        handleServiceWorkerMessage
+      );
+    }
+
+    // Cleanup listener on component unmount
+    return () => {
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.removeEventListener(
+          "message",
+          handleServiceWorkerMessage
+        );
+      }
+    };
+  }, [triggerGlobalFetch]); // Depend on triggerGlobalFetch
+
   const value = { lastFetchTimestamp, isFetching, triggerGlobalFetch };
 
   return (

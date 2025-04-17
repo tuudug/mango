@@ -7,7 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { Input } from "@/components/ui/input"; // Restore Input import
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -32,7 +32,15 @@ const habitFormSchema = z.object({
   log_type: z.enum(["once_daily", "multiple_daily"], {
     required_error: "Log frequency is required",
   }),
-  reminder_time: z.string().optional().nullable(), // Optional time string HH:MM
+  // Change reminder_time to be one of the specific 15-min interval strings
+  reminder_time: z
+    .string()
+    .regex(
+      /^([01]\d|2[0-3]):(00|15|30|45)$/,
+      "Invalid time format (HH:MM, 15-min intervals)"
+    )
+    .optional()
+    .nullable(),
   enable_notification: z.boolean().optional(), // Make optional, handle default in useForm
 });
 
@@ -98,8 +106,19 @@ export function HabitFormModal({
     }
   }, [initialData, isEditing, reset, isOpen]);
 
+  // Generate 15-minute interval options
+  const timeOptions = Array.from({ length: 24 * 4 }, (_, i) => {
+    const totalMinutes = i * 15;
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    const formattedTime = `${String(hours).padStart(2, "0")}:${String(
+      minutes
+    ).padStart(2, "0")}`;
+    return { value: formattedTime, label: formattedTime };
+  });
+
   const handleFormSubmit = async (data: HabitFormData) => {
-    // Ensure empty string reminder_time becomes null and handle optional boolean
+    // Ensure empty string or undefined reminder_time becomes null
     const dataToSubmit = {
       ...data,
       reminder_time: data.reminder_time || null,
@@ -214,12 +233,32 @@ export function HabitFormModal({
             <Label htmlFor="reminder_time" className="text-right text-gray-400">
               Reminder (Optional)
             </Label>
-            <Input
-              id="reminder_time"
-              type="time" // Use time input
-              {...register("reminder_time")}
-              className="col-span-3 bg-gray-700 border-gray-600 text-white"
-              disabled={isSubmitting}
+            {/* Replace Input with Select */}
+            <Controller
+              name="reminder_time"
+              control={control}
+              render={({ field }) => (
+                <Select
+                  onValueChange={(value) => field.onChange(value || null)} // Ensure null if cleared
+                  value={field.value ?? ""} // Handle null value for Select
+                  disabled={isSubmitting}
+                >
+                  <SelectTrigger
+                    id="reminder_time"
+                    className="col-span-3 bg-gray-700 border-gray-600 text-white"
+                  >
+                    <SelectValue placeholder="Select time (15 min intervals)" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-gray-700 border-gray-600 text-white max-h-60 overflow-y-auto">
+                    {/* Remove the explicit "None" item with empty value */}
+                    {timeOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             />
           </div>
           {errors.reminder_time && (

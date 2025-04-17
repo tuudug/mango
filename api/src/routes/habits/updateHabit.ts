@@ -7,6 +7,7 @@ interface UpdateHabitRequestBody {
   type?: "positive" | "negative";
   reminder_time?: string | null; // Allow setting to null
   log_type?: "once_daily" | "multiple_daily";
+  enable_notification?: boolean; // Add missing field
 }
 
 export const updateHabit = async (
@@ -16,16 +17,19 @@ export const updateHabit = async (
   const userId = req.userId;
   const supabase = req.supabase; // Use request-scoped client
   const habitId = req.params.id;
-  const { name, type, reminder_time, log_type }: UpdateHabitRequestBody =
-    req.body;
+  const {
+    name,
+    type,
+    reminder_time,
+    log_type,
+    enable_notification, // Destructure new field
+  }: UpdateHabitRequestBody = req.body;
 
   if (!userId || !supabase) {
     // Check for client
-    res
-      .status(401)
-      .json({
-        error: "User not authenticated properly or Supabase client missing",
-      });
+    res.status(401).json({
+      error: "User not authenticated properly or Supabase client missing",
+    });
     return;
   }
 
@@ -35,9 +39,7 @@ export const updateHabit = async (
   }
 
   // Construct update object only with provided fields
-  const updateData: Partial<
-    UpdateHabitRequestBody & { reminder_time: string | null }
-  > = {};
+  const updateData: Partial<UpdateHabitRequestBody> = {}; // Use the updated interface type
   if (name !== undefined) updateData.name = name;
   if (type !== undefined) {
     if (type !== "positive" && type !== "negative") {
@@ -58,6 +60,10 @@ export const updateHabit = async (
       return;
     }
     updateData.log_type = log_type;
+  }
+  // Handle enable_notification (allow setting to true or false explicitly)
+  if (enable_notification !== undefined) {
+    updateData.enable_notification = enable_notification;
   }
 
   if (Object.keys(updateData).length === 0) {

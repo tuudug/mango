@@ -3,8 +3,9 @@ import cors from "cors";
 import dotenv from "dotenv";
 import passport from "passport";
 import session from "express-session";
+import cron from "node-cron"; // Import node-cron
 import setupPassport from "./config/passport"; // Correct: Use default import
-import { ensureAuthenticated } from "./middleware/auth"; // Import auth middleware
+// import { ensureAuthenticated } from "./middleware/auth"; // Middleware is applied in routes
 
 // Import route handlers
 import authRoutes from "./routes/auth";
@@ -18,6 +19,8 @@ import userRoutes from "./routes/user"; // Import the new user routes
 import questsRoutes from "./routes/quests"; // Import the new quests routes
 import notificationsRoutes from "./routes/notifications"; // Import notification routes
 import yuzuRoutes from "./routes/yuzu";
+// import { processPushQueue } from "./services/pushQueueProcessor"; // Remove old queue processor import
+import { checkAndSendReminders } from "./services/reminderService"; // Import the reminder service
 
 dotenv.config(); // Load environment variables from .env file
 
@@ -104,4 +107,37 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 // --- Start Server ---
 app.listen(port, () => {
   console.log(`[server]: Server is running at http://localhost:${port}`);
+
+  // --- Schedule Reminder Check with node-cron ---
+  // Runs at minute 0, 15, 30, and 45 of every hour
+  const CRON_SCHEDULE = "0,15,30,45 * * * *";
+  console.log(
+    `[ReminderService]: Scheduling reminder check with pattern: ${CRON_SCHEDULE}`
+  );
+
+  if (cron.validate(CRON_SCHEDULE)) {
+    cron.schedule(
+      CRON_SCHEDULE,
+      () => {
+        console.log(
+          `[ReminderService]: Cron job triggered at ${new Date().toISOString()}. Running reminder check...`
+        );
+        checkAndSendReminders().catch((error) => {
+          console.error(
+            "[ReminderService] Error during scheduled reminder check:",
+            error
+          );
+        });
+      },
+      {
+        scheduled: true,
+        timezone: "Etc/UTC", // Run based on UTC time to ensure consistency regardless of server timezone
+      }
+    );
+  } else {
+    console.error(
+      `[ReminderService]: Invalid cron schedule pattern: ${CRON_SCHEDULE}. Reminder checks will not run.`
+    );
+  }
+  // --- End Reminder Schedule ---
 });

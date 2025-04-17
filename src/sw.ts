@@ -57,9 +57,33 @@ self.addEventListener("push", (event) => {
     // data: { url: '/' } // Example: data to use on notification click
   };
 
-  event.waitUntil(
-    self.registration.showNotification(notificationData.title, options)
+  const notificationPromise = self.registration.showNotification(
+    notificationData.title,
+    options
   );
+
+  // --- Send message to clients to trigger refetch ---
+  const refetchPromise = self.clients
+    .matchAll({ type: "window", includeUncontrolled: true })
+    .then((clientList) => {
+      if (clientList.length > 0) {
+        console.log(
+          `[Service Worker] Posting 'REFETCH_DATA' message to ${clientList.length} clients.`
+        );
+        clientList.forEach((client) => {
+          client.postMessage({ type: "REFETCH_DATA" });
+        });
+      } else {
+        console.log("[Service Worker] No clients found to post message to.");
+      }
+    })
+    .catch((err) => {
+      console.error("[Service Worker] Error matching/posting to clients:", err);
+    });
+  // --- End send message ---
+
+  // Wait for both notification and message posting attempt
+  event.waitUntil(Promise.all([notificationPromise, refetchPromise]));
 });
 
 // --- Notification Click Event Listener ---
