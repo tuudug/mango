@@ -1,7 +1,12 @@
 import { NextFunction, Response } from "express";
 import { AuthenticatedRequest } from "../../middleware/auth";
-import { awardXpToUser } from "../../services/userProgressService"; // Import the service function
-import { Database } from "../../types/supabase"; // Import Database type for Supabase client
+import { awardXpToUser } from "../../services/userProgressService";
+import {
+  InternalServerError,
+  AuthenticationError,
+  ValidationError,
+} from "../../utils/errors";
+// Database type not strictly needed here
 
 export async function addXp(
   req: AuthenticatedRequest,
@@ -9,34 +14,43 @@ export async function addXp(
   next: NextFunction
 ): Promise<void> {
   const { amount } = req.body;
-  const userId = req.user?.id;
-  // Explicitly type supabase client when getting it from request
-  const supabase = req.supabase as AuthenticatedRequest["supabase"];
-
-  if (!userId || !supabase) {
-    res.status(401).json({ message: "Authentication required." });
-    return;
-  }
-
-  // Input validation remains here
-  if (typeof amount !== "number" || !Number.isInteger(amount) || amount <= 0) {
-    res.status(400).json({
-      message: "Invalid XP amount provided. Amount must be a positive integer.",
-    });
-    return;
-  }
 
   try {
-    // Call the service function to handle XP awarding and level calculation
+    const userId = req.user?.id;
+    const supabase = req.supabase;
+
+    if (!userId || !supabase) {
+      return next(new AuthenticationError("Authentication required."));
+    }
+
+    // Input validation
+    if (
+      typeof amount !== "number" ||
+      !Number.isInteger(amount) ||
+      amount <= 0
+    ) {
+      return next(
+        new ValidationError(
+          "Invalid XP amount provided. Amount must be a positive integer."
+        )
+      );
+    }
+
+    // Call the service function
     const result = await awardXpToUser(userId, amount, supabase);
 
     if (!result.success) {
-      // Use the error message from the service if available
+      // The service should ideally throw specific errors, but if it returns a message:
       const errorMessage = result.error || "Failed to award XP.";
-      // Determine appropriate status code based on error type if needed
-      const statusCode = errorMessage === "Invalid XP amount." ? 400 : 500;
-      res.status(statusCode).json({ message: errorMessage });
-      return; // Return early on failure
+      console.error(
+        `XP Award Service Error for user ${userId}: ${errorMessage}`
+      );
+      // Map known service errors to appropriate AppErrors
+      if (errorMessage === "Invalid XP amount.") {
+        return next(new ValidationError(errorMessage));
+      }
+      // Default to InternalServerError for other service failures
+      return next(new InternalServerError(errorMessage));
     }
 
     // Construct success message
@@ -52,8 +66,15 @@ export async function addXp(
       newLevel: result.newLevel,
     });
   } catch (error) {
-    // Catch any unexpected errors during service call or response handling
+    // Catch unexpected errors from the service call or response handling
     console.error("Unexpected error in addXp handler:", error);
-    next(error); // Pass to global error handler
+    // Check if it's an AppError thrown by the service (if service is refactored later)
+    // if (error instanceof AppError) {
+    //   return next(error);
+    // }
+    // Otherwise, wrap in InternalServerError
+    next(
+      new InternalServerError("An unexpected error occurred while awarding XP.")
+    );
   }
 }

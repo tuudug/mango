@@ -1,5 +1,10 @@
 import { Response, NextFunction } from "express";
 import { AuthenticatedRequest } from "../../middleware/auth";
+import {
+  InternalServerError,
+  BadRequestError,
+  NotFoundError,
+} from "../../utils/errors"; // Import custom errors
 
 export const deleteManualHealthEntry = async (
   req: AuthenticatedRequest,
@@ -12,12 +17,12 @@ export const deleteManualHealthEntry = async (
     const { entryId } = req.params;
 
     if (!userId || !supabaseUserClient) {
-      res.status(401).json({ message: "Authentication data missing" });
-      return;
+      return next(
+        new InternalServerError("Authentication context not found on request.")
+      );
     }
     if (!entryId) {
-      res.status(400).json({ message: "Missing entry ID" });
-      return;
+      return next(new BadRequestError("Missing required parameter: entryId"));
     }
 
     // Use REQUEST-SCOPED client to delete (RLS applies)
@@ -28,16 +33,22 @@ export const deleteManualHealthEntry = async (
       .eq("user_id", userId); // RLS also checks this implicitly
 
     if (error) {
-      // Check if the error is because the row wasn't found (e.g., wrong ID or not owned by user)
-      if (error.code === "PGRST204") {
-        // PostgREST code for no rows found
-        res
-          .status(404)
-          .json({ message: "Health entry not found or not owned by user" });
-        return;
+      // Check for specific PostgREST error code for not found / RLS violation
+      // PGRST116 is more reliable than PGRST204 for RLS/filter failures on delete
+      if (error.code === "PGRST116") {
+        console.warn(
+          `Health entry ${entryId} not found or delete forbidden for user ${userId}.`
+        );
+        return next(
+          new NotFoundError("Health entry not found or delete forbidden")
+        );
       }
-      // Otherwise, throw the actual error
-      throw error;
+      // For other DB errors, throw InternalServerError
+      console.error(
+        `Supabase error deleting health entry ${entryId} for user ${userId}:`,
+        error
+      );
+      return next(new InternalServerError("Failed to delete health entry"));
     }
 
     console.log(`Manual health entry ${entryId} deleted for user ${userId}`);

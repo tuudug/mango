@@ -181,3 +181,38 @@ The reminder-based push notification system was initially implemented using a Su
 ## Current State:
 
 The reminder notification system is now fully implemented within the API server, scheduled via `node-cron`, handles user timezones correctly, and integrates with the frontend for UI updates and push-triggered data refreshing. Requires VAPID keys to be configured in the API environment.
+
+---
+
+# Current Progress: Frontend/Backend Refactoring (As of 2025-04-17)
+
+## Goal: Improve code structure and maintainability by refactoring complex frontend components and implementing standardized backend error handling.
+
+## Implementation Progress:
+
+1.  **Frontend - Component Complexity Refactor:**
+    - **`PanelManagerContext` (`src/contexts/PanelManagerContext.tsx`):** Created a new context to centralize the state and logic for managing which sidebar panel (Yuzu, Profile, Paths, Data Sources, Quests) is currently open.
+    - **`main.tsx`:** Wrapped the application with `PanelManagerProvider`.
+    - **`LeftSidebar.tsx`:** Refactored to use `usePanelManager` hook. Removed local `panelOpenState` and complex toggle logic. Panel buttons now call context functions (`openPanel`, `closePanel`). Panel components receive `onClose={closePanel}`. Overlay click now calls `closePanel`.
+    - **`Dashboard.tsx`:**
+      - Extracted `findFirstAvailablePosition` function to `src/components/dashboard/utils.ts`.
+      - Refactored edit mode logic:
+        - Removed local state variables (`isToolboxOpen`, `editTargetDashboard`, `isSavingLayout`, `isSwitchingEditMode`).
+        - Utilized new state and control functions from `useDashboardLayout` hook (`isEditing`, `editTarget`, `isSaving`, `isSwitchingTarget`, `startEditing`, `stopEditing`, `switchEditTarget`).
+        - Updated `handleToggleEditMode` and `handleToggleEditTarget` to use hook functions.
+        - Replaced usages of old state variables with new hook state throughout the component (props, conditional rendering, etc.).
+2.  **Backend - Standardized Error Handling:**
+    - **Custom Error Classes (`api/src/utils/errors.ts`):** Created `AppError` base class and specific error classes (`BadRequestError`, `ValidationError`, `AuthenticationError`, `AuthorizationError`, `NotFoundError`, `InternalServerError`) with associated HTTP status codes and error codes. Exported `AppError`.
+    - **Error Handling Middleware (`api/src/middleware/errorHandler.ts`):** Implemented middleware to catch errors passed via `next(error)`. It checks if the error is an `AppError` and formats a standardized JSON response (`{ success: false, error: { code, message, details? } }`). Generic errors result in a 500 response with a standard message.
+    - **Middleware Registration (`api/src/server.ts`):** Registered the `errorHandler` middleware as the _last_ middleware in the Express app stack, replacing the previous basic error handler.
+    - **Route Handler Refactoring:** Updated route handlers in the following groups to use the new system:
+      - **Dashboards (`api/src/routes/dashboards/*.ts`):** Replaced direct `res.status().json()` error responses with `next(new CustomError(...))`. Added `try...catch` blocks forwarding errors via `next(err)`. Added checks for `req.userId`/`req.supabase` where necessary for type safety, throwing `InternalServerError` if missing after auth middleware.
+      - **Todos (`api/src/routes/todos/*.ts`):** Refactored similarly, mapping specific database/logic errors (e.g., item not found, validation failure, max level exceeded, RPC errors) to appropriate custom errors (`NotFoundError`, `ValidationError`, `BadRequestError`, `InternalServerError`).
+      - **Calendar (`api/src/routes/calendar/*.ts`):** Refactored similarly. `getCalendarEvents` logs DB errors for manual/connection fetches but continues; Google API auth errors are mapped to `AuthenticationError`, other Google API errors are logged but don't stop the request by default. `add/delete` handlers use standard error mapping.
+      - **Health (`api/src/routes/health/*.ts`):** Refactored similarly. `getHealthEntries` logs DB errors for manual/connection/settings fetches but continues; Google API auth errors are logged but don't stop the request by default. `add/delete/upsert` handlers use standard error mapping.
+      - **Finance (`api/src/routes/finance/*.ts`):** Refactored similarly, mapping errors to appropriate custom types (`ValidationError`, `NotFoundError`, `InternalServerError`).
+      - **(TODO):** Refactor remaining route groups: `habits`, `user`, `quests`, `notifications`, `yuzu`.
+
+## Current State:
+
+Frontend components `LeftSidebar` and `Dashboard` have been simplified. Backend now has a standardized error handling mechanism using custom errors and middleware. Error handling for Dashboard, Todos, Calendar, Health, and Finance routes has been refactored. Remaining backend routes still need refactoring.

@@ -1,6 +1,12 @@
 import { Response, NextFunction } from "express";
 import { AuthenticatedRequest } from "../../middleware/auth";
 import { TodoItem } from "../../types/todo";
+import {
+  InternalServerError,
+  BadRequestError,
+  NotFoundError,
+  ValidationError,
+} from "../../utils/errors"; // Import custom errors
 
 export const editManualTodoHandler = async (
   req: AuthenticatedRequest,
@@ -21,15 +27,18 @@ export const editManualTodoHandler = async (
     const { itemId } = req.params;
     const { title } = req.body;
 
-    if (!userId || !supabaseUserClient || !itemId) {
-      res.status(400).json({ message: "Missing user auth or item ID" });
-      return;
+    if (!userId || !supabaseUserClient) {
+      return next(
+        new InternalServerError("Authentication context not found on request.")
+      );
+    }
+    if (!itemId) {
+      return next(new BadRequestError("Missing required parameter: itemId"));
     }
     if (!title || typeof title !== "string" || title.trim() === "") {
-      res
-        .status(400)
-        .json({ message: "Missing or invalid required field: title" });
-      return;
+      return next(
+        new ValidationError("Missing or invalid required field: title")
+      );
     }
 
     const { data: updatedTodo, error: updateError } = await supabaseUserClient
@@ -44,23 +53,33 @@ export const editManualTodoHandler = async (
       .single();
 
     if (updateError) {
-      if (
-        updateError.code === "PGRST116" ||
-        updateError.message.includes("constraint")
-      ) {
-        res
-          .status(404)
-          .json({ message: "Todo item not found or update forbidden" });
-        return;
+      // Check for specific PostgREST error code for not found / RLS violation
+      // PGRST116 often means 0 rows affected by delete/update due to RLS or filter
+      if (updateError.code === "PGRST116") {
+        console.warn(
+          `Todo item ${itemId} not found or update forbidden for user ${userId}.`
+        );
+        return next(
+          new NotFoundError("Todo item not found or update forbidden")
+        );
       }
-      throw updateError;
+      // For other DB errors, throw InternalServerError
+      console.error(
+        `Supabase error updating todo ${itemId} for user ${userId}:`,
+        updateError
+      );
+      return next(new InternalServerError("Failed to update todo item"));
     }
 
+    // Although .single() should throw if no row is returned after a successful update,
+    // add a safety check.
     if (!updatedTodo) {
-      res
-        .status(404)
-        .json({ message: "Todo item not found after update attempt" });
-      return;
+      console.error(
+        `Todo item ${itemId} not found after successful update attempt for user ${userId}. This should not happen.`
+      );
+      return next(
+        new InternalServerError("Todo item disappeared after update attempt")
+      );
     }
 
     console.log(`Updated todo item ${itemId} title for user ${userId}`);

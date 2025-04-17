@@ -2,6 +2,7 @@ import { Response, NextFunction } from "express";
 import { AuthenticatedRequest } from "../../middleware/auth";
 import { format, isValid } from "date-fns"; // Keep format and isValid
 import { parseISO } from "date-fns/parseISO"; // Import parseISO specifically
+import { InternalServerError, ValidationError } from "../../utils/errors"; // Import custom errors
 
 // Define type for finance entry (can be shared)
 interface FinanceEntry {
@@ -23,36 +24,33 @@ export const addFinanceEntry = async (
   const { amount, description, entry_date } = req.body;
 
   if (!userId || !supabase) {
-    res.status(401).json({ message: "Authentication required." });
-    return;
+    return next(
+      new InternalServerError("Authentication context not found on request.")
+    );
   }
 
   // --- Input Validation ---
   if (typeof amount !== "number" || amount < 0) {
-    res
-      .status(400)
-      .json({ message: "Invalid amount: must be a non-negative number." });
-    return;
+    return next(
+      new ValidationError("Invalid amount: must be a non-negative number.")
+    );
   }
   if (description !== null && typeof description !== "string") {
-    res.status(400).json({ message: "Invalid description format." });
-    return;
+    return next(new ValidationError("Invalid description format."));
   }
 
   let dateToUse = format(new Date(), "yyyy-MM-dd"); // Default to today
   if (entry_date) {
     if (typeof entry_date !== "string") {
-      res
-        .status(400)
-        .json({ message: "Invalid entry_date format (must be string)." });
-      return;
+      return next(
+        new ValidationError("Invalid entry_date format (must be string).")
+      );
     }
     const parsedDate = parseISO(entry_date); // Expect YYYY-MM-DD string
     if (!isValid(parsedDate)) {
-      res
-        .status(400)
-        .json({ message: "Invalid entry_date format (must be YYYY-MM-DD)." });
-      return;
+      return next(
+        new ValidationError("Invalid entry_date format (must be YYYY-MM-DD).")
+      );
     }
     // Re-format to ensure consistency, although parseISO should handle it
     dateToUse = format(parsedDate, "yyyy-MM-dd");
@@ -74,12 +72,21 @@ export const addFinanceEntry = async (
       .single(); // Expecting a single row back
 
     if (error) {
-      console.error("Error adding finance entry:", error);
-      throw error; // Let error handler catch it
+      console.error(
+        `Supabase error adding finance entry for user ${userId}:`,
+        error
+      );
+      return next(new InternalServerError("Failed to add finance entry"));
     }
 
     if (!data) {
-      throw new Error("Failed to insert finance entry, no data returned.");
+      // This case should ideally not happen if insert was successful and .single() was used
+      console.error(
+        `Finance entry data unexpectedly null after insert for user ${userId}`
+      );
+      return next(
+        new InternalServerError("Failed to retrieve finance entry after adding")
+      );
     }
 
     console.log(

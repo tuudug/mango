@@ -1,5 +1,11 @@
 import { Response, NextFunction } from "express";
 import { AuthenticatedRequest } from "../../middleware/auth";
+import {
+  InternalServerError,
+  BadRequestError,
+  NotFoundError,
+  ValidationError,
+} from "../../utils/errors"; // Import custom errors
 
 export const reorderTodosHandler = async (
   req: AuthenticatedRequest,
@@ -12,29 +18,27 @@ export const reorderTodosHandler = async (
     const { parentId, orderedIds } = req.body;
 
     if (!userId || !supabaseUserClient) {
-      res.status(401).json({ message: "Authentication data missing" });
-      return;
+      return next(
+        new InternalServerError("Authentication context not found on request.")
+      );
     }
     if (!Array.isArray(orderedIds)) {
-      res
-        .status(400)
-        .json({ message: "Missing or invalid 'orderedIds' array" });
-      return;
+      return next(new ValidationError("Missing or invalid 'orderedIds' array"));
     }
     if (
       parentId !== null &&
       (typeof parentId !== "string" || parentId.length === 0)
     ) {
-      res.status(400).json({
-        message: "Invalid 'parentId' format (must be null or a UUID string)",
-      });
-      return;
+      return next(
+        new ValidationError(
+          "Invalid 'parentId' format (must be null or a UUID string)"
+        )
+      );
     }
     if (!orderedIds.every((id) => typeof id === "string" && id.length > 0)) {
-      res
-        .status(400)
-        .json({ message: "Invalid ID format within 'orderedIds' array" });
-      return;
+      return next(
+        new ValidationError("Invalid ID format within 'orderedIds' array")
+      );
     }
 
     if (parentId) {
@@ -44,11 +48,17 @@ export const reorderTodosHandler = async (
         .eq("id", parentId)
         .eq("user_id", userId)
         .maybeSingle();
-      if (parentError || !parentData) {
-        res
-          .status(404)
-          .json({ message: "Parent todo not found or not owned by user" });
-        return;
+      if (parentError) {
+        console.error(
+          `Supabase error fetching parent todo ${parentId} for user ${userId}:`,
+          parentError
+        );
+        return next(new InternalServerError("Failed to verify parent todo"));
+      }
+      if (!parentData) {
+        return next(
+          new NotFoundError("Parent todo not found or not owned by user")
+        );
       }
     }
 
@@ -86,12 +96,14 @@ export const reorderTodosHandler = async (
         }. Failed IDs: ${failedUpdates.join(", ")}`,
         errors.map((e) => (e as PromiseRejectedResult).reason)
       );
-      res.status(500).json({
-        message: `Failed to update position for some items. Failed IDs: ${failedUpdates.join(
-          ", "
-        )}`,
-      });
-      return;
+      // Throw an error if any update failed
+      return next(
+        new InternalServerError(
+          `Failed to update position for some items. Failed IDs: ${failedUpdates.join(
+            ", "
+          )}`
+        )
+      );
     }
 
     console.log(

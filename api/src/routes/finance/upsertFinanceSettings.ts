@@ -1,5 +1,6 @@
 import { Response, NextFunction } from "express";
 import { AuthenticatedRequest } from "../../middleware/auth";
+import { InternalServerError, ValidationError } from "../../utils/errors"; // Import custom errors
 
 // Define specific type for salary schedule entries (can be shared)
 interface SalaryPayment {
@@ -27,23 +28,22 @@ export const upsertFinanceSettings = async (
   const { currency, daily_allowance_goal, salary_schedule } = req.body;
 
   if (!userId || !supabase) {
-    res.status(401).json({ message: "Authentication required." });
-    return;
+    return next(
+      new InternalServerError("Authentication context not found on request.")
+    );
   }
 
   // --- Input Validation ---
   // Basic validation for currency (string or null)
   if (currency !== null && typeof currency !== "string") {
-    res.status(400).json({ message: "Invalid currency format." });
-    return;
+    return next(new ValidationError("Invalid currency format."));
   }
   // Basic validation for goal (number or null)
   if (
     daily_allowance_goal !== null &&
     typeof daily_allowance_goal !== "number"
   ) {
-    res.status(400).json({ message: "Invalid daily allowance goal format." });
-    return;
+    return next(new ValidationError("Invalid daily allowance goal format."));
   }
   // Validate salary_schedule structure
   if (
@@ -51,8 +51,7 @@ export const upsertFinanceSettings = async (
     (!Array.isArray(salary_schedule) ||
       !salary_schedule.every(isValidSalaryPayment))
   ) {
-    res.status(400).json({ message: "Invalid salary schedule format." });
-    return;
+    return next(new ValidationError("Invalid salary schedule format."));
   }
   // --- End Validation ---
 
@@ -71,8 +70,11 @@ export const upsertFinanceSettings = async (
       .upsert(settingsData, { onConflict: "user_id" }); // Upsert based on user_id
 
     if (error) {
-      console.error("Error upserting finance settings:", error);
-      throw error; // Let error handler catch it
+      console.error(
+        `Supabase error upserting finance settings for user ${userId}:`,
+        error
+      );
+      return next(new InternalServerError("Failed to update finance settings"));
     }
 
     console.log(`Upserted finance settings for user ${userId}`);
@@ -86,13 +88,33 @@ export const upsertFinanceSettings = async (
       .eq("user_id", userId)
       .single(); // Use single as we expect it to exist now
 
-    if (fetchError || !updatedSettings) {
-      console.error("Error fetching settings after upsert:", fetchError);
-      // Fallback or handle error - maybe return 204 No Content if fetch fails
-      res.status(204).send();
-    } else {
-      res.status(200).json(updatedSettings);
+    if (fetchError) {
+      console.error(
+        `Supabase error fetching settings after upsert for user ${userId}:`,
+        fetchError
+      );
+      // If fetch fails after successful upsert, still indicate success but without data
+      return next(
+        new InternalServerError(
+          "Settings updated, but failed to fetch updated values"
+        )
+      );
     }
+    // We should always have updatedSettings here after a successful upsert + single()
+    // If not, it indicates a more fundamental issue.
+    if (!updatedSettings) {
+      console.error(
+        `Settings data unexpectedly null after upsert/fetch for user ${userId}`
+      );
+      return next(
+        new InternalServerError(
+          "Settings updated, but failed to retrieve confirmation"
+        )
+      );
+    }
+
+    res.status(200).json(updatedSettings);
+    // Removed misplaced closing brace from here
   } catch (error) {
     console.error("Error in upsertFinanceSettings handler:", error);
     next(error); // Pass error to the global error handler

@@ -3,6 +3,7 @@ import { GridItem } from "@/lib/dashboardConfig";
 import { WidgetType, defaultWidgetLayouts } from "@/lib/widgetConfig";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useDashboardConfig } from "@/contexts/DashboardConfigContext"; // Import the hook
+import { useToast } from "@/contexts/ToastContext"; // Import useToast
 // Removed duplicate GridItem import
 import { CACHE_STALE_DURATION, getDefaultLayout } from "../constants";
 import { CachedGridItemData, DashboardName } from "../types";
@@ -35,7 +36,15 @@ export function useDashboardLayout() {
   const [isLoadingLayout, setIsLoadingLayout] = useState(true);
   const [isBackgroundFetching, setIsBackgroundFetching] = useState(false);
 
-  // --- Save Function (Now used primarily by saveEditLayout) ---
+  // --- Edit Mode State ---
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTarget, setEditTarget] = useState<DashboardName>("default");
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSwitchingTarget, setIsSwitchingTarget] = useState(false);
+  const prevEditTargetRef = useRef<DashboardName>(editTarget);
+  const { showToast } = useToast(); // Use toast for feedback
+
+  // --- Save Function (Internal) ---
   const saveLayoutToServerInternal = useCallback(
     async (layoutToSave: GridItem[], dashboardName: DashboardName) => {
       if (!token || !user || !dashboardName) {
@@ -128,11 +137,13 @@ export function useDashboardLayout() {
       // --- End Cache Check ---
 
       // --- Fetching Logic ---
-      if (!isBackground && !initialItemsSetFromCache) {
+      if (!isBackground && !initialItemsSetFromCache && !forEditing) {
+        // Only show main loader if not background and not fetching for edit start
         setIsLoadingLayout(true);
       } else if (isBackground) {
         setIsBackgroundFetching(true);
       }
+      // No separate loading state needed for 'forEditing' as Dashboard handles it
 
       try {
         const response = await fetch(`/api/dashboards/${dashboardName}`, {
@@ -190,14 +201,15 @@ export function useDashboardLayout() {
         initializeConfigs(initialConfigs); // Initialize context state
 
         if (forEditing) {
-          // If fetching for editing, set both layout states
+          // If fetching for editing, set editItems directly
           setEditItems(loadedItems);
-          setItems(loadedItems); // Also update main display state initially
-          setCachedLayout(dashboardName, loadedItems); // Update cache
+          // Optionally update main items if needed, or let the calling component handle it
+          // setItems(loadedItems); // Decided against this, let Dashboard handle initial sync
+          setCachedLayout(dashboardName, loadedItems);
           setCachedLastSyncTime(Date.now());
         } else {
-          // If fetching for display (background or initial load)
-          const currentDisplayItems = itemsRef.current; // Compare against displayed items
+          // If fetching for display
+          const currentDisplayItems = itemsRef.current;
           const areLayoutsEqual = deepCompareLayouts(
             currentDisplayItems,
             loadedItems
@@ -224,56 +236,114 @@ export function useDashboardLayout() {
           setCachedLastSyncTime(Date.now());
           return defaultItems;
         }
-        // Handle edit load failure? Maybe set editItems to current items?
         if (forEditing) {
           console.error(
             `Failed to fetch layout for editing ${dashboardName}. Setting editItems to current display items.`
           );
-          setEditItems([...items]); // Fallback to current display items
-          return [...items];
+          // Fallback: Set editItems to a copy of the current display items
+          const currentDisplayItems = itemsRef.current;
+          setEditItems([...currentDisplayItems]);
+          return [...currentDisplayItems]; // Return the fallback items
         }
-        return null;
+        return null; // Fetch failed for display
       } finally {
-        if (!isBackground && !initialItemsSetFromCache) {
+        if (!isBackground && !initialItemsSetFromCache && !forEditing) {
           setIsLoadingLayout(false);
         }
         setIsBackgroundFetching(false);
       }
     },
-    // Dependencies need to include initializeConfigs and potentially items/token/user
-    [token, user, items, initializeConfigs]
+    [token, user, initializeConfigs] // Removed 'items' dependency
   );
 
-  // --- Function to save the edited layout ---
-  const saveEditLayout = useCallback(
-    async (dashboardName: DashboardName): Promise<boolean> => {
-      if (!editItems) {
-        console.warn("[SaveEdit] No edit items to save.");
-        return false;
-      }
-      // Pass the current editItems state to the internal save function
-      const success = await saveLayoutToServerInternal(
-        editItems,
-        dashboardName
-      );
-      if (success) {
-        // Update the main display state with the saved items
-        setItems(editItems);
-        // Clear the edit state
-        setEditItems(null);
-      } else {
-        console.error(
-          `[SaveEdit] Failed to save layout for ${dashboardName}. Edit state not cleared.`
-        );
-        // Optionally: Add user feedback about save failure
-      }
-      return success;
+  // --- Edit Mode Control Functions ---
+
+  const startEditing = useCallback(
+    (initialTarget: DashboardName) => {
+      setIsEditing(true);
+      setEditTarget(initialTarget);
+      prevEditTargetRef.current = initialTarget; // Sync ref
+      // Fetch layout specifically for editing, replacing current editItems
+      fetchLayout(initialTarget, true, { forEditing: true });
     },
-    // Keep dependencies: editItems and the (now updated) saveLayoutToServerInternal
-    [editItems, saveLayoutToServerInternal]
+    [fetchLayout]
   );
 
-  // --- Function to update layout state AND context config ---
+  const stopEditing = useCallback(async (): Promise<boolean> => {
+    if (!editItems) {
+      console.warn("[StopEdit] No edit items found.");
+      setIsEditing(false); // Still exit edit mode
+      return true; // Consider it a success in terms of exiting mode
+    }
+    setIsSaving(true);
+    let success = false;
+    try {
+      success = await saveLayoutToServerInternal(editItems, editTarget);
+      if (success) {
+        // Update main display state ONLY on successful save
+        setItems(editItems);
+        setEditItems(null); // Clear edit state
+        setIsEditing(false);
+        // Reset edit target to default after successful save and exit
+        setEditTarget("default");
+      } else {
+        showToast({
+          title: "Save Failed",
+          description: "Could not save dashboard changes. Please try again.",
+          variant: "destructive",
+        });
+        // Keep isEditing true and editItems populated on failure
+      }
+    } catch (error) {
+      console.error("[StopEdit] Error during save:", error);
+      showToast({
+        title: "Save Error",
+        description: "An unexpected error occurred while saving.",
+        variant: "destructive",
+      });
+      // Keep isEditing true and editItems populated on failure
+    } finally {
+      setIsSaving(false);
+    }
+    return success;
+  }, [editItems, editTarget, saveLayoutToServerInternal, showToast]);
+
+  const switchEditTarget = useCallback(
+    async (newTarget: DashboardName) => {
+      if (newTarget === editTarget) return; // No change
+
+      setIsSwitchingTarget(true);
+      setEditTarget(newTarget); // Optimistically update target
+      prevEditTargetRef.current = newTarget; // Sync ref
+
+      try {
+        // Fetch layout for the new target, replacing current editItems
+        await fetchLayout(newTarget, true, { forEditing: true });
+      } catch (error) {
+        console.error(
+          `[SwitchEditTarget] Error fetching layout for ${newTarget}:`,
+          error
+        );
+        // Optionally revert target or show error
+        setEditTarget(prevEditTargetRef.current); // Revert if fetch fails?
+        showToast({
+          title: "Switch Failed",
+          description: `Could not load layout for ${newTarget}.`,
+          variant: "destructive",
+        });
+      } finally {
+        setIsSwitchingTarget(false);
+      }
+    },
+    [editTarget, fetchLayout, showToast]
+  );
+
+  // Effect to sync prevEditTargetRef when editTarget changes externally (if ever needed)
+  useEffect(() => {
+    prevEditTargetRef.current = editTarget;
+  }, [editTarget]);
+
+  // --- Function to update item config (works in both modes) ---
   // Renamed and removed currentLayout parameter
   const updateLayoutAndConfig = (
     itemId: string,
@@ -346,7 +416,16 @@ export function useDashboardLayout() {
     isLoadingLayout,
     isBackgroundFetching,
     fetchLayout,
-    saveEditLayout, // Function to save edits and exit edit mode
-    updateLayoutAndConfig, // Renamed function
+    // saveEditLayout, // Removed old save function
+    updateLayoutAndConfig, // Function to update config (works in both modes)
+
+    // Edit Mode State & Controls
+    isEditing,
+    editTarget,
+    isSaving, // True while stopEditing is saving
+    isSwitchingTarget, // True while switchEditTarget is fetching
+    startEditing, // Function to enter edit mode
+    stopEditing, // Function to save changes and exit edit mode
+    switchEditTarget, // Function to change the layout being edited (mobile/default)
   };
 }

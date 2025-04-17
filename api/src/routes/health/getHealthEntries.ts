@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express"; // Ensure Request is imported
 import { google, fitness_v1, Auth } from "googleapis";
-import { GaxiosResponse } from "gaxios";
+import { GaxiosResponse, GaxiosError } from "gaxios"; // Import GaxiosError
 import { supabaseAdmin } from "../../supabaseClient";
 // Module augmentation handles req.user, req.supabase
 import { encrypt, decrypt } from "../../utils/crypto";
@@ -11,6 +11,7 @@ import {
   DecryptedGoogleCredentials,
 } from "../../types/health";
 import { updateQuestProgress } from "../../services/questService"; // Import quest service
+import { InternalServerError, AuthenticationError } from "../../utils/errors"; // Import custom errors
 
 // Define the expected structure for health settings
 interface HealthSettings {
@@ -30,10 +31,10 @@ export const getHealthEntries = async (
 
     // Check user and user.id
     if (!user || !user.id || !supabaseUserClient) {
-      res
-        .status(401)
-        .json({ message: "User not authenticated or Supabase client missing" });
-      return; // Ensure void return
+      // Use next with custom error for server/middleware issues
+      return next(
+        new InternalServerError("Authentication context not found on request.")
+      );
     }
     const currentUserId = user.id; // Use user.id consistently
 
@@ -71,9 +72,14 @@ export const getHealthEntries = async (
           )
           .eq("user_id", currentUserId);
 
-      if (manualError) throw manualError;
-
-      if (manualEntries) {
+      if (manualError) {
+        console.error(
+          `Supabase error fetching manual health entries for user ${currentUserId}:`,
+          manualError
+        );
+        // Don't stop the whole process, just log and continue
+        // return next(new InternalServerError("Failed to fetch manual health entries"));
+      } else if (manualEntries) {
         // Define type for the mapped entry based on selected columns
         type ManualEntryData = {
           id: string;
@@ -108,163 +114,200 @@ export const getHealthEntries = async (
           .eq("user_id", currentUserId)
           .eq("provider", "google_health");
 
-        if (connError) throw connError;
+        if (connError) {
+          console.error(
+            `Supabase error fetching Google Health connections for user ${currentUserId}:`,
+            connError
+          );
+          // Don't stop the whole process, just log and continue
+          // return next(new InternalServerError("Failed to fetch Google Health connections"));
+        } else if (connections) {
+          // Check if connections is not null/undefined
+          for (const connection of connections) {
+            const storedCredentials =
+              connection.credentials as StoredGoogleCredentials;
+            let decryptedCreds: DecryptedGoogleCredentials | null = null;
 
-        for (const connection of connections) {
-          const storedCredentials =
-            connection.credentials as StoredGoogleCredentials;
-          let decryptedCreds: DecryptedGoogleCredentials | null = null;
-
-          try {
-            if (!storedCredentials?.access_token) continue;
-            decryptedCreds = {
-              access_token: decrypt(storedCredentials.access_token),
-              refresh_token: storedCredentials.refresh_token
-                ? decrypt(storedCredentials.refresh_token)
-                : null,
-              scope: storedCredentials.scope,
-              expiry_date: storedCredentials.expiry_date,
-            };
-          } catch (decryptionError) {
-            console.error(
-              `Failed to decrypt Google Health credentials for conn ${connection.id}:`,
-              decryptionError
-            );
-            continue;
-          }
-
-          if (decryptedCreds?.access_token) {
             try {
-              const oauth2Client = new google.auth.OAuth2(
-                process.env.GOOGLE_CLIENT_ID,
-                process.env.GOOGLE_CLIENT_SECRET
+              if (!storedCredentials?.access_token) continue;
+              decryptedCreds = {
+                access_token: decrypt(storedCredentials.access_token),
+                refresh_token: storedCredentials.refresh_token
+                  ? decrypt(storedCredentials.refresh_token)
+                  : null,
+                scope: storedCredentials.scope,
+                expiry_date: storedCredentials.expiry_date,
+              };
+            } catch (decryptionError) {
+              console.error(
+                `Failed to decrypt Google Health credentials for conn ${connection.id}:`,
+                decryptionError
               );
-              oauth2Client.setCredentials({
-                access_token: decryptedCreds.access_token,
-                refresh_token: decryptedCreds.refresh_token ?? undefined,
-                scope: decryptedCreds.scope,
-                expiry_date: decryptedCreds.expiry_date ?? undefined,
-              });
+              continue;
+            }
 
-              // Handle Token Refresh
-              oauth2Client.on("tokens", async (tokens: Auth.Credentials) => {
-                console.log(
-                  `Google Health token refreshed for connection ${connection.id}`
+            if (decryptedCreds?.access_token) {
+              try {
+                const oauth2Client = new google.auth.OAuth2(
+                  process.env.GOOGLE_CLIENT_ID,
+                  process.env.GOOGLE_CLIENT_SECRET
                 );
-                let newEncryptedAccessToken: string | null = null;
-                let newEncryptedRefreshToken: string | null = null;
-                try {
-                  if (tokens.access_token)
-                    newEncryptedAccessToken = encrypt(tokens.access_token);
-                  if (tokens.refresh_token)
-                    newEncryptedRefreshToken = encrypt(tokens.refresh_token);
-
-                  const currentCredentials =
-                    storedCredentials || ({} as StoredGoogleCredentials);
-                  const updatedCredentials: StoredGoogleCredentials = {
-                    ...currentCredentials,
-                    access_token:
-                      newEncryptedAccessToken ??
-                      currentCredentials.access_token,
-                    expiry_date: tokens.expiry_date,
-                    scope: tokens.scope ?? currentCredentials.scope,
-                  };
-                  if (newEncryptedRefreshToken)
-                    updatedCredentials.refresh_token = newEncryptedRefreshToken;
-
-                  const { error: updateError } = await supabaseAdmin
-                    .from("data_source_connections")
-                    .update({ credentials: updatedCredentials })
-                    .eq("id", connection.id);
-
-                  if (updateError)
-                    console.error(
-                      `Failed to update refreshed Google Health tokens for conn ${connection.id}:`,
-                      updateError
-                    );
-                  else
-                    console.log(
-                      `Successfully updated refreshed Google Health tokens for conn ${connection.id}`
-                    );
-                } catch (encError) {
-                  console.error(
-                    `Failed to encrypt refreshed Google Health tokens for conn ${connection.id}:`,
-                    encError
-                  );
-                }
-              });
-
-              const fitness = google.fitness({
-                version: "v1",
-                auth: oauth2Client,
-              });
-              const endTime = endOfDay(new Date());
-              const startTime = startOfDay(addDays(endTime, -6)); // Fetch last 7 days including today
-
-              const requestBody: fitness_v1.Params$Resource$Users$Dataset$Aggregate["requestBody"] =
-                {
-                  aggregateBy: [
-                    {
-                      dataTypeName: "com.google.step_count.delta",
-                      dataSourceId:
-                        "derived:com.google.step_count.delta:com.google.android.gms:estimated_steps",
-                    },
-                  ],
-                  bucketByTime: { durationMillis: "86400000" }, // Daily buckets
-                  startTimeMillis: String(startTime.getTime()),
-                  endTimeMillis: String(endTime.getTime()),
-                };
-
-              const response: GaxiosResponse<fitness_v1.Schema$AggregateResponse> =
-                await fitness.users.dataset.aggregate({
-                  userId: "me",
-                  requestBody: requestBody,
+                oauth2Client.setCredentials({
+                  access_token: decryptedCreds.access_token,
+                  refresh_token: decryptedCreds.refresh_token ?? undefined,
+                  scope: decryptedCreds.scope,
+                  expiry_date: decryptedCreds.expiry_date ?? undefined,
                 });
 
-              const buckets = response.data?.bucket;
-              if (buckets && buckets.length > 0) {
-                const googleStepsEntries: HealthEntry[] = buckets.flatMap(
-                  (bucket: fitness_v1.Schema$AggregateBucket) => {
-                    const startTimeMs = parseInt(bucket.startTimeMillis ?? "0");
-                    const entryDate = format(
-                      new Date(startTimeMs),
-                      "yyyy-MM-dd"
-                    );
-                    const stepsData = bucket.dataset?.[0]?.point?.[0];
-                    const stepsValue = stepsData?.value?.[0]?.intVal;
+                // Handle Token Refresh
+                oauth2Client.on("tokens", async (tokens: Auth.Credentials) => {
+                  console.log(
+                    `Google Health token refreshed for connection ${connection.id}`
+                  );
+                  let newEncryptedAccessToken: string | null = null;
+                  let newEncryptedRefreshToken: string | null = null;
+                  try {
+                    if (tokens.access_token)
+                      newEncryptedAccessToken = encrypt(tokens.access_token);
+                    if (tokens.refresh_token)
+                      newEncryptedRefreshToken = encrypt(tokens.refresh_token);
 
-                    if (stepsValue !== undefined && stepsValue !== null) {
-                      return [
-                        {
-                          id: `google-steps-${entryDate}`, // Consistent ID for aggregation
-                          connection_id: connection.id,
-                          entry_date: entryDate,
-                          type: "steps",
-                          value: stepsValue,
-                          sourceProvider: "google_health",
-                          created_at: new Date(startTimeMs).toISOString(),
-                          updated_at: new Date(startTimeMs).toISOString(),
-                        },
-                      ];
-                    }
-                    return [];
+                    const currentCredentials =
+                      storedCredentials || ({} as StoredGoogleCredentials);
+                    const updatedCredentials: StoredGoogleCredentials = {
+                      ...currentCredentials,
+                      access_token:
+                        newEncryptedAccessToken ??
+                        currentCredentials.access_token,
+                      expiry_date: tokens.expiry_date,
+                      scope: tokens.scope ?? currentCredentials.scope,
+                    };
+                    if (newEncryptedRefreshToken)
+                      updatedCredentials.refresh_token =
+                        newEncryptedRefreshToken;
+
+                    const { error: updateError } = await supabaseAdmin
+                      .from("data_source_connections")
+                      .update({ credentials: updatedCredentials })
+                      .eq("id", connection.id);
+
+                    if (updateError)
+                      console.error(
+                        `Failed to update refreshed Google Health tokens for conn ${connection.id}:`,
+                        updateError
+                      );
+                    else
+                      console.log(
+                        `Successfully updated refreshed Google Health tokens for conn ${connection.id}`
+                      );
+                  } catch (encError) {
+                    console.error(
+                      `Failed to encrypt refreshed Google Health tokens for conn ${connection.id}:`,
+                      encError
+                    );
                   }
+                });
+
+                const fitness = google.fitness({
+                  version: "v1",
+                  auth: oauth2Client,
+                });
+                const endTime = endOfDay(new Date());
+                const startTime = startOfDay(addDays(endTime, -6)); // Fetch last 7 days including today
+
+                const requestBody: fitness_v1.Params$Resource$Users$Dataset$Aggregate["requestBody"] =
+                  {
+                    aggregateBy: [
+                      {
+                        dataTypeName: "com.google.step_count.delta",
+                        dataSourceId:
+                          "derived:com.google.step_count.delta:com.google.android.gms:estimated_steps",
+                      },
+                    ],
+                    bucketByTime: { durationMillis: "86400000" }, // Daily buckets
+                    startTimeMillis: String(startTime.getTime()),
+                    endTimeMillis: String(endTime.getTime()),
+                  };
+
+                const response: GaxiosResponse<fitness_v1.Schema$AggregateResponse> =
+                  await fitness.users.dataset.aggregate({
+                    userId: "me",
+                    requestBody: requestBody,
+                  });
+
+                const buckets = response.data?.bucket;
+                if (buckets && buckets.length > 0) {
+                  const googleStepsEntries: HealthEntry[] = buckets.flatMap(
+                    (bucket: fitness_v1.Schema$AggregateBucket) => {
+                      const startTimeMs = parseInt(
+                        bucket.startTimeMillis ?? "0"
+                      );
+                      const entryDate = format(
+                        new Date(startTimeMs),
+                        "yyyy-MM-dd"
+                      );
+                      const stepsData = bucket.dataset?.[0]?.point?.[0];
+                      const stepsValue = stepsData?.value?.[0]?.intVal;
+
+                      if (stepsValue !== undefined && stepsValue !== null) {
+                        return [
+                          {
+                            id: `google-steps-${entryDate}`, // Consistent ID for aggregation
+                            connection_id: connection.id,
+                            entry_date: entryDate,
+                            type: "steps",
+                            value: stepsValue,
+                            sourceProvider: "google_health",
+                            created_at: new Date(startTimeMs).toISOString(),
+                            updated_at: new Date(startTimeMs).toISOString(),
+                          },
+                        ];
+                      }
+                      return [];
+                    }
+                  );
+                  console.log(
+                    `Fetched ${googleStepsEntries.length} Google Health step entries for user ${currentUserId}`
+                  );
+                  rawHealthEntries =
+                    rawHealthEntries.concat(googleStepsEntries);
+                }
+              } catch (apiError: unknown) {
+                console.error(
+                  `Error fetching Google Fitness API for conn ${connection.id}:`,
+                  apiError instanceof Error ? apiError.message : apiError // Log message if Error instance
                 );
-                console.log(
-                  `Fetched ${googleStepsEntries.length} Google Health step entries for user ${currentUserId}`
-                );
-                rawHealthEntries = rawHealthEntries.concat(googleStepsEntries);
+                // Check for specific Google API errors (like auth failure)
+                if (
+                  apiError instanceof GaxiosError &&
+                  (apiError.code === "401" ||
+                    (apiError.response?.data?.error === "invalid_grant" &&
+                      apiError.response?.status === 400)) // Handle expired/invalid refresh token
+                ) {
+                  console.warn(
+                    `Google API authorization error (token expired/invalid?) for connection ${connection.id}. Needs re-authentication.`
+                  );
+                  // TODO: Mark connection as needing re-auth in DB?
+                  // We log the warning but continue to the next connection if possible,
+                  // rather than failing the entire request with next().
+                } else {
+                  // Log other Google API errors but continue processing other connections/data sources.
+                  console.error(
+                    `Non-authentication Google API error for connection ${connection.id}.`
+                  );
+                  // If a single connection failure should stop everything, uncomment the next line:
+                  // next(new InternalServerError("Failed to fetch Google Fitness data."));
+                }
               }
-            } catch (apiError: unknown) {
-              console.error(
-                `Error fetching Google Fitness API for conn ${connection.id}:`,
-                apiError
-              );
             }
           }
         }
       } catch (err) {
+        // This catch block handles errors specifically within the Google Health processing section (e.g., DB connection fetch)
         console.error("Error processing Google Health data:", err);
+        // Allow the request to continue to return manual data if available.
+        // If this error should stop the request, uncomment the next line:
+        // next(new InternalServerError("Failed to process Google Health data."));
       }
     }
 

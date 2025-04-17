@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChangelogModal } from "./ChangelogModal";
+import { usePanelManager, PanelId } from "@/contexts/PanelManagerContext"; // Import PanelManager hook and type
 // Import the panel components
 import { PathsPage } from "./PathsPage";
 import { UserProfilePanel } from "./UserProfilePanel";
@@ -39,7 +40,7 @@ import {
 // Import the new data source config
 import { useAuth } from "@/contexts/AuthContext"; // Import useAuth
 import { useFetchManager } from "@/contexts/FetchManagerContext"; // Import FetchManager hook
-import { dataSourceConfig, DataSourceId } from "@/lib/dataSourceConfig";
+import { dataSourceConfig } from "@/lib/dataSourceConfig"; // Removed DataSourceId import as PanelId covers it
 import { formatDistanceToNow } from "date-fns"; // Import formatDistanceToNow
 import { QuestsPanel } from "./datasources/QuestsPanel";
 
@@ -53,28 +54,7 @@ const LOCALSTORAGE_KEY = "mango_last_read_changelog_version";
 const latestVersion =
   changelogData && changelogData.length > 0 ? changelogData[0].version : "0";
 
-// Helper type for panel open state
-type PanelId =
-  | DataSourceId // Includes 'quests' now from dataSourceConfig
-  | "yuzu"
-  | "userProfile"
-  | "paths";
-// No need to list individual DataSourceIds here anymore if PanelId includes DataSourceId
-
-type PanelOpenState = Record<PanelId, boolean>;
-
-// Initial state for panels
-const initialPanelState: PanelOpenState = {
-  yuzu: false,
-  userProfile: false,
-  paths: false,
-  finance: false,
-  calendar: false,
-  health: false,
-  todos: false,
-  habits: false,
-  quests: false, // Add initial state for quests
-};
+// Removed local PanelId type, PanelOpenState, and initialPanelState
 
 export function LeftSidebar({
   isToolboxOpen,
@@ -85,10 +65,7 @@ export function LeftSidebar({
   const { level, xp } = useAuth(); // Get level and xp from AuthContext
   const { lastFetchTimestamp, triggerGlobalFetch, isFetching } =
     useFetchManager(); // Get fetch manager state and function
-
-  // Consolidated state for panel visibility
-  const [panelOpenState, setPanelOpenState] =
-    useState<PanelOpenState>(initialPanelState);
+  const { openPanelId, isPanelOpen, openPanel, closePanel } = usePanelManager(); // Use PanelManager context
 
   // State for changelog modal
   const [isChangelogOpen, setIsChangelogOpen] = useState(false);
@@ -164,7 +141,7 @@ export function LeftSidebar({
     }
   };
 
-  // --- Generic Panel Toggle Handler ---
+  // --- Panel Toggle Handler using Context ---
   const handleTogglePanel = useCallback(
     (panelId: PanelId) => {
       if (isToolboxOpen) {
@@ -172,16 +149,21 @@ export function LeftSidebar({
         showToast({ title: "Please exit edit mode first.", variant: "info" });
         return;
       }
-      setPanelOpenState((prevState) => {
-        const isOpen = prevState[panelId];
-        const newState = { ...initialPanelState };
-        if (!isOpen) {
-          newState[panelId] = true;
-        }
-        return newState;
-      });
+      // If the clicked panel is already open, close it. Otherwise, open it.
+      if (isPanelOpen(panelId)) {
+        closePanel();
+      } else {
+        openPanel(panelId);
+      }
     },
-    [isToolboxOpen, triggerShakeIndicator, showToast]
+    [
+      isToolboxOpen,
+      triggerShakeIndicator,
+      showToast,
+      isPanelOpen,
+      openPanel,
+      closePanel,
+    ]
   );
 
   const handleToggleToolbox = () => {
@@ -193,15 +175,16 @@ export function LeftSidebar({
       return;
     }
     toggleToolbox();
+    // If entering edit mode, close any open panel
     if (!isToolboxOpen) {
-      setPanelOpenState(initialPanelState);
+      closePanel();
     }
   };
 
-  // Determine if any panel (excluding toolbox) is open
-  const isAnyPanelOpen = Object.values(panelOpenState).some((isOpen) => isOpen);
+  // Determine if any panel (excluding toolbox) is open using context
+  const isAnyPanelOpen = openPanelId !== null;
 
-  // Helper function to get panel class names
+  // Helper function to get panel class names using context
   const getPanelClasses = (panelId: PanelId, maxWidthClass = "md:max-w-md") =>
     cn(
       "absolute top-0 left-16 bottom-0 transition-transform duration-300 ease-in-out z-20",
@@ -209,7 +192,7 @@ export function LeftSidebar({
       "md:w-auto",
       maxWidthClass,
       "bg-gray-800 shadow-lg",
-      panelOpenState[panelId] ? "translate-x-0" : "-translate-x-full"
+      isPanelOpen(panelId) ? "translate-x-0" : "-translate-x-full" // Use context function
     );
 
   return (
@@ -272,10 +255,10 @@ export function LeftSidebar({
 
           {/* Yuzu Button */}
           <Button
-            variant={panelOpenState.yuzu ? "secondary" : "ghost"}
+            variant={isPanelOpen("yuzu") ? "secondary" : "ghost"} // Use context function
             size="icon"
             className={`h-10 w-10 rounded-lg ${
-              panelOpenState.yuzu ? "text-indigo-400" : "text-gray-400"
+              isPanelOpen("yuzu") ? "text-indigo-400" : "text-gray-400" // Use context function
             }`}
             onClick={() => handleTogglePanel("yuzu")}
             title="Toggle Yuzu Panel"
@@ -286,10 +269,10 @@ export function LeftSidebar({
 
           {/* Quests Button (Added before Paths) */}
           <Button
-            variant={panelOpenState.quests ? "secondary" : "ghost"}
+            variant={isPanelOpen("quests") ? "secondary" : "ghost"} // Use context function
             size="icon"
             className={`h-10 w-10 rounded-lg ${
-              panelOpenState.quests ? "text-indigo-400" : "text-gray-400"
+              isPanelOpen("quests") ? "text-indigo-400" : "text-gray-400" // Use context function
             }`}
             onClick={() => handleTogglePanel("quests")}
             title="Quests"
@@ -300,10 +283,10 @@ export function LeftSidebar({
 
           {/* Paths Button */}
           <Button
-            variant={panelOpenState.paths ? "secondary" : "ghost"}
+            variant={isPanelOpen("paths") ? "secondary" : "ghost"} // Use context function
             size="icon"
             className={`h-10 w-10 rounded-lg ${
-              panelOpenState.paths ? "text-indigo-400" : "text-gray-400"
+              isPanelOpen("paths") ? "text-indigo-400" : "text-gray-400" // Use context function
             }`}
             onClick={() => handleTogglePanel("paths")}
             title="Paths"
@@ -325,10 +308,10 @@ export function LeftSidebar({
               id !== "quests" && (
                 <Button
                   key={id}
-                  variant={panelOpenState[id] ? "secondary" : "ghost"}
+                  variant={isPanelOpen(id) ? "secondary" : "ghost"} // Use context function
                   size="icon"
                   className={`h-10 w-10 rounded-lg ${
-                    panelOpenState[id] ? "text-indigo-400" : "text-gray-400"
+                    isPanelOpen(id) ? "text-indigo-400" : "text-gray-400" // Use context function
                   }`}
                   onClick={() => handleTogglePanel(id)}
                   title={label}
@@ -373,10 +356,12 @@ export function LeftSidebar({
         {/* User Profile Section */}
         <div className="mt-auto flex w-full flex-col items-center gap-1 border-t border-gray-700 pt-3 pb-2">
           <Button
-            variant={panelOpenState.userProfile ? "secondary" : "ghost"}
+            variant={isPanelOpen("userProfile") ? "secondary" : "ghost"} // Use context function
             size="icon"
             className={`h-9 w-9 rounded-full hover:bg-gray-700 ${
-              panelOpenState.userProfile ? "text-indigo-400" : "text-gray-400"
+              isPanelOpen("userProfile") // Use context function
+                ? "text-indigo-400"
+                : "text-gray-400"
             }`}
             onClick={() => handleTogglePanel("userProfile")}
             title="User Profile"
@@ -400,27 +385,20 @@ export function LeftSidebar({
             ? "opacity-100 pointer-events-auto"
             : "opacity-0 pointer-events-none"
         )}
-        onClick={() => {
-          const openPanelId = Object.keys(panelOpenState).find(
-            (key) => panelOpenState[key as PanelId]
-          ) as PanelId | undefined;
-          if (openPanelId) {
-            handleTogglePanel(openPanelId);
-          }
-        }}
+        onClick={closePanel} // Use context function to close any open panel
         aria-hidden="true"
       />
 
       {/* Render Panels */}
       <div className={getPanelClasses("yuzu", "md:max-w-md")}>
-        <YuzuPanel onClose={() => handleTogglePanel("yuzu")} />
+        <YuzuPanel onClose={closePanel} /> {/* Use context function */}
       </div>
       <div className={getPanelClasses("userProfile", "md:max-w-md")}>
-        <UserProfilePanel onClose={() => handleTogglePanel("userProfile")} />
+        <UserProfilePanel onClose={closePanel} /> {/* Use context function */}
       </div>
       <div className={getPanelClasses("paths", "md:max-w-md")}>
         <PathsPage
-          onClose={() => handleTogglePanel("paths")}
+          onClose={closePanel} // Use context function
           activePathName={activePathName}
           setActivePath={setActivePath}
           unlockedItems={unlockedItems}
@@ -430,23 +408,23 @@ export function LeftSidebar({
       </div>
       {/* Data Source Panels */}
       <div className={getPanelClasses("calendar", "md:max-w-sm")}>
-        <CalendarDataSource onClose={() => handleTogglePanel("calendar")} />
+        <CalendarDataSource onClose={closePanel} /> {/* Use context function */}
       </div>
       <div className={getPanelClasses("health", "md:max-w-sm")}>
-        <HealthDataSource onClose={() => handleTogglePanel("health")} />
+        <HealthDataSource onClose={closePanel} /> {/* Use context function */}
       </div>
       <div className={getPanelClasses("todos", "md:max-w-sm")}>
-        <TodosDataSource onClose={() => handleTogglePanel("todos")} />
+        <TodosDataSource onClose={closePanel} /> {/* Use context function */}
       </div>
       <div className={getPanelClasses("finance", "md:max-w-sm")}>
-        <FinanceDataSource onClose={() => handleTogglePanel("finance")} />
+        <FinanceDataSource onClose={closePanel} /> {/* Use context function */}
       </div>
       <div className={getPanelClasses("habits", "md:max-w-sm")}>
-        <HabitsDataSource onClose={() => handleTogglePanel("habits")} />
+        <HabitsDataSource onClose={closePanel} /> {/* Use context function */}
       </div>
       {/* Quests Panel */}
       <div className={getPanelClasses("quests", "md:max-w-md")}>
-        <QuestsPanel onClose={() => handleTogglePanel("quests")} />
+        <QuestsPanel onClose={closePanel} /> {/* Use context function */}
       </div>
 
       {/* Changelog modal */}

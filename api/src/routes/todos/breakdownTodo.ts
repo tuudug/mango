@@ -2,6 +2,12 @@ import { Response, NextFunction } from "express";
 import { AuthenticatedRequest } from "../../middleware/auth";
 import { breakdownTask } from "../../services/geminiService"; // Import the service
 import { TodoItem } from "../../types/todo";
+import {
+  InternalServerError,
+  BadRequestError,
+  NotFoundError,
+  ValidationError, // Added for potential body validation if needed later
+} from "../../utils/errors"; // Import custom errors
 
 const MAX_TODO_LEVEL = 2; // Consider moving to a shared constants file
 
@@ -16,9 +22,13 @@ export const breakdownTodoHandler = async (
     const { itemId: currentItemId } = req.params; // Renamed for clarity
     const { parentTitle } = req.body; // Extract optional parentTitle from body
 
-    if (!userId || !supabaseUserClient || !currentItemId) {
-      res.status(400).json({ message: "Missing user auth or item ID" });
-      return;
+    if (!userId || !supabaseUserClient) {
+      return next(
+        new InternalServerError("Authentication context not found on request.")
+      );
+    }
+    if (!currentItemId) {
+      return next(new BadRequestError("Missing required parameter: itemId"));
     }
 
     // 1. Fetch the item being broken down (currentTodo)
@@ -29,20 +39,26 @@ export const breakdownTodoHandler = async (
       .eq("user_id", userId)
       .single();
 
-    if (currentError || !currentTodo) {
-      console.error("Error fetching todo item for breakdown:", currentError);
-      res
-        .status(404)
-        .json({ message: "Todo item not found or not owned by user" });
-      return;
+    if (currentError) {
+      console.error(
+        `Supabase error fetching todo ${currentItemId} for breakdown:`,
+        currentError
+      );
+      return next(new InternalServerError("Failed to fetch todo item"));
+    }
+    if (!currentTodo) {
+      return next(
+        new NotFoundError("Todo item not found or not owned by user")
+      );
     }
 
     // Check level before calling AI
     if (currentTodo.level >= MAX_TODO_LEVEL) {
-      res.status(400).json({
-        message: `Cannot break down item at level ${currentTodo.level}`,
-      });
-      return;
+      return next(
+        new BadRequestError(
+          `Cannot break down item at level ${currentTodo.level}`
+        )
+      );
     }
 
     // 2. Call Gemini Service, passing both titles if parentTitle exists
@@ -55,12 +71,13 @@ export const breakdownTodoHandler = async (
 
     // 3. Handle Gemini Response
     if (subTaskTitles === null) {
-      res.status(422).json({
-        code: "NEED_MORE_CONTEXT",
-        message:
+      // Use BadRequestError for cases where AI needs more context
+      return next(
+        new BadRequestError(
           "Task is too ambiguous to break down automatically. Please refine the task title.",
-      });
-      return;
+          { code: "NEED_MORE_CONTEXT" } // Optional details
+        )
+      );
     }
 
     if (subTaskTitles.length === 0) {
@@ -81,7 +98,15 @@ export const breakdownTodoHandler = async (
       .eq("user_id", userId)
       .eq("parent_id", currentItemId); // Use currentItemId as the parent_id for new sub-items
 
-    if (countError) throw countError;
+    if (countError) {
+      console.error(
+        `Supabase error counting sub-items for todo ${currentItemId}:`,
+        countError
+      );
+      return next(
+        new InternalServerError("Failed to determine sub-item position")
+      );
+    }
     const nextPosition = (siblingCount || 0) + 1;
 
     const subItemsData = subTaskTitles.map((title, index) => ({
@@ -98,7 +123,13 @@ export const breakdownTodoHandler = async (
       .insert(subItemsData)
       .select();
 
-    if (insertError) throw insertError;
+    if (insertError) {
+      console.error(
+        `Supabase error inserting sub-items for todo ${currentItemId}:`,
+        insertError
+      );
+      return next(new InternalServerError("Failed to insert sub-items"));
+    }
 
     console.log(
       `Generated and inserted ${
@@ -115,13 +146,19 @@ export const breakdownTodoHandler = async (
   } catch (err: unknown) {
     console.error("Server error breaking down todo item:", err);
     if (
+      // Check if it's an error from the Gemini service specifically
       err instanceof Error &&
       (err.message.includes("Gemini") || err.message.includes("AI"))
     ) {
-      // Specific AI errors might be returned directly
-      res.status(500).json({ message: err.message });
+      // Pass a specific error for AI failures
+      console.error("AI service error during breakdown:", err.message);
+      next(
+        new InternalServerError("AI service failed to break down task", {
+          originalError: err.message,
+        })
+      );
     } else {
-      // General errors passed to global handler
+      // General errors passed to the main error handler
       next(err);
     }
   }

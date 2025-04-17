@@ -1,5 +1,12 @@
 import { NextFunction, Response } from "express";
 import { AuthenticatedRequest } from "../../middleware/auth";
+import {
+  InternalServerError,
+  AuthenticationError,
+  BadRequestError,
+  NotFoundError,
+  AuthorizationError,
+} from "../../utils/errors";
 
 // WARNING: This is a testing-only endpoint and should be disabled or secured in production.
 export async function setCriterionMet(
@@ -11,95 +18,97 @@ export async function setCriterionMet(
   const supabase = req.supabase;
   const { criterionId } = req.params;
 
-  // Basic security check
+  // Basic security check - Keep this as is, using AuthorizationError
   if (process.env.NODE_ENV === "production") {
-    res
-      .status(403)
-      .json({ message: "This testing endpoint is disabled in production." });
-    return;
-  }
-
-  if (!userId || !supabase) {
-    res.status(401).json({ message: "Authentication required." });
-    return;
-  }
-
-  if (!criterionId) {
-    res.status(400).json({ message: "Criterion ID is required." });
-    return;
+    return next(
+      new AuthorizationError("This testing endpoint is disabled in production.")
+    );
   }
 
   try {
+    const userId = req.user?.id;
+    const supabase = req.supabase;
+
+    if (!userId || !supabase) {
+      return next(new AuthenticationError("Authentication required."));
+    }
+
+    if (!criterionId) {
+      return next(new BadRequestError("Criterion ID is required."));
+    }
+
     // 1. Verify criterion ownership via the parent quest
     const { data: criterionCheck, error: checkError } = await supabase
       .from("quest_criteria")
       .select(
         `
-                id,
-                quest:quests ( user_id )
-            `
+        id,
+        quest:quests ( user_id )
+      `
       )
       .eq("id", criterionId)
       .single();
 
     if (checkError) {
       console.error(
-        "Error checking criterion ownership (testing):",
+        "Supabase error checking criterion ownership (testing):",
         checkError
       );
       if (checkError.code === "PGRST116") {
-        res.status(404).json({ message: "Criterion not found." });
-        return;
+        return next(new NotFoundError("Criterion not found."));
       }
-      return next(new Error("Failed to check criterion ownership (testing)."));
+      return next(
+        new InternalServerError(
+          "Failed to check criterion ownership (testing)."
+        )
+      );
     }
 
-    // The result structure might be nested like { id: '...', quest: { user_id: '...' } }
-    // Adjust the check based on the actual structure returned by Supabase
     const ownerId = (criterionCheck as any)?.quest?.user_id;
     if (!ownerId || ownerId !== userId) {
-      res
-        .status(403)
-        .json({
-          message: "You do not own the quest associated with this criterion.",
-        });
-      return;
+      return next(
+        new AuthorizationError(
+          "You do not own the quest associated with this criterion."
+        )
+      );
     }
 
     // 2. Update the criterion status directly to 'is_met = true'
     const { data: updatedCriterion, error: updateError } = await supabase
       .from("quest_criteria")
-      .update({ is_met: true }) // Set is_met to true
+      .update({ is_met: true })
       .eq("id", criterionId)
-      // No need for user_id check here as ownership was verified above
-      .select() // Return updated criterion
+      .select()
       .single();
 
     if (updateError) {
-      console.error("Error setting criterion met (testing):", updateError);
+      console.error(
+        "Supabase error setting criterion met (testing):",
+        updateError
+      );
       if (updateError.code === "PGRST116") {
-        // Should not happen if check passed, but good practice
-        res.status(404).json({ message: "Criterion not found during update." });
-        return;
+        // Should not happen if check passed, but handle defensively
+        return next(new NotFoundError("Criterion not found during update."));
       }
-      return next(new Error("Failed to set criterion met (testing)."));
+      return next(
+        new InternalServerError("Failed to set criterion met (testing).")
+      );
     }
 
-    if (!updatedCriterion) {
-      res
-        .status(404)
-        .json({ message: "Criterion not found or update failed." });
-      return;
-    }
+    // If updateError is null, .single() guarantees data is not null
+    // The check below is redundant if PGRST116 is handled above.
+    // if (!updatedCriterion) { ... }
 
-    res
-      .status(200)
-      .json({
-        message: "Criterion status set to met (testing only).",
-        criterion: updatedCriterion,
-      });
+    res.status(200).json({
+      message: "Criterion status set to met (testing only).",
+      criterion: updatedCriterion,
+    });
   } catch (error) {
-    console.error("Unexpected error setting criterion met (testing):", error);
-    next(error);
+    // Catch unexpected errors
+    console.error(
+      "Unexpected error in setCriterionMet handler (testing):",
+      error
+    );
+    next(error); // Pass to global error handler
   }
 }

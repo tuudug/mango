@@ -2,6 +2,12 @@ import { Response, NextFunction } from "express";
 import { AuthenticatedRequest } from "../../middleware/auth";
 import { supabaseAdmin } from "../../supabaseClient"; // Adjust path
 import { TodoItem } from "../../types/todo";
+import {
+  InternalServerError,
+  BadRequestError,
+  NotFoundError,
+  ValidationError,
+} from "../../utils/errors"; // Import custom errors
 
 const MAX_TODO_LEVEL = 2; // Consider moving to a shared constants file
 
@@ -15,13 +21,13 @@ export const addManualTodoHandler = async (
     const supabaseUserClient = req.supabase;
 
     if (!userId || !supabaseUserClient) {
-      res.status(401).json({ message: "Authentication data missing" });
-      return;
+      return next(
+        new InternalServerError("Authentication context not found on request.")
+      );
     }
     const { title, due_date, parent_id } = req.body;
     if (!title) {
-      res.status(400).json({ message: "Missing required field: title" });
-      return;
+      return next(new ValidationError("Missing required field: title"));
     }
 
     let parentLevel = -1;
@@ -35,21 +41,24 @@ export const addManualTodoHandler = async (
         .eq("user_id", userId)
         .single();
 
-      if (parentError || !parentTodo) {
-        console.error("Error fetching parent todo:", parentError);
-        res.status(404).json({
-          message: "Parent todo item not found or not owned by user",
-        });
-        return;
+      if (parentError) {
+        console.error("Supabase error fetching parent todo:", parentError);
+        return next(new InternalServerError("Failed to fetch parent todo"));
+      }
+      if (!parentTodo) {
+        return next(
+          new NotFoundError("Parent todo item not found or not owned by user")
+        );
       }
       parentLevel = parentTodo.level;
       connectionId = parentTodo.connection_id;
 
       if (parentLevel >= MAX_TODO_LEVEL) {
-        res.status(400).json({
-          message: `Cannot add sub-item beyond level ${MAX_TODO_LEVEL}`,
-        });
-        return;
+        return next(
+          new BadRequestError(
+            `Cannot add sub-item beyond level ${MAX_TODO_LEVEL}`
+          )
+        );
       }
     } else {
       const { data: connection, error: connError } = await supabaseAdmin
@@ -65,13 +74,26 @@ export const addManualTodoHandler = async (
         .select("id")
         .single();
 
-      if (connError || !connection?.id) {
+      if (connError) {
         console.error(
-          "Error finding/creating manual_todos connection:",
+          "Supabase error finding/creating manual_todos connection:",
           connError
         );
-        throw (
-          connError || new Error("Manual todos connection ID not found/created")
+        return next(
+          new InternalServerError(
+            "Failed to establish connection for manual todos"
+          )
+        );
+      }
+      if (!connection?.id) {
+        // This case indicates an unexpected issue with the upsert returning no ID
+        console.error(
+          "Manual todos connection ID not found/created after upsert"
+        );
+        return next(
+          new InternalServerError(
+            "Failed to get connection ID for manual todos"
+          )
         );
       }
       connectionId = connection.id;
@@ -96,7 +118,13 @@ export const addManualTodoHandler = async (
 
     const { count: siblingCount, error: countError } = await positionQuery;
 
-    if (countError) throw countError;
+    if (countError) {
+      console.error(
+        `Supabase error counting siblings for user ${userId}, parent ${parent_id}:`,
+        countError
+      );
+      return next(new InternalServerError("Failed to determine todo position"));
+    }
 
     const nextPosition = (siblingCount || 0) + 1;
 
@@ -114,7 +142,13 @@ export const addManualTodoHandler = async (
       .select()
       .single();
 
-    if (insertError) throw insertError;
+    if (insertError) {
+      console.error(
+        `Supabase error inserting todo for user ${userId}:`,
+        insertError
+      );
+      return next(new InternalServerError("Failed to add todo item"));
+    }
 
     console.log(
       `Manual todo item added for user ${userId} (Level ${newItemLevel}):`,

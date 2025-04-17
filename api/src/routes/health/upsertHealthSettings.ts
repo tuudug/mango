@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express"; // Add NextFunction
 // We need the request-scoped client for RLS, not the global one for this operation.
 // import { supabase } from "../../supabaseClient";
+import { InternalServerError, ValidationError } from "../../utils/errors"; // Import custom errors
 
 // Keep explicit Promise<void> return type, but remove RequestHandler cast
 export const upsertHealthSettings = async (
@@ -13,8 +14,9 @@ export const upsertHealthSettings = async (
 
   if (!user || !user.id) {
     // Also check user.id
-    res.status(401).json({ message: "User not authenticated" });
-    return; // Ensure return is separate
+    return next(
+      new InternalServerError("Authentication context not found on request.")
+    );
   }
 
   const { daily_steps_goal, weight_goal } = req.body; // Extract weight_goal
@@ -25,11 +27,11 @@ export const upsertHealthSettings = async (
     !Number.isInteger(daily_steps_goal) ||
     daily_steps_goal < 0
   ) {
-    res.status(400).json({
-      message:
-        "Invalid input: daily_steps_goal must be a non-negative integer.",
-    });
-    return; // Explicit return after sending response
+    return next(
+      new ValidationError(
+        "Invalid input: daily_steps_goal must be a non-negative integer."
+      )
+    );
   }
 
   // Validate weight_goal: must be null or a positive number
@@ -37,10 +39,11 @@ export const upsertHealthSettings = async (
     weight_goal !== null &&
     (typeof weight_goal !== "number" || weight_goal <= 0)
   ) {
-    res.status(400).json({
-      message: "Invalid input: weight_goal must be null or a positive number.",
-    });
-    return; // Explicit return after sending response
+    return next(
+      new ValidationError(
+        "Invalid input: weight_goal must be null or a positive number."
+      )
+    );
   }
 
   try {
@@ -48,8 +51,9 @@ export const upsertHealthSettings = async (
     const supabaseUserClient = (req as any).supabase;
     if (!supabaseUserClient) {
       // This should ideally not happen if ensureAuthenticated middleware is working
-      res.status(500).json({ message: "Supabase client not found on request" });
-      return; // Ensure return is separate
+      return next(
+        new InternalServerError("Supabase client not found on request")
+      );
     }
     const { error } = await supabaseUserClient
       .from("manual_health_settings")
@@ -68,17 +72,16 @@ export const upsertHealthSettings = async (
       .select(); // Add select() to potentially return the upserted row if needed, though not strictly necessary here
 
     if (error) {
-      console.error("Error upserting health settings:", error);
+      console.error(
+        `Supabase error upserting health settings for user ${user.id}:`,
+        error
+      );
       // Check for specific errors if needed, e.g., foreign key violation (though unlikely here)
-      res.status(500).json({
-        message: "Failed to update health settings",
-        error: error.message,
-      });
-      return; // Explicit return after sending response
+      return next(new InternalServerError("Failed to update health settings"));
     }
 
     res.status(200).json({ message: "Health settings updated successfully." });
-    return; // Ensure void return type for handler
+    // No explicit return needed here
   } catch (err) {
     // Pass error to the next middleware (global error handler)
     console.error("Error in upsertHealthSettings:", err);

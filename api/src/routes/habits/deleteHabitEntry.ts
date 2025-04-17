@@ -1,58 +1,63 @@
-import { Response } from "express";
-// import { supabase } from "../../supabaseClient"; // Remove global import
+import { Response, NextFunction } from "express";
 import { AuthenticatedRequest } from "../../middleware/auth";
+import {
+  InternalServerError,
+  BadRequestError,
+  NotFoundError,
+} from "../../utils/errors";
 
 export const deleteHabitEntry = async (
   req: AuthenticatedRequest,
-  res: Response
+  res: Response,
+  next: NextFunction // Add next function
 ): Promise<void> => {
-  const userId = req.userId;
-  const supabase = req.supabase; // Use request-scoped client
-  const entryId = req.params.entryId; // Get entryId from URL parameter
-
-  if (!userId || !supabase) {
-    // Check for client
-    res
-      .status(401)
-      .json({
-        error: "User not authenticated properly or Supabase client missing",
-      });
-    return;
-  }
-
-  if (!entryId) {
-    res
-      .status(400)
-      .json({ error: "Habit entry ID is required in the URL path" });
-    return;
-  }
+  const entryId = req.params.entryId;
 
   try {
-    // Use the request-scoped 'supabase' client
+    const userId = req.userId;
+    const supabase = req.supabase;
+
+    if (!userId || !supabase) {
+      return next(
+        new InternalServerError(
+          "User ID or Supabase client missing from request."
+        )
+      );
+    }
+
+    if (!entryId) {
+      return next(
+        new BadRequestError("Habit entry ID is required in the URL path")
+      );
+    }
+
     const { error, count } = await supabase
       .from("manual_habit_entries")
       .delete()
       .eq("id", entryId)
-      .eq("user_id", userId); // Crucial security check (RLS also enforces this)
+      .eq("user_id", userId); // RLS also enforces this
 
     if (error) {
-      console.error("Error deleting habit entry:", error);
-      res.status(500).json({ error: error.message });
-      return;
+      console.error("Supabase error deleting habit entry:", error);
+      return next(
+        new InternalServerError(
+          "Failed to delete habit entry due to database error."
+        )
+      );
     }
 
     if (count === 0) {
-      // If no rows were deleted, it means the entry didn't exist or didn't belong to the user
+      // Entry not found for this user
       console.warn(
         `Delete attempt failed: Habit entry ${entryId} not found for user ${userId}`
       );
-      res.status(404).json({ error: "Habit entry not found or access denied" });
-      return;
+      return next(new NotFoundError("Habit entry not found or access denied"));
     }
 
-    res.status(204).send(); // No content on successful deletion
+    res.status(204).send(); // Success, no content
   } catch (err) {
-    console.error("Unexpected error deleting habit entry:", err);
-    res.status(500).json({ error: "Internal server error" });
+    // Catch any unexpected errors
+    console.error("Unexpected error in deleteHabitEntry handler:", err);
+    next(err);
   }
 };

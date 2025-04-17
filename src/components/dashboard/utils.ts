@@ -180,3 +180,61 @@ export const deepCompareLayouts = (
 
   return true; // No differences found
 };
+
+// --- Grid Position Finding Function ---
+
+/**
+ * Finds the first available {x, y} position in the grid for a new widget.
+ * Iterates row by row, then column by column, checking for collisions.
+ * If no space is found in existing rows, places it at the start of the next row.
+ * @param widgetMinW Minimum width of the widget to place.
+ * @param widgetMinH Minimum height of the widget to place.
+ * @param currentItems Array of existing items on the dashboard.
+ * @param cols Number of columns in the current grid layout.
+ * @returns An object { x: number, y: number } representing the top-left corner for the new widget.
+ */
+export const findFirstAvailablePosition = (
+  widgetMinW: number,
+  widgetMinH: number,
+  currentItems: GridItem[],
+  cols: number
+): { x: number; y: number } => {
+  let maxY = 0;
+  currentItems.forEach((item) => {
+    maxY = Math.max(maxY, item.y + item.h);
+  });
+
+  // Check row by row, column by column
+  for (let y = 0; y <= maxY; y++) {
+    for (let x = 0; x <= cols - widgetMinW; x++) {
+      let collision = false;
+      // Check against all existing items
+      for (const item of currentItems) {
+        // Calculate boundaries for the potential new item
+        const newItemRight = x + widgetMinW;
+        const newItemBottom = y + widgetMinH;
+        // Calculate boundaries for the existing item
+        const existingItemRight = item.x + item.w;
+        const existingItemBottom = item.y + item.h;
+
+        // Check for overlap (AABB collision detection)
+        if (
+          x < existingItemRight &&
+          newItemRight > item.x &&
+          y < existingItemBottom &&
+          newItemBottom > item.y
+        ) {
+          collision = true;
+          break; // Collision found, no need to check other items for this position
+        }
+      }
+      // If no collision for this position, return it
+      if (!collision) {
+        return { x, y };
+      }
+    }
+  }
+
+  // If no space found within the existing maxY, place it at the beginning of the next row
+  return { x: 0, y: maxY };
+};

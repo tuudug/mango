@@ -1,83 +1,87 @@
-import { Response } from "express";
-// import { supabase } from "../../supabaseClient"; // Remove global import
+import { Response, NextFunction } from "express";
 import { AuthenticatedRequest } from "../../middleware/auth";
-import dayjs from "dayjs"; // Use dayjs for date validation
+import dayjs from "dayjs";
+import { InternalServerError, ValidationError } from "../../utils/errors";
 
 export const getHabitEntries = async (
   req: AuthenticatedRequest,
-  res: Response
+  res: Response,
+  next: NextFunction // Add next function
 ): Promise<void> => {
-  const userId = req.userId;
-  const supabase = req.supabase; // Use request-scoped client
-
-  // Extract and validate query parameters
   const { startDate, endDate, habitId } = req.query;
 
-  if (!userId || !supabase) {
-    // Check for client
-    res
-      .status(401)
-      .json({
-        error: "User not authenticated properly or Supabase client missing",
-      });
-    return;
-  }
-
-  // Validate dates
-  if (
-    !startDate ||
-    !endDate ||
-    typeof startDate !== "string" ||
-    typeof endDate !== "string"
-  ) {
-    res.status(400).json({
-      error:
-        "Missing or invalid startDate or endDate query parameters (YYYY-MM-DD)",
-    });
-    return;
-  }
-  if (
-    !dayjs(startDate, "YYYY-MM-DD", true).isValid() ||
-    !dayjs(endDate, "YYYY-MM-DD", true).isValid()
-  ) {
-    res.status(400).json({
-      error: "Invalid date format for startDate or endDate. Use YYYY-MM-DD.",
-    });
-    return;
-  }
-  // Optional: Validate habitId if provided
-  if (habitId && typeof habitId !== "string") {
-    res.status(400).json({ error: "Invalid habitId query parameter." });
-    return;
-  }
-
   try {
-    // Use the request-scoped 'supabase' client
+    const userId = req.userId;
+    const supabase = req.supabase;
+
+    if (!userId || !supabase) {
+      return next(
+        new InternalServerError(
+          "User ID or Supabase client missing from request."
+        )
+      );
+    }
+
+    // Validate dates
+    if (
+      !startDate ||
+      !endDate ||
+      typeof startDate !== "string" ||
+      typeof endDate !== "string"
+    ) {
+      return next(
+        new ValidationError(
+          "Missing or invalid startDate or endDate query parameters (YYYY-MM-DD)"
+        )
+      );
+    }
+    if (
+      !dayjs(startDate, "YYYY-MM-DD", true).isValid() ||
+      !dayjs(endDate, "YYYY-MM-DD", true).isValid()
+    ) {
+      return next(
+        new ValidationError(
+          "Invalid date format for startDate or endDate. Use YYYY-MM-DD."
+        )
+      );
+    }
+    // Validate habitId if provided
+    if (habitId && typeof habitId !== "string") {
+      return next(
+        new ValidationError(
+          "Invalid habitId query parameter. Must be a string."
+        )
+      );
+    }
+
     let query = supabase
       .from("manual_habit_entries")
-      .select("id, habit_id, entry_date, completed, created_at") // Select specific columns
-      .eq("user_id", userId) // RLS also enforces this, but good practice
-      .gte("entry_date", startDate) // Greater than or equal to start date
-      .lte("entry_date", endDate); // Less than or equal to end date
+      .select("id, habit_id, entry_date, completed, created_at")
+      .eq("user_id", userId)
+      .gte("entry_date", startDate as string) // Cast as string after validation
+      .lte("entry_date", endDate as string); // Cast as string after validation
 
-    // Optionally filter by a specific habit ID
     if (habitId) {
       query = query.eq("habit_id", habitId);
     }
 
-    query = query.order("entry_date", { ascending: false }); // Order by date descending
+    query = query.order("entry_date", { ascending: false });
 
     const { data, error } = await query;
 
     if (error) {
-      console.error("Error fetching habit entries:", error);
-      res.status(500).json({ error: error.message });
-      return;
+      console.error("Supabase error fetching habit entries:", error);
+      return next(
+        new InternalServerError(
+          "Failed to fetch habit entries due to database error."
+        )
+      );
     }
 
     res.status(200).json(data || []);
   } catch (err) {
-    console.error("Unexpected error fetching habit entries:", err);
-    res.status(500).json({ error: "Internal server error" });
+    // Catch any unexpected errors
+    console.error("Unexpected error in getHabitEntries handler:", err);
+    next(err);
   }
 };

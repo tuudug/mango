@@ -1,5 +1,6 @@
 import { Response, NextFunction } from "express";
 import { AuthenticatedRequest } from "../../middleware/auth";
+import { InternalServerError } from "../../utils/errors"; // Import custom errors
 
 // Define specific type for salary schedule entries
 interface SalaryPayment {
@@ -34,8 +35,9 @@ export const getFinanceSettings = async (
   const supabase = req.supabase; // Use request-scoped client
 
   if (!userId || !supabase) {
-    res.status(401).json({ message: "Authentication required." });
-    return;
+    return next(
+      new InternalServerError("Authentication context not found on request.")
+    );
   }
 
   try {
@@ -49,8 +51,11 @@ export const getFinanceSettings = async (
       .maybeSingle(); // Use maybeSingle to handle case where user has no settings yet
 
     if (error) {
-      console.error("Error fetching finance settings:", error);
-      throw error; // Let error handler catch it
+      console.error(
+        `Supabase error fetching finance settings for user ${userId}:`,
+        error
+      );
+      return next(new InternalServerError("Failed to fetch finance settings"));
     }
 
     // If no settings found, return default/null values

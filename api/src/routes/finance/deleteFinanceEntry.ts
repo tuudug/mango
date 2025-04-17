@@ -1,5 +1,10 @@
 import { Response, NextFunction } from "express";
 import { AuthenticatedRequest } from "../../middleware/auth";
+import {
+  InternalServerError,
+  BadRequestError,
+  NotFoundError,
+} from "../../utils/errors"; // Import custom errors
 
 export const deleteFinanceEntry = async (
   req: AuthenticatedRequest,
@@ -11,13 +16,13 @@ export const deleteFinanceEntry = async (
   const entryId = req.params.id; // Get entry ID from route parameter
 
   if (!userId || !supabase) {
-    res.status(401).json({ message: "Authentication required." });
-    return;
+    return next(
+      new InternalServerError("Authentication context not found on request.")
+    );
   }
 
   if (!entryId) {
-    res.status(400).json({ message: "Entry ID is required." });
-    return;
+    return next(new BadRequestError("Missing required parameter: entryId"));
   }
 
   try {
@@ -28,9 +33,21 @@ export const deleteFinanceEntry = async (
       .eq("id", entryId); // Match the specific entry ID
 
     if (error) {
-      console.error("Error deleting finance entry:", error);
-      // Handle specific errors like not found if needed, though delete is often idempotent
-      throw error;
+      // Check for specific PostgREST error code for not found / RLS violation
+      if (error.code === "PGRST116") {
+        console.warn(
+          `Finance entry ${entryId} not found or delete forbidden for user ${userId}.`
+        );
+        return next(
+          new NotFoundError("Finance entry not found or delete forbidden")
+        );
+      }
+      // For other DB errors, throw InternalServerError
+      console.error(
+        `Supabase error deleting finance entry ${entryId} for user ${userId}:`,
+        error
+      );
+      return next(new InternalServerError("Failed to delete finance entry"));
     }
 
     console.log(`Deleted finance entry ${entryId} for user ${userId}`);

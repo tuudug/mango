@@ -1,6 +1,12 @@
 import { Response, NextFunction } from "express";
 import { AuthenticatedRequest } from "../../middleware/auth";
 import { PostgrestError } from "@supabase/supabase-js";
+import {
+  InternalServerError,
+  BadRequestError,
+  NotFoundError,
+  ValidationError,
+} from "../../utils/errors"; // Import custom errors
 
 export const moveTodoHandler = async (
   req: AuthenticatedRequest,
@@ -13,18 +19,24 @@ export const moveTodoHandler = async (
     const { itemId } = req.params;
     const { direction } = req.body; // Expect 'up' or 'down'
 
-    if (!userId || !supabaseUserClient || !itemId || !direction) {
-      res
-        .status(400)
-        .json({ message: "Missing user auth, item ID, or direction" });
-      return;
+    if (!userId || !supabaseUserClient) {
+      return next(
+        new InternalServerError("Authentication context not found on request.")
+      );
+    }
+    if (!itemId) {
+      return next(new BadRequestError("Missing required parameter: itemId"));
+    }
+    if (!direction) {
+      return next(
+        new ValidationError("Missing required field in body: direction")
+      );
     }
 
     if (direction !== "up" && direction !== "down") {
-      res
-        .status(400)
-        .json({ message: "Invalid direction specified. Use 'up' or 'down'." });
-      return;
+      return next(
+        new ValidationError("Invalid direction specified. Use 'up' or 'down'.")
+      );
     }
 
     // Use a transaction to ensure atomicity
@@ -42,15 +54,16 @@ export const moveTodoHandler = async (
         `Error moving todo ${itemId} ${direction}:`,
         transactionError
       );
-      // Check for specific function errors if needed (e.g., item not found, cannot move further)
+      // Check for specific function errors raised by RAISE EXCEPTION
       if (transactionError.message.includes("Item not found")) {
-        res.status(404).json({ message: transactionError.message });
+        return next(new NotFoundError(transactionError.message));
       } else if (transactionError.message.includes("Cannot move")) {
-        res.status(400).json({ message: transactionError.message });
+        // This is a client error (trying to move beyond boundaries)
+        return next(new BadRequestError(transactionError.message));
       } else {
-        throw transactionError; // Throw other DB errors
+        // Treat other RPC errors as internal server errors
+        return next(new InternalServerError("Database function call failed"));
       }
-      return;
     }
 
     console.log(

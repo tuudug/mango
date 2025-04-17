@@ -9,6 +9,12 @@ import {
   StoredGoogleCredentials,
   DecryptedGoogleCredentials,
 } from "../../types/calendar"; // Import shared types
+import {
+  InternalServerError,
+  AuthenticationError, // For token/auth issues
+  // NotFoundError, // Not typically used in GET list endpoints unless required
+  // BadRequestError, // Not typically used in basic GET list endpoints
+} from "../../utils/errors"; // Import custom errors
 
 export const getCalendarEvents = async (
   req: AuthenticatedRequest, // Use exported interface
@@ -21,8 +27,9 @@ export const getCalendarEvents = async (
     const supabaseUserClient = req.supabase; // Get request-scoped client
 
     if (!userId || !supabaseUserClient) {
-      res.status(401).json({ message: "Authentication data missing" });
-      return;
+      return next(
+        new InternalServerError("Authentication context not found on request.")
+      );
     }
     let allEvents: CalendarItem[] = [];
     let isGoogleConnected = false; // Default to false
@@ -65,9 +72,14 @@ export const getCalendarEvents = async (
           .select("id, title, event_date, connection_id, is_all_day")
           .eq("user_id", userId); // RLS also checks auth.uid() implicitly
 
-      if (manualError) throw manualError;
-
-      if (manualEventsData) {
+      if (manualError) {
+        console.error(
+          `Supabase error fetching manual calendar events for user ${userId}:`,
+          manualError
+        );
+        // Don't stop the whole process, just log and continue
+        // return next(new InternalServerError("Failed to fetch manual calendar events"));
+      } else if (manualEventsData) {
         // Explicitly type the event parameter in map
         const manualItems: CalendarItem[] = manualEventsData.map(
           (event: {
@@ -102,9 +114,14 @@ export const getCalendarEvents = async (
         .eq("user_id", userId)
         .eq("provider", "google_calendar");
 
-      if (connError) throw connError;
-
-      if (connections && connections.length > 0) {
+      if (connError) {
+        console.error(
+          `Supabase error fetching Google connections for user ${userId}:`,
+          connError
+        );
+        // Don't stop the whole process, just log and continue
+        // return next(new InternalServerError("Failed to fetch Google connections"));
+      } else if (connections && connections.length > 0) {
         console.log(
           `Found ${connections.length} Google Calendar connection(s) for user ${userId}`
         );
@@ -283,6 +300,19 @@ export const getCalendarEvents = async (
                   `Google API authorization error (token expired/invalid?) for connection ${connection.id}. Needs re-authentication.`
                 );
                 // TODO: Mark connection as needing re-auth in DB?
+                // Pass AuthenticationError to trigger re-auth flow on frontend potentially
+                next(
+                  new AuthenticationError(
+                    "Google API authorization error. Re-authentication required."
+                  )
+                );
+              } else {
+                // Pass other Google API errors as InternalServerError
+                next(
+                  new InternalServerError(
+                    "Failed to fetch Google Calendar events."
+                  )
+                );
               }
             }
             // Extra ); removed here

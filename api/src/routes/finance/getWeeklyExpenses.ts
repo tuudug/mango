@@ -2,6 +2,11 @@ import { Response, NextFunction } from "express";
 import { AuthenticatedRequest } from "../../middleware/auth";
 import { isValid, format } from "date-fns"; // Keep format and isValid
 import { parseISO } from "date-fns/parseISO"; // Import parseISO specifically
+import {
+  InternalServerError,
+  BadRequestError,
+  ValidationError,
+} from "../../utils/errors"; // Import custom errors
 
 // Define type for the aggregated result
 interface WeeklyExpenseSummary {
@@ -19,8 +24,9 @@ export const getWeeklyExpenses = async (
   const { startDate, endDate } = req.query; // Get dates from query params
 
   if (!userId || !supabase) {
-    res.status(401).json({ message: "Authentication required." });
-    return;
+    return next(
+      new InternalServerError("Authentication context not found on request.")
+    );
   }
 
   // --- Input Validation ---
@@ -30,20 +36,20 @@ export const getWeeklyExpenses = async (
     typeof startDate !== "string" ||
     typeof endDate !== "string"
   ) {
-    res.status(400).json({
-      message: "startDate and endDate query parameters are required.",
-    });
-    return;
+    return next(
+      new BadRequestError(
+        "startDate and endDate query parameters are required."
+      )
+    );
   }
 
   const parsedStartDate = parseISO(startDate);
   const parsedEndDate = parseISO(endDate);
 
   if (!isValid(parsedStartDate) || !isValid(parsedEndDate)) {
-    res
-      .status(400)
-      .json({ message: "Invalid date format. Please use YYYY-MM-DD." });
-    return;
+    return next(
+      new ValidationError("Invalid date format. Please use YYYY-MM-DD.")
+    );
   }
   // --- End Validation ---
 
@@ -57,8 +63,13 @@ export const getWeeklyExpenses = async (
       .lte("entry_date", endDate); // Less than or equal to end date
 
     if (error) {
-      console.error("Error fetching weekly finance entries:", error);
-      throw error;
+      console.error(
+        `Supabase error fetching weekly finance entries for user ${userId}:`,
+        error
+      );
+      return next(
+        new InternalServerError("Failed to fetch weekly finance entries")
+      );
     }
 
     // Aggregate expenses by date

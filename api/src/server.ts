@@ -19,6 +19,7 @@ import userRoutes from "./routes/user"; // Import the new user routes
 import questsRoutes from "./routes/quests"; // Import the new quests routes
 import notificationsRoutes from "./routes/notifications"; // Import notification routes
 import yuzuRoutes from "./routes/yuzu";
+import { errorHandler } from "./middleware/errorHandler"; // Import the new error handler
 // import { processPushQueue } from "./services/pushQueueProcessor"; // Remove old queue processor import
 import { checkAndSendReminders } from "./services/reminderService"; // Import the reminder service
 
@@ -95,14 +96,8 @@ app.get("/api", (req: Request, res: Response) => {
 });
 
 // --- Global Error Handler ---
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  console.error("Global Error Handler:", err.stack || err);
-  // Check for specific Supabase errors if needed, otherwise send generic error
-  // Example: Check for specific error codes or messages
-  // if (err.code === 'SOME_SUPABASE_CODE') { ... }
-  res.status(500).json({ message: "Internal Server Error" });
-});
+// This MUST be the last middleware registered
+app.use(errorHandler);
 
 // --- Start Server ---
 app.listen(port, () => {

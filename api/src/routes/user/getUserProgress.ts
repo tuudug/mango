@@ -1,6 +1,7 @@
 import { NextFunction, Response } from "express";
 import { AuthenticatedRequest } from "../../middleware/auth";
-import { Database } from "../../types/supabase"; // Import Database type
+import { InternalServerError, AuthenticationError } from "../../utils/errors";
+// Database type not strictly needed here
 
 export async function getUserProgress(
   req: AuthenticatedRequest,
@@ -8,33 +9,35 @@ export async function getUserProgress(
   next: NextFunction
 ): Promise<void> {
   const userId = req.user?.id;
-  // Explicitly type supabase client
-  const supabase = req.supabase as AuthenticatedRequest["supabase"];
-
-  if (!userId || !supabase) {
-    res.status(401).json({ message: "Authentication required." });
-    return;
-  }
-
   try {
+    const userId = req.user?.id;
+    const supabase = req.supabase;
+
+    if (!userId || !supabase) {
+      return next(new AuthenticationError("Authentication required."));
+    }
+
     const { data: userProgress, error: fetchError } = await supabase
       .from("user_progress")
       .select("xp, level")
       .eq("user_id", userId)
       .single();
 
+    // Handle specific Supabase errors
     if (fetchError && fetchError.code !== "PGRST116") {
-      // PGRST116: row not found, treat as error here as progress should exist if user logged in
-      console.error("Error fetching user progress:", fetchError);
-      return next(new Error("Failed to fetch user progress."));
+      // PGRST116 means row not found, which we handle by returning defaults.
+      // Other errors are internal server errors.
+      console.error("Supabase error fetching user progress:", fetchError);
+      return next(new InternalServerError("Failed to fetch user progress."));
     }
 
-    // If no progress record found (PGRST116), return default values
+    // If no progress record found (PGRST116 or null data), return default values
     const progressData = userProgress ?? { xp: 0, level: 1 };
 
     res.status(200).json(progressData);
   } catch (error) {
-    console.error("Unexpected error fetching user progress:", error);
-    next(error);
+    // Catch unexpected errors
+    console.error("Unexpected error in getUserProgress handler:", error);
+    next(error); // Pass to global error handler
   }
 }

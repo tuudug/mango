@@ -1,7 +1,15 @@
 import { NextFunction, Response } from "express";
 import { AuthenticatedRequest } from "../../middleware/auth";
-import { awardXpToUser } from "../../services/userProgressService"; // Import the XP service
-import { Database } from "../../types/supabase"; // Import Database type
+import { awardXpToUser } from "../../services/userProgressService";
+import {
+  InternalServerError,
+  AuthenticationError,
+  BadRequestError,
+  NotFoundError,
+  AuthorizationError,
+  ConflictError,
+} from "../../utils/errors";
+// Database type import is not strictly needed here if not used directly
 
 export async function claimQuest(
   req: AuthenticatedRequest,
@@ -9,21 +17,20 @@ export async function claimQuest(
   next: NextFunction
 ): Promise<void> {
   const userId = req.user?.id;
-  // Explicitly type supabase client
-  const supabase = req.supabase as AuthenticatedRequest["supabase"];
   const { questId } = req.params;
 
-  if (!userId || !supabase) {
-    res.status(401).json({ message: "Authentication required." });
-    return;
-  }
-
-  if (!questId) {
-    res.status(400).json({ message: "Quest ID is required." });
-    return;
-  }
-
   try {
+    const userId = req.user?.id;
+    const supabase = req.supabase;
+
+    if (!userId || !supabase) {
+      return next(new AuthenticationError("Authentication required."));
+    }
+
+    if (!questId) {
+      return next(new BadRequestError("Quest ID is required."));
+    }
+
     // 1. Fetch the quest to verify ownership, status, and get XP reward
     const { data: targetQuest, error: fetchError } = await supabase
       .from("quests")
@@ -32,24 +39,23 @@ export async function claimQuest(
       .single();
 
     if (fetchError) {
-      console.error("Error fetching quest for claiming:", fetchError);
+      console.error("Supabase error fetching quest for claiming:", fetchError);
       if (fetchError.code === "PGRST116") {
-        res.status(404).json({ message: "Quest not found." });
-        return;
+        return next(new NotFoundError("Quest not found."));
       }
-      return next(new Error("Failed to fetch quest details."));
+      return next(new InternalServerError("Failed to fetch quest details."));
     }
 
     if (targetQuest.user_id !== userId) {
-      res.status(403).json({ message: "You do not own this quest." });
-      return;
+      return next(new AuthorizationError("You do not own this quest."));
     }
 
     if (targetQuest.status !== "claimable") {
-      res.status(400).json({
-        message: `Quest is not claimable (current status: ${targetQuest.status}).`,
-      });
-      return;
+      return next(
+        new BadRequestError(
+          `Quest is not claimable (current status: ${targetQuest.status}).`
+        )
+      );
     }
 
     // 2. Update the quest status to 'completed'
@@ -57,46 +63,50 @@ export async function claimQuest(
       .from("quests")
       .update({ status: "completed", completed_at: new Date().toISOString() })
       .eq("id", questId)
-      .eq("user_id", userId) // Ensure ownership
-      .eq("status", "claimable") // Ensure status hasn't changed
-      .select(`*, quest_criteria (*)`) // Return updated quest with criteria
+      .eq("user_id", userId)
+      .eq("status", "claimable") // Concurrency check
+      .select(`*, quest_criteria (*)`)
       .single();
 
     if (updateError) {
-      console.error("Error completing quest:", updateError);
-      // Check if the error is due to the row not being found (status changed between fetch and update)
+      console.error("Supabase error completing quest:", updateError);
       if (updateError.code === "PGRST116") {
-        res.status(409).json({
-          message: "Failed to claim quest, status may have changed.",
-        });
-        return;
+        // Row not found matching update criteria (likely status changed)
+        return next(
+          new ConflictError(
+            "Failed to claim quest, status may have changed or quest not found."
+          )
+        );
       }
-      return next(new Error("Failed to claim quest."));
+      return next(new InternalServerError("Failed to claim quest."));
     }
 
-    // If updatedQuest is null here, it means the update affected 0 rows (likely status changed)
-    if (!updatedQuest) {
-      res.status(409).json({
-        message:
-          "Failed to claim quest, status may have changed or quest not found.",
-      });
-      return;
-    }
+    // If updateError is null, .single() guarantees data is not null
+    // The check below is redundant if PGRST116 is handled above.
+    // if (!updatedQuest) { ... }
 
-    // 3. Award XP using the service function
+    // 3. Award XP (run after successful quest update, before sending response)
     const xpAwarded = targetQuest.xp_reward;
     if (xpAwarded > 0) {
-      const xpResult = await awardXpToUser(userId, xpAwarded, supabase);
-      if (!xpResult.success) {
-        // Log the error but proceed with returning the completed quest data
+      try {
+        const xpResult = await awardXpToUser(userId, xpAwarded, supabase);
+        if (!xpResult.success) {
+          // Log the error but don't fail the entire request
+          console.error(
+            `[XP Award Error] Failed to award ${xpAwarded} XP to user ${userId} for quest ${questId}: ${xpResult.error}`
+          );
+          // Optionally add info to response or handle differently
+        } else {
+          console.log(
+            `Awarded ${xpAwarded} XP to user ${userId} for quest ${questId}. New level: ${xpResult.newLevel}`
+          );
+        }
+      } catch (xpError) {
         console.error(
-          `Failed to award ${xpAwarded} XP to user ${userId} for quest ${questId}: ${xpResult.error}`
+          `[XP Award Exception] Unexpected error awarding XP for quest ${questId} to user ${userId}:`,
+          xpError
         );
-        // Optionally, you could add a flag to the response indicating XP award failure
-      } else {
-        console.log(
-          `Awarded ${xpAwarded} XP to user ${userId} for quest ${questId}. New level: ${xpResult.newLevel}`
-        );
+        // Decide if this should block the response. For now, log and continue.
       }
     } else {
       console.log(
@@ -107,7 +117,8 @@ export async function claimQuest(
     // Return the successfully completed quest data
     res.status(200).json(updatedQuest);
   } catch (error) {
-    console.error("Unexpected error claiming quest:", error);
-    next(error);
+    // Catch unexpected errors
+    console.error("Unexpected error in claimQuest handler:", error);
+    next(error); // Pass to global error handler
   }
 }

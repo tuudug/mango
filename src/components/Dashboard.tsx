@@ -26,7 +26,11 @@ import {
 } from "./dashboard/constants";
 import { useDashboardLayout } from "./dashboard/hooks/useDashboardLayout";
 import { DashboardName } from "./dashboard/types";
-import { getCachedLastSyncTime, isMobileView } from "./dashboard/utils";
+import {
+  getCachedLastSyncTime,
+  isMobileView,
+  findFirstAvailablePosition, // Import the utility function
+} from "./dashboard/utils";
 import { useToast } from "@/contexts/ToastContext"; // Import useToast
 // Removed provider import
 
@@ -44,30 +48,36 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
   const {
     items, // Display items
     editItems, // Items being edited (or null)
-    setEditItems, // Function to update edit state
+    setEditItems, // Function to update edit state directly (e.g., DnD)
     isLoadingLayout,
     fetchLayout,
-    saveEditLayout, // Function to save edits when exiting edit mode
-    // updateWidgetConfig is used by DashboardGridItem, not directly here
+    // updateWidgetConfig is used by DashboardGridItem
+    // New state and controls from the hook:
+    isEditing,
+    editTarget,
+    isSaving,
+    isSwitchingTarget,
+    startEditing,
+    stopEditing,
+    switchEditTarget,
   } = useDashboardLayout();
 
-  const [isToolboxOpen, setIsToolboxOpen] = useState(false); // True if in edit mode
+  // Removed isToolboxOpen state
   const [isConfigModalActive, setIsConfigModalActive] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false); // State for notification panel
 
   const [currentViewDashboardName, setCurrentViewDashboardName] =
     useState<DashboardName>("default");
-  const [editTargetDashboard, setEditTargetDashboard] =
-    useState<DashboardName>("default");
-  const prevEditTargetRef = useRef<DashboardName>("default");
+  // Removed editTargetDashboard state (now 'editTarget' from hook)
+  // Removed prevEditTargetRef (managed within hook if needed)
 
   const gridContainerRef = useRef<HTMLDivElement>(null);
 
   const [shakeCount, setShakeCount] = useState(0);
   const triggerShakeIndicator = () => setShakeCount((c) => c + 1);
 
-  const [isSwitchingEditMode, setIsSwitchingEditMode] = useState(false);
-  const [isSavingLayout, setIsSavingLayout] = useState(false);
+  // Removed isSwitchingEditMode state (now 'isSwitchingTarget' from hook)
+  // Removed isSavingLayout state (now 'isSaving' from hook)
 
   // --- Initial Load & Focus Handling ---
   useEffect(() => {
@@ -75,7 +85,7 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
       const isMobile = isMobileView();
       const initialName: DashboardName = isMobile ? "mobile" : "default";
       setCurrentViewDashboardName(initialName);
-      setEditTargetDashboard(initialName);
+      // setEditTargetDashboard(initialName); // Removed - editTarget is managed by hook
       await fetchLayout(initialName, false, { background: false });
     };
     if (!isAuthLoading) {
@@ -88,7 +98,7 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
       if (
         document.visibilityState === "visible" &&
         !isAuthLoading &&
-        !isToolboxOpen
+        !isEditing // Use isEditing from hook
       ) {
         const lastSyncTime = getCachedLastSyncTime();
         if (!lastSyncTime || Date.now() - lastSyncTime > CACHE_STALE_DURATION) {
@@ -100,65 +110,37 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [isAuthLoading, currentViewDashboardName, fetchLayout, isToolboxOpen]);
+  }, [isAuthLoading, currentViewDashboardName, fetchLayout, isEditing]); // Use isEditing from hook
 
-  useEffect(() => {
-    if (isToolboxOpen && !isAuthLoading) {
-      const previousTarget = prevEditTargetRef.current;
-      const targetChanged = previousTarget !== editTargetDashboard;
-      setIsSwitchingEditMode(targetChanged);
-      fetchLayout(editTargetDashboard, targetChanged, {
-        forEditing: true,
-      }).finally(() => setIsSwitchingEditMode(false));
-    }
-    prevEditTargetRef.current = editTargetDashboard;
-  }, [editTargetDashboard, isToolboxOpen, isAuthLoading, fetchLayout]); // Added fetchLayout dependency
+  // Removed useEffect for fetching on edit mode start (handled by startEditing in hook)
+
   // --- End Initial Load & Focus Handling ---
 
-  // --- Toolbox Toggle Logic ---
-  const toggleToolbox = async (forceState?: boolean) => {
-    const nextIsOpen = forceState !== undefined ? forceState : !isToolboxOpen;
-    if (!nextIsOpen && editItems) {
-      setIsSavingLayout(true);
-      try {
-        const saveSuccess = await saveEditLayout(editTargetDashboard);
-        if (!saveSuccess) {
-          showToast({
-            title: "Save Failed",
-            description: "Could not save dashboard changes. Please try again.",
-            variant: "destructive",
-          });
-        }
-      } catch (error) {
-        console.error("Error during saveEditLayout:", error);
-        showToast({
-          title: "Save Error",
-          description: "An unexpected error occurred while saving.",
-          variant: "destructive",
-        });
-      } finally {
-        const viewTarget: DashboardName = "default";
-        setCurrentViewDashboardName(viewTarget);
-        setEditTargetDashboard(viewTarget);
-        setIsToolboxOpen(false);
-        setIsSavingLayout(false);
-        setIsConfigModalActive(false);
+  // --- Edit Mode Toggle Logic ---
+  const handleToggleEditMode = async () => {
+    if (isEditing) {
+      // Attempt to save and exit edit mode
+      const success = await stopEditing();
+      if (success) {
+        // Reset view to default after successful save/exit
+        setCurrentViewDashboardName("default");
+        setIsConfigModalActive(false); // Close config modal on exit
       }
-    } else if (nextIsOpen) {
-      setEditTargetDashboard(currentViewDashboardName);
-      setIsToolboxOpen(true);
+      // If stopEditing fails, it handles showing toast and keeps isEditing true
     } else {
-      setIsToolboxOpen(false);
-      setIsConfigModalActive(false);
+      // Enter edit mode
+      startEditing(currentViewDashboardName); // Start editing the currently viewed dashboard
+      setIsConfigModalActive(false); // Ensure config modal is closed on entry
     }
   };
 
-  const toggleEditTarget = () => {
-    setEditTargetDashboard((prev) =>
-      prev === "default" ? "mobile" : "default"
-    );
+  // --- Edit Target Toggle Logic ---
+  const handleToggleEditTarget = () => {
+    // Use the hook's function to switch the target being edited
+    const newTarget = editTarget === "default" ? "mobile" : "default";
+    switchEditTarget(newTarget);
   };
-  // --- End Toolbox Toggle Logic ---
+  // --- End Edit Mode Toggle Logic ---
 
   // --- Notification Panel Toggle Logic ---
   const handleToggleNotifications = () => {
@@ -174,7 +156,7 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
 
   // --- Add Widget Logic ---
   const handleAddWidget = (widgetType: WidgetType) => {
-    if (!isToolboxOpen || editItems === null) return;
+    if (!isEditing || editItems === null) return; // Use isEditing
     const widgetDefaults = defaultWidgetLayouts[widgetType] || {
       w: 6,
       h: 4,
@@ -182,8 +164,7 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
       minH: 2,
     };
     const { w, h, minW = 2, minH = 2 } = widgetDefaults;
-    const cols =
-      editTargetDashboard === "mobile" ? mobileCols.mobile : standardCols.lg;
+    const cols = editTarget === "mobile" ? mobileCols.mobile : standardCols.lg; // Use editTarget
     const isPlaceholderPresent = editItems.some(
       (item) => item.type === "Placeholder"
     );
@@ -219,47 +200,14 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
     }
   };
 
-  const findFirstAvailablePosition = (
-    widgetMinW: number,
-    widgetMinH: number,
-    currentItems: GridItem[],
-    cols: number
-  ): { x: number; y: number } | null => {
-    let maxY = 0;
-    currentItems.forEach((item) => {
-      maxY = Math.max(maxY, item.y + item.h);
-    });
-    for (let y = 0; y <= maxY; y++) {
-      for (let x = 0; x <= cols - widgetMinW; x++) {
-        let collision = false;
-        for (const item of currentItems) {
-          const newItemRight = x + widgetMinW;
-          const newItemBottom = y + widgetMinH;
-          const existingItemRight = item.x + item.w;
-          const existingItemBottom = item.y + item.h;
-          if (
-            !(
-              newItemRight <= item.x ||
-              x >= existingItemRight ||
-              newItemBottom <= item.y ||
-              y >= existingItemBottom
-            )
-          ) {
-            collision = true;
-            break;
-          }
-        }
-        if (!collision) return { x, y };
-      }
-    }
-    return { x: 0, y: maxY };
-  };
+  // Removed findFirstAvailablePosition function definition from here
+
   // --- End Add Widget Logic ---
 
   // --- Layout Change Handlers ---
   const onLayoutChange = useCallback(
     (layout: Layout[]) => {
-      if (!isToolboxOpen || editItems === null) return;
+      if (!isEditing || editItems === null) return; // Use isEditing
       const newEditItems = editItems.map((editItem) => {
         const layoutItem = layout.find((l) => l.i === editItem.id);
         return layoutItem
@@ -295,12 +243,12 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
         setEditItems(newEditItems);
       }
     },
-    [editItems, setEditItems, isToolboxOpen]
+    [editItems, setEditItems, isEditing] // Use isEditing
   );
 
   const handleLiveResize = useCallback(
     (_layout: Layout[], _oldItem: Layout, newItemLayout: Layout) => {
-      if (!isToolboxOpen || editItems === null) return;
+      if (!isEditing || editItems === null) return; // Use isEditing
       setEditItems((currentEditItems) => {
         if (!currentEditItems) return null;
         return currentEditItems.map((item) =>
@@ -310,12 +258,12 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
         );
       });
     },
-    [isToolboxOpen, setEditItems]
+    [isEditing, setEditItems] // Use isEditing
   );
 
   const handleResizeStop = useCallback(
     (_layout: Layout[], _oldItem: Layout, newItemLayout: Layout) => {
-      if (!isToolboxOpen || editItems === null) return;
+      if (!isEditing || editItems === null) return; // Use isEditing
       setEditItems((currentEditItems) => {
         if (!currentEditItems) return null;
         const itemExists = currentEditItems.some(
@@ -329,11 +277,11 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
         );
       });
     },
-    [isToolboxOpen, setEditItems]
+    [isEditing, setEditItems] // Use isEditing
   );
 
   const handleDeleteWidget = (idToDelete: string) => {
-    if (!isToolboxOpen || editItems === null) return;
+    if (!isEditing || editItems === null) return; // Use isEditing
     const newEditItems = editItems.filter((item) => item.id !== idToDelete);
     if (newEditItems.length === 0) {
       setEditItems(getDefaultLayout());
@@ -344,9 +292,9 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
   // --- End Layout Change Handlers ---
 
   // --- Panel Behavior & Styling ---
-  const mainContentPaddingLeft = isToolboxOpen ? "pl-64" : "pl-0";
-  const isMobileEditMode = isToolboxOpen && editTargetDashboard === "mobile";
-  const itemsToDisplay = isToolboxOpen && editItems ? editItems : items;
+  const mainContentPaddingLeft = isEditing ? "pl-64" : "pl-0"; // Use isEditing
+  const isMobileEditMode = isEditing && editTarget === "mobile"; // Use isEditing and editTarget
+  const itemsToDisplay = isEditing && editItems ? editItems : items; // Use isEditing
   // --- End Panel Behavior & Styling ---
 
   // --- Render Logic ---
@@ -370,8 +318,8 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
       {" "}
       {/* Add relative positioning for panel */}
       <LeftSidebar
-        isToolboxOpen={isToolboxOpen}
-        toggleToolbox={toggleToolbox}
+        isToolboxOpen={isEditing} // Pass isEditing
+        toggleToolbox={handleToggleEditMode} // Pass new handler
         triggerShakeIndicator={triggerShakeIndicator}
       />
       <div className="flex flex-col flex-1 overflow-hidden">
@@ -394,9 +342,9 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
           >
             <DashboardGrid
               items={itemsToDisplay}
-              isToolboxOpen={isToolboxOpen}
+              isToolboxOpen={isEditing} // Use isEditing
               isMobileEditMode={isMobileEditMode}
-              editTargetDashboard={editTargetDashboard}
+              editTargetDashboard={editTarget} // Use editTarget
               onLayoutChange={onLayoutChange}
               onLiveResize={handleLiveResize}
               handleResizeStop={handleResizeStop}
@@ -404,12 +352,12 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
               isConfigModalActive={isConfigModalActive}
               onConfigModalToggle={handleConfigModalToggle}
             />
-            {isSwitchingEditMode && (
+            {isSwitchingTarget && ( // Use isSwitchingTarget
               <div className="absolute inset-0 flex items-center justify-center bg-gray-950 bg-opacity-50 z-30">
                 <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
               </div>
             )}
-            {isSavingLayout && (
+            {isSaving && ( // Use isSaving
               <div className="absolute inset-0 flex items-center justify-center bg-gray-950 bg-opacity-75 z-40">
                 <div className="flex flex-col items-center gap-2">
                   <Loader2 className="h-8 w-8 animate-spin text-gray-300" />
@@ -423,22 +371,22 @@ export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
 
           <div
             className={`absolute top-0 left-0 bottom-0 transition-transform duration-300 ease-in-out z-20 ${
-              isToolboxOpen ? "translate-x-0" : "-translate-x-full"
+              isEditing ? "translate-x-0" : "-translate-x-full" // Use isEditing
             }`}
           >
             <WidgetToolbox
-              onClose={() => toggleToolbox(false)}
-              editTargetDashboard={editTargetDashboard}
+              onClose={() => handleToggleEditMode()} // Use new handler to exit
+              editTargetDashboard={editTarget} // Use editTarget
               onAddWidget={handleAddWidget}
             />
           </div>
         </div>
       </div>
       <EditModeIndicator
-        isToolboxOpen={isToolboxOpen}
-        editTargetDashboard={editTargetDashboard}
-        toggleEditTarget={toggleEditTarget}
-        toggleToolbox={() => toggleToolbox()}
+        isToolboxOpen={isEditing} // Use isEditing
+        editTargetDashboard={editTarget} // Use editTarget
+        toggleEditTarget={handleToggleEditTarget} // Use new handler
+        toggleToolbox={handleToggleEditMode} // Use new handler
         shakeCount={shakeCount}
       />
       {/* Conditionally render NotificationsPanel, positioned relative to the main div */}

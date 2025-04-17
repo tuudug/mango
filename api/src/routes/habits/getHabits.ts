@@ -1,11 +1,13 @@
-import { Response } from "express";
+import { Response, NextFunction } from "express"; // Add NextFunction
 // import { supabase } from "../../supabaseClient"; // Remove global import
 import { AuthenticatedRequest } from "../../middleware/auth"; // Import the correct interface
+import { InternalServerError } from "../../utils/errors"; // Import custom error
 
 // Explicitly type the return as Promise<void>
 export const getHabits = async (
   req: AuthenticatedRequest,
-  res: Response
+  res: Response,
+  next: NextFunction // Add next parameter
 ): Promise<void> => {
   const userId = req.userId;
   const supabase = req.supabase; // Use request-scoped client
@@ -15,12 +17,9 @@ export const getHabits = async (
     console.error(
       "getHabits Error: userId or supabase client missing from request after authentication."
     );
-    res
-      .status(401)
-      .json({
-        error: "User not authenticated properly or Supabase client missing",
-      });
-    return;
+    return next(
+      new InternalServerError("Authentication context not found on request.")
+    );
   }
 
   try {
@@ -33,15 +32,12 @@ export const getHabits = async (
 
     if (error) {
       console.error("Error fetching habits:", error);
-      res.status(500).json({ error: error.message });
-      return; // Return void explicitly here
+      return next(new InternalServerError("Failed to fetch habits"));
     }
 
     res.status(200).json(data || []);
-    // Implicitly returns void here
   } catch (err) {
     console.error("Unexpected error fetching habits:", err);
-    res.status(500).json({ error: "Internal server error" });
-    // Implicitly returns void here
+    next(err);
   }
 };

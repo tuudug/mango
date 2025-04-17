@@ -1,5 +1,13 @@
 import { NextFunction, Response } from "express";
 import { AuthenticatedRequest } from "../../middleware/auth";
+import {
+  InternalServerError,
+  AuthenticationError,
+  BadRequestError,
+  NotFoundError,
+  AuthorizationError,
+  ConflictError,
+} from "../../utils/errors";
 
 export async function cancelQuest(
   req: AuthenticatedRequest,
@@ -7,20 +15,20 @@ export async function cancelQuest(
   next: NextFunction
 ): Promise<void> {
   const userId = req.user?.id;
-  const supabase = req.supabase;
   const { questId } = req.params;
 
-  if (!userId || !supabase) {
-    res.status(401).json({ message: "Authentication required." });
-    return;
-  }
-
-  if (!questId) {
-    res.status(400).json({ message: "Quest ID is required." });
-    return;
-  }
-
   try {
+    const userId = req.user?.id;
+    const supabase = req.supabase;
+
+    if (!userId || !supabase) {
+      return next(new AuthenticationError("Authentication required."));
+    }
+
+    if (!questId) {
+      return next(new BadRequestError("Quest ID is required."));
+    }
+
     // Fetch the quest to verify ownership and status
     const { data: targetQuest, error: fetchError } = await supabase
       .from("quests")
@@ -29,27 +37,27 @@ export async function cancelQuest(
       .single();
 
     if (fetchError) {
-      console.error("Error fetching quest for cancellation:", fetchError);
+      console.error(
+        "Supabase error fetching quest for cancellation:",
+        fetchError
+      );
       if (fetchError.code === "PGRST116") {
-        res.status(404).json({ message: "Quest not found." });
-        return;
+        return next(new NotFoundError("Quest not found."));
       }
-      return next(new Error("Failed to fetch quest details."));
+      return next(new InternalServerError("Failed to fetch quest details."));
     }
 
     if (targetQuest.user_id !== userId) {
-      res.status(403).json({ message: "You do not own this quest." });
-      return;
+      return next(new AuthorizationError("You do not own this quest."));
     }
 
     // Only allow cancelling 'active' quests in this flow
     if (targetQuest.status !== "active") {
-      res
-        .status(400)
-        .json({
-          message: `Quest cannot be cancelled (current status: ${targetQuest.status}). Only active quests can be cancelled.`,
-        });
-      return;
+      return next(
+        new BadRequestError(
+          `Quest cannot be cancelled (current status: ${targetQuest.status}). Only active quests can be cancelled.`
+        )
+      );
     }
 
     // Update the quest status to 'cancelled'
@@ -57,37 +65,34 @@ export async function cancelQuest(
       .from("quests")
       .update({ status: "cancelled", cancelled_at: new Date().toISOString() })
       .eq("id", questId)
-      .eq("user_id", userId) // Ensure ownership
-      .eq("status", "active") // Ensure status hasn't changed
-      .select(`*, quest_criteria (*)`) // Return updated quest
+      .eq("user_id", userId)
+      .eq("status", "active") // Concurrency check
+      .select(`*, quest_criteria (*)`)
       .single();
 
     if (updateError) {
-      console.error("Error cancelling quest:", updateError);
-      if (updateError.message.includes("constraint violation")) {
-        res
-          .status(409)
-          .json({
-            message: "Failed to cancel quest, status may have changed.",
-          });
-        return;
+      console.error("Supabase error cancelling quest:", updateError);
+      if (updateError.code === "PGRST116") {
+        // Row not found matching update criteria (likely status changed)
+        return next(
+          new ConflictError(
+            "Failed to cancel quest, status may have changed or quest not found."
+          )
+        );
       }
-      return next(new Error("Failed to cancel quest."));
+      // Handle other potential constraint violations if necessary
+      // if (updateError.message.includes("constraint violation")) { ... }
+      return next(new InternalServerError("Failed to cancel quest."));
     }
 
-    if (!updatedQuest) {
-      res
-        .status(409)
-        .json({
-          message:
-            "Failed to cancel quest, status may have changed or quest not found.",
-        });
-      return;
-    }
+    // If updateError is null, .single() guarantees data is not null
+    // The check below is redundant if PGRST116 is handled above.
+    // if (!updatedQuest) { ... }
 
     res.status(200).json(updatedQuest);
   } catch (error) {
-    console.error("Unexpected error cancelling quest:", error);
-    next(error);
+    // Catch unexpected errors
+    console.error("Unexpected error in cancelQuest handler:", error);
+    next(error); // Pass to global error handler
   }
 }

@@ -1,6 +1,7 @@
 import { Response, NextFunction } from "express";
 import { supabaseAdmin } from "../../supabaseClient"; // Need admin client
 import { AuthenticatedRequest } from "../../middleware/auth";
+import { InternalServerError, ValidationError } from "../../utils/errors"; // Import custom errors
 
 export const addManualHealthEntry = async (
   req: AuthenticatedRequest,
@@ -12,22 +13,22 @@ export const addManualHealthEntry = async (
     const supabaseUserClient = req.supabase; // Get request-scoped client
 
     if (!userId || !supabaseUserClient) {
-      res.status(401).json({ message: "Authentication data missing" });
-      return;
+      return next(
+        new InternalServerError("Authentication context not found on request.")
+      );
     }
     // Validate request body
     const { entry_date, type, value } = req.body;
     if (!entry_date || !type || value === undefined || value === null) {
-      res.status(400).json({
-        message: "Missing required fields: entry_date, type, value",
-      });
-      return;
+      return next(
+        new ValidationError("Missing required fields: entry_date, type, value")
+      );
     }
     // Basic type validation (can be expanded)
     if (typeof type !== "string" || typeof value !== "number") {
-      res.status(400).json({ message: "Invalid data type for type or value" });
-      return;
+      return next(new ValidationError("Invalid data type for type or value"));
     }
+    // Add more specific date/type/value validation if needed
 
     // Find or create the 'manual_health' connection using ADMIN client
     const { data: connection, error: connError } = await supabaseAdmin
@@ -43,13 +44,23 @@ export const addManualHealthEntry = async (
       .select("id")
       .single();
 
-    if (connError || !connection?.id) {
+    if (connError) {
       console.error(
-        "Error finding/creating manual_health connection:",
+        `Supabase error finding/creating manual_health connection for user ${userId}:`,
         connError
       );
-      throw (
-        connError || new Error("Manual health connection ID not found/created")
+      return next(
+        new InternalServerError(
+          "Failed to establish connection for manual health entries"
+        )
+      );
+    }
+    if (!connection?.id) {
+      console.error(
+        `Manual health connection ID missing after find/create for user ${userId}`
+      );
+      return next(
+        new InternalServerError("Failed to obtain manual health connection ID")
       );
     }
 
@@ -66,7 +77,13 @@ export const addManualHealthEntry = async (
       .select()
       .single();
 
-    if (insertError) throw insertError;
+    if (insertError) {
+      console.error(
+        `Supabase error inserting manual health entry for user ${userId}:`,
+        insertError
+      );
+      return next(new InternalServerError("Failed to add manual health entry"));
+    }
 
     console.log(`Manual health entry added for user ${userId}:`, newEntry);
     res.status(201).json(newEntry);

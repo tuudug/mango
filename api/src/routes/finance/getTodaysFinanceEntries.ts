@@ -2,6 +2,7 @@ import { Response, NextFunction } from "express";
 import { AuthenticatedRequest } from "../../middleware/auth";
 import { formatInTimeZone } from "date-fns-tz"; // Import timezone formatter
 import { updateQuestProgress } from "../../services/questService"; // Import quest service
+import { InternalServerError } from "../../utils/errors"; // Import custom errors
 
 // Define type for finance entry (can be shared)
 interface FinanceEntry {
@@ -33,8 +34,9 @@ export const getTodaysFinanceEntries = async (
   const supabase = req.supabase; // Use request-scoped client
 
   if (!userId || !supabase) {
-    res.status(401).json({ message: "Authentication required." });
-    return;
+    return next(
+      new InternalServerError("Authentication context not found on request.")
+    );
   }
 
   try {
@@ -66,8 +68,13 @@ export const getTodaysFinanceEntries = async (
       .eq("entry_date", todayDateString); // Filter for today's date
 
     if (entriesError) {
-      console.error("Error fetching today's finance entries:", entriesError);
-      throw entriesError; // Let error handler catch it
+      console.error(
+        `Supabase error fetching today's finance entries for user ${userId}:`,
+        entriesError
+      );
+      return next(
+        new InternalServerError("Failed to fetch today's finance entries")
+      );
     }
 
     const entries: FinanceEntry[] = entriesData || [];
@@ -80,7 +87,10 @@ export const getTodaysFinanceEntries = async (
       .maybeSingle(); // Use maybeSingle as settings might not exist
 
     if (settingsError) {
-      console.error("Error fetching finance settings:", settingsError);
+      console.error(
+        `Supabase error fetching finance settings for user ${userId}:`,
+        settingsError
+      );
       // Don't throw, proceed without settings if necessary, quest update will handle null allowance
     }
 
@@ -124,6 +134,12 @@ export const getTodaysFinanceEntries = async (
     // Ensure response is sent even if quest update call setup fails
     if (!res.headersSent) {
       next(error); // Pass error to the global error handler if response not sent
+    } else {
+      // If response was already sent, we can't use next() anymore, just log
+      console.error(
+        "Error occurred after response sent in getTodaysFinanceEntries:",
+        error
+      );
     }
   }
 };

@@ -1,6 +1,7 @@
 import { Response, NextFunction } from "express";
 import { AuthenticatedRequest } from "../../middleware/auth"; // Adjust path as needed
 import { TodoItem } from "../../types/todo";
+import { InternalServerError } from "../../utils/errors"; // Import custom error
 
 export const getTodosHandler = async (
   req: AuthenticatedRequest,
@@ -12,8 +13,10 @@ export const getTodosHandler = async (
     const supabaseUserClient = req.supabase;
 
     if (!userId || !supabaseUserClient) {
-      res.status(401).json({ message: "Authentication data missing" });
-      return;
+      // Use next with custom error for server/middleware issues
+      return next(
+        new InternalServerError("Authentication context not found on request.")
+      );
     }
 
     let allTodoItems: TodoItem[] = [];
@@ -27,7 +30,13 @@ export const getTodosHandler = async (
       .order("level", { ascending: true })
       .order("position", { ascending: true });
 
-    if (manualError) throw manualError;
+    if (manualError) {
+      console.error(
+        `Supabase error fetching todos for user ${userId}:`,
+        manualError
+      );
+      return next(new InternalServerError("Failed to fetch todo items"));
+    }
 
     if (manualTodos) {
       allTodoItems = manualTodos.map((todo) => ({

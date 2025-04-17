@@ -1,6 +1,7 @@
 import { Response, NextFunction } from "express";
 import { supabaseAdmin } from "../../supabaseClient"; // Keep admin client
 import { AuthenticatedRequest } from "../../middleware/auth";
+import { InternalServerError, ValidationError } from "../../utils/errors"; // Import custom errors
 
 export const addManualCalendarEvent = async (
   req: AuthenticatedRequest, // Use exported interface
@@ -13,14 +14,18 @@ export const addManualCalendarEvent = async (
     const supabaseUserClient = req.supabase;
 
     if (!userId || !supabaseUserClient) {
-      res.status(401).json({ message: "Authentication data missing" });
-      return;
+      return next(
+        new InternalServerError("Authentication context not found on request.")
+      );
     }
     const { title, date } = req.body;
     if (!title || !date) {
-      res.status(400).json({ message: "Missing title or date" });
-      return;
+      // Use ValidationError for missing body fields
+      return next(
+        new ValidationError("Missing required fields: title or date")
+      );
     }
+    // Add more specific date validation if needed (e.g., using dayjs)
 
     // Find or create the 'manual_calendar' connection using ADMIN client
     const connectionData = await supabaseAdmin
@@ -33,7 +38,17 @@ export const addManualCalendarEvent = async (
     const connFindError = connectionData.error;
     let connection = connectionData.data;
 
-    if (connFindError) throw connFindError;
+    if (connFindError) {
+      console.error(
+        `Supabase error finding manual calendar connection for user ${userId}:`,
+        connFindError
+      );
+      return next(
+        new InternalServerError(
+          "Failed to check for manual calendar connection"
+        )
+      );
+    }
     if (!connection) {
       const { data: newConnection, error: connInsertError } =
         await supabaseAdmin
@@ -45,12 +60,27 @@ export const addManualCalendarEvent = async (
           })
           .select("id")
           .single();
-      if (connInsertError) throw connInsertError;
+      if (connInsertError) {
+        console.error(
+          `Supabase error creating manual calendar connection for user ${userId}:`,
+          connInsertError
+        );
+        return next(
+          new InternalServerError("Failed to create manual calendar connection")
+        );
+      }
       connection = newConnection;
     }
 
-    if (!connection?.id)
-      throw new Error("Manual connection ID not found/created");
+    if (!connection?.id) {
+      // This should ideally not happen if the above logic is correct
+      console.error(
+        `Manual connection ID missing after find/create for user ${userId}`
+      );
+      return next(
+        new InternalServerError("Failed to obtain manual connection ID")
+      );
+    }
 
     // Insert the manual event using the REQUEST-SCOPED client (RLS applies)
     const { data: newEvent, error: insertError } = await supabaseUserClient // USE REQUEST-SCOPED CLIENT
@@ -65,7 +95,15 @@ export const addManualCalendarEvent = async (
       .select()
       .single();
 
-    if (insertError) throw insertError;
+    if (insertError) {
+      console.error(
+        `Supabase error inserting manual calendar event for user ${userId}:`,
+        insertError
+      );
+      return next(
+        new InternalServerError("Failed to add manual calendar event")
+      );
+    }
 
     console.log(`Manual event added for user ${userId}:`, newEvent);
     res.status(201).json(newEvent);

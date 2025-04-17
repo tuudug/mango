@@ -1,7 +1,12 @@
-import { Response, Request } from "express"; // Import Request
+import { Response, NextFunction } from "express"; // Import NextFunction
 import { AuthenticatedRequest } from "../../middleware/auth";
-import dayjs from "dayjs"; // Use dayjs for date validation
-import { updateQuestProgress } from "../../services/questService"; // Import quest service
+import dayjs from "dayjs";
+import { updateQuestProgress } from "../../services/questService";
+import {
+  ValidationError,
+  InternalServerError,
+  ConflictError, // For unique constraint
+} from "../../utils/errors";
 
 // Define expected request body structure
 interface AddHabitEntryRequestBody {
@@ -12,109 +17,135 @@ interface AddHabitEntryRequestBody {
 
 export const addHabitEntry = async (
   req: AuthenticatedRequest,
-  res: Response
+  res: Response,
+  next: NextFunction // Add next function
 ): Promise<void> => {
-  const userId = req.userId;
-  const supabase = req.supabase; // Use request-scoped client
   const { habit_id, entry_date }: AddHabitEntryRequestBody = req.body;
-  // Read user timezone from header, default to UTC if not provided
   const userTimezone = (req.headers["x-user-timezone"] as string) || "UTC";
 
-  if (!userId || !supabase) {
-    // Check for client
-    res.status(401).json({
-      error: "User not authenticated properly or Supabase client missing",
-    });
-    return;
-  }
-
-  // Basic validation
-  if (!habit_id || !entry_date) {
-    res
-      .status(400)
-      .json({ error: "Missing required fields: habit_id, entry_date" });
-    return;
-  }
-  if (typeof habit_id !== "string" || typeof entry_date !== "string") {
-    res.status(400).json({ error: "Invalid type for habit_id or entry_date" });
-    return;
-  }
-  if (!dayjs(entry_date, "YYYY-MM-DD", true).isValid()) {
-    res
-      .status(400)
-      .json({ error: "Invalid date format for entry_date. Use YYYY-MM-DD." });
-    return;
-  }
-
   try {
-    let existingData: any = null; // Declare existingData here
-    // Use the request-scoped 'supabase' client
-    const { data, error } = await supabase
-      .from("manual_habit_entries")
-      .insert({
-        user_id: userId, // RLS policy will check if auth.uid() matches this
-        habit_id: habit_id,
-        entry_date: entry_date,
-        // completed defaults to true
-      })
-      .select() // Return the newly created entry
-      .single(); // Expect only one row back
+    const userId = req.userId;
+    const supabase = req.supabase;
+
+    if (!userId || !supabase) {
+      return next(
+        new InternalServerError(
+          "User ID or Supabase client missing from request."
+        )
+      );
+    }
+
+    // Basic validation
+    if (!habit_id || !entry_date) {
+      return next(
+        new ValidationError("Missing required fields: habit_id, entry_date")
+      );
+    }
+    if (typeof habit_id !== "string" || typeof entry_date !== "string") {
+      return next(
+        new ValidationError("Invalid type for habit_id or entry_date")
+      );
+    }
+    if (!dayjs(entry_date, "YYYY-MM-DD", true).isValid()) {
+      return next(
+        new ValidationError(
+          "Invalid date format for entry_date. Use YYYY-MM-DD."
+        )
+      );
+    }
+
+    let existingData: any = null;
+    let data: any = null;
+    let error: any = null;
+
+    // Use a try/catch specifically for the insert operation to handle unique constraint
+    try {
+      const insertResult = await supabase
+        .from("manual_habit_entries")
+        .insert({
+          user_id: userId,
+          habit_id: habit_id,
+          entry_date: entry_date,
+        })
+        .select()
+        .single();
+
+      data = insertResult.data;
+      error = insertResult.error;
+    } catch (insertErr) {
+      // Catch potential errors during the insert itself
+      error = insertErr;
+    }
 
     if (error) {
-      // Handle potential unique constraint violation for 'once_daily' habits
       if (error.code === "23505") {
-        // PostgreSQL unique violation error code
+        // Unique constraint violation
         console.warn(
-          `Add entry failed: Unique constraint violation for habit ${habit_id} on date ${entry_date} for user ${userId}. Likely a 'once_daily' habit already logged.`
+          `Add entry failed: Unique constraint violation for habit ${habit_id} on date ${entry_date} for user ${userId}. Fetching existing.`
         );
-        // It might be better to return the existing entry instead of an error
-        // Let's try fetching the existing entry using the request-scoped client
-        // Assign to the already declared existingData variable
         const { data: fetchedExistingData, error: fetchError } = await supabase
           .from("manual_habit_entries")
           .select("*")
           .eq("user_id", userId)
           .eq("habit_id", habit_id)
           .eq("entry_date", entry_date)
-          .maybeSingle(); // Use maybeSingle in case it was deleted concurrently
+          .maybeSingle();
 
-        if (fetchError || !fetchedExistingData) {
+        if (fetchError) {
           console.error(
             "Error fetching existing entry after unique violation:",
             fetchError
           );
-          res.status(409).json({
-            error:
-              "Habit already logged for this date (unique constraint violation).",
-          });
-        } else {
-          // Assign the fetched data to existingData
-          existingData = fetchedExistingData;
-          // Return the existing entry with a 200 OK status, indicating it was already there
-          // We will send the response later, after determining entryForQuest
-          // res.status(200).json(existingData);
+          return next(
+            new InternalServerError(
+              "Failed to fetch existing entry after conflict."
+            )
+          );
         }
+        if (!fetchedExistingData) {
+          // This case is unlikely if 23505 occurred, but handle defensively
+          console.error(
+            "Unique violation occurred but could not fetch existing entry."
+          );
+          return next(
+            new ConflictError(
+              "Habit already logged for this date, but failed to retrieve existing record."
+            )
+          );
+        }
+        existingData = fetchedExistingData;
       } else {
-        console.error("Error adding habit entry:", error);
-        res.status(500).json({ error: error.message });
+        // Other Supabase error during insert
+        console.error("Supabase error adding habit entry:", error);
+        return next(
+          new InternalServerError(
+            "Failed to add habit entry due to database error."
+          )
+        );
       }
-      return;
     }
 
-    // Determine the entry data to use for quest progress (newly created or existing)
-    const entryForQuest = data || existingData; // Use existingData if unique violation occurred
+    // Determine the entry data to use for quest progress
+    const entryForQuest = data || existingData;
 
     // Send response first
     if (data) {
       res.status(201).json(data); // Send back the created entry
     } else if (existingData) {
       res.status(200).json(existingData); // Send back the existing entry
+    } else {
+      // Should not happen if error handling is correct, but as a safeguard
+      console.error(
+        "Error state: No data and no existingData after addHabitEntry logic."
+      );
+      return next(
+        new InternalServerError("Failed to determine habit entry status.")
+      );
     }
-    // Don't return here, proceed to update quest progress and potentially create notification
 
-    // --- Background Tasks (Quest Update & Notification) ---
+    // --- Background Task: Update Quest Progress ---
+    // Run this after the response has been sent
     if (entryForQuest) {
-      // 1. Update Quest Progress (existing logic)
       updateQuestProgress(
         userId,
         "habit_check",
@@ -125,19 +156,16 @@ export const addHabitEntry = async (
         userTimezone,
         supabase // Pass the request-scoped client
       ).catch((questError) => {
+        // Log error but don't crash the main request flow
         console.error(
-          `[Quest Progress Update Error] Failed after adding habit entry ${entryForQuest.id}:`,
+          `[Background Quest Update Error] Failed after adding/confirming habit entry ${entryForQuest.id}:`,
           questError
         );
       });
-
-      // Notification creation logic removed (was incorrectly triggered on completion)
     }
   } catch (err) {
-    console.error("Unexpected error adding habit entry:", err);
-    // Ensure response is sent even if quest update call setup fails
-    if (!res.headersSent) {
-      res.status(500).json({ error: "Internal server error" });
-    }
+    // Catch any unexpected errors and pass to the global handler
+    console.error("Unexpected error in addHabitEntry handler:", err);
+    next(err);
   }
 };

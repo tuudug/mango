@@ -2,6 +2,11 @@ import { Response, NextFunction } from "express";
 import { AuthenticatedRequest } from "../../middleware/auth";
 import { TodoItem } from "../../types/todo";
 import { updateQuestProgress } from "../../services/questService"; // Import quest service
+import {
+  InternalServerError,
+  BadRequestError,
+  NotFoundError,
+} from "../../utils/errors"; // Import custom errors
 
 export const toggleTodoHandler = async (
   req: AuthenticatedRequest,
@@ -19,9 +24,13 @@ export const toggleTodoHandler = async (
     const supabaseUserClient = req.supabase;
     const { itemId } = req.params;
 
-    if (!userId || !supabaseUserClient || !itemId) {
-      res.status(400).json({ message: "Missing user auth or item ID" });
-      return;
+    if (!userId || !supabaseUserClient) {
+      return next(
+        new InternalServerError("Authentication context not found on request.")
+      );
+    }
+    if (!itemId) {
+      return next(new BadRequestError("Missing required parameter: itemId"));
     }
 
     // 1. Fetch the current item to get its completion status
@@ -32,13 +41,18 @@ export const toggleTodoHandler = async (
       .eq("user_id", userId)
       .maybeSingle();
 
-    if (fetchError) throw fetchError;
+    if (fetchError) {
+      console.error(
+        `Supabase error fetching todo ${itemId} for user ${userId}:`,
+        fetchError
+      );
+      return next(new InternalServerError("Failed to fetch todo item"));
+    }
 
     if (!currentItem) {
-      res
-        .status(404)
-        .json({ message: "Todo item not found or not owned by user" });
-      return;
+      return next(
+        new NotFoundError("Todo item not found or not owned by user")
+      );
     }
 
     // 2. Update the item with the toggled status
@@ -54,7 +68,13 @@ export const toggleTodoHandler = async (
       .select()
       .single();
 
-    if (updateError) throw updateError;
+    if (updateError) {
+      console.error(
+        `Supabase error updating todo ${itemId} for user ${userId}:`,
+        updateError
+      );
+      return next(new InternalServerError("Failed to update todo item"));
+    }
 
     console.log(
       `Toggled todo item ${itemId} to ${newStatus} for user ${userId}`

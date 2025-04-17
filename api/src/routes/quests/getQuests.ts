@@ -1,5 +1,11 @@
 import { NextFunction, Response } from "express";
 import { AuthenticatedRequest } from "../../middleware/auth";
+import {
+  InternalServerError,
+  AuthenticationError,
+  BadRequestError,
+  ValidationError, // Use for invalid query params
+} from "../../utils/errors";
 
 // Define types based on the schema in 0.2.1-quest-foundation.md
 type QuestStatus =
@@ -48,26 +54,33 @@ export async function getQuests(
 ): Promise<void> {
   const userId = req.user?.id;
   const supabase = req.supabase;
-  const { status, type } = req.query; // Get optional query params
-
-  if (!userId || !supabase) {
-    res.status(401).json({ message: "Authentication required." });
-    return;
-  }
+  const { status, type } = req.query;
 
   try {
+    const userId = req.user?.id;
+    const supabase = req.supabase;
+
+    if (!userId || !supabase) {
+      return next(new AuthenticationError("Authentication required."));
+    }
+
     let query = supabase
       .from("quests")
       .select(
         `
-                *,
-                quest_criteria (*)
-            `
+        *,
+        quest_criteria (*)
+      `
       )
       .eq("user_id", userId);
 
-    // Apply filters based on query parameters
-    if (status && typeof status === "string") {
+    // Validate and apply filters
+    if (status !== undefined) {
+      if (typeof status !== "string") {
+        return next(
+          new ValidationError("Invalid status filter: must be a string.")
+        );
+      }
       const validStatuses: QuestStatus[] = [
         "available",
         "active",
@@ -75,37 +88,40 @@ export async function getQuests(
         "completed",
         "cancelled",
       ];
-      if (validStatuses.includes(status as QuestStatus)) {
-        query = query.eq("status", status);
-      } else {
-        res.status(400).json({ message: "Invalid status filter value." });
-        return;
+      if (!validStatuses.includes(status as QuestStatus)) {
+        return next(
+          new ValidationError(`Invalid status filter value: ${status}`)
+        );
       }
+      query = query.eq("status", status);
     }
 
-    if (type && typeof type === "string") {
+    if (type !== undefined) {
+      if (typeof type !== "string") {
+        return next(
+          new ValidationError("Invalid type filter: must be a string.")
+        );
+      }
       const validTypes: QuestType[] = ["daily", "weekly"];
-      if (validTypes.includes(type as QuestType)) {
-        query = query.eq("type", type);
-      } else {
-        res.status(400).json({ message: "Invalid type filter value." });
-        return;
+      if (!validTypes.includes(type as QuestType)) {
+        return next(new ValidationError(`Invalid type filter value: ${type}`));
       }
+      query = query.eq("type", type);
     }
 
-    // Order by creation date or another relevant field if needed
     query = query.order("created_at", { ascending: false });
 
     const { data, error } = await query;
 
     if (error) {
-      console.error("Error fetching quests:", error);
-      return next(new Error("Failed to fetch quests."));
+      console.error("Supabase error fetching quests:", error);
+      return next(new InternalServerError("Failed to fetch quests."));
     }
 
-    res.status(200).json((data as Quest[]) ?? []); // Ensure array return
+    res.status(200).json((data as Quest[]) ?? []);
   } catch (error) {
-    console.error("Unexpected error fetching quests:", error);
-    next(error);
+    // Catch unexpected errors
+    console.error("Unexpected error in getQuests handler:", error);
+    next(error); // Pass to global error handler
   }
 }

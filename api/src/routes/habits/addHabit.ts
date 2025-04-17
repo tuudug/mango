@@ -1,7 +1,6 @@
-import { Response } from "express";
-// Remove the global supabase import, we'll use the request-scoped one
-// import { supabase } from "../../supabaseClient";
+import { Response, NextFunction } from "express";
 import { AuthenticatedRequest } from "../../middleware/auth";
+import { ValidationError, InternalServerError } from "../../utils/errors";
 
 // Define expected request body structure
 interface AddHabitRequestBody {
@@ -14,76 +13,78 @@ interface AddHabitRequestBody {
 
 export const addHabit = async (
   req: AuthenticatedRequest,
-  res: Response
+  res: Response,
+  next: NextFunction // Add next function
 ): Promise<void> => {
-  const userId = req.userId;
-  // Use the request-scoped Supabase client from the middleware
-  const supabase = req.supabase;
   const {
     name,
     type,
     reminder_time,
     log_type,
-    enable_notification, // Destructure the new field
+    enable_notification,
   }: AddHabitRequestBody = req.body;
 
-  // Ensure middleware attached the client and userId
-  if (!userId || !supabase) {
-    res.status(401).json({
-      error: "User not authenticated properly or Supabase client missing",
-    });
-    return;
-  }
-
-  // Basic validation
-  if (!name || !type || !log_type) {
-    res
-      .status(400)
-      .json({ error: "Missing required fields: name, type, log_type" });
-    return;
-  }
-  if (type !== "positive" && type !== "negative") {
-    res
-      .status(400)
-      .json({ error: "Invalid habit type. Must be 'positive' or 'negative'." });
-    return;
-  }
-  if (log_type !== "once_daily" && log_type !== "multiple_daily") {
-    res.status(400).json({
-      error: "Invalid log type. Must be 'once_daily' or 'multiple_daily'.",
-    });
-    return;
-  }
-  // Optional: Add validation for reminder_time format if provided
-
   try {
-    // Use the request-scoped 'supabase' client for the insert
+    const userId = req.userId;
+    const supabase = req.supabase;
+
+    // Ensure middleware attached the client and userId
+    if (!userId || !supabase) {
+      // This should technically be caught by auth middleware, but check for safety
+      return next(
+        new InternalServerError(
+          "User ID or Supabase client missing from request."
+        )
+      );
+    }
+
+    // Basic validation
+    if (!name || !type || !log_type) {
+      return next(
+        new ValidationError("Missing required fields: name, type, log_type")
+      );
+    }
+    if (type !== "positive" && type !== "negative") {
+      return next(
+        new ValidationError(
+          "Invalid habit type. Must be 'positive' or 'negative'."
+        )
+      );
+    }
+    if (log_type !== "once_daily" && log_type !== "multiple_daily") {
+      return next(
+        new ValidationError(
+          "Invalid log type. Must be 'once_daily' or 'multiple_daily'."
+        )
+      );
+    }
+    // Optional: Add validation for reminder_time format if provided
+
     const { data, error } = await supabase
       .from("manual_habits")
       .insert({
-        user_id: userId, // RLS policy will check if auth.uid() matches this
+        user_id: userId,
         name: name,
         type: type,
-        reminder_time: reminder_time || null, // Ensure null if empty/undefined
+        reminder_time: reminder_time || null,
         log_type: log_type,
-        enable_notification: enable_notification ?? false, // Include and default to false if null/undefined
+        enable_notification: enable_notification ?? false,
       })
-      .select() // Return the newly created habit
-      .single(); // Expect only one row back
+      .select()
+      .single();
 
     if (error) {
-      console.error("Error adding habit:", error);
-      // Log the specific RLS error code if possible
-      if (error.code === "42501") {
-        console.error("RLS Policy Violation Detail:", error.message);
-      }
-      res.status(500).json({ error: error.message });
-      return;
+      console.error("Supabase error adding habit:", error);
+      // Let the generic error handler format the response
+      return next(
+        new InternalServerError("Failed to add habit due to database error.")
+      );
     }
 
-    res.status(201).json(data); // Send back the created habit
+    res.status(201).json(data);
   } catch (err) {
-    console.error("Unexpected error adding habit:", err);
-    res.status(500).json({ error: "Internal server error" });
+    // Catch any unexpected errors and pass to the global handler
+    console.error("Unexpected error in addHabit handler:", err);
+    next(err); // Pass the original error for potential specific handling
   }
 };

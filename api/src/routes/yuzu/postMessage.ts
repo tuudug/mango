@@ -1,6 +1,13 @@
-import { Request, Response } from "express";
+import { Request, Response, NextFunction } from "express";
 import { generateChatResponse } from "../../services/geminiService";
 import { getUserContextSummary } from "../../services/userContextService";
+import { AuthenticatedRequest } from "../../middleware/auth"; // Use AuthenticatedRequest
+import {
+  InternalServerError,
+  AuthenticationError,
+  BadRequestError,
+  TooManyRequestsError, // Need to add this error type
+} from "../../utils/errors";
 
 const yuzuRateLimit = new Map();
 const YUZU_LIMIT = 10;
@@ -9,55 +16,74 @@ const YUZU_WINDOW_MS = 60 * 60 * 1000;
 /**
  * POST /api/yuzu/message
  * Body: { message: string }
- * Response: { yuzuResponse: string }
+ * Response: { yuzuResponse: string, suggestions: string[], remaining: number, resetTime: number }
  */
-export async function postMessage(req: Request, res: Response): Promise<void> {
+export async function postMessage(
+  req: AuthenticatedRequest, // Use AuthenticatedRequest
+  res: Response,
+  next: NextFunction // Add next function
+): Promise<void> {
   try {
-    const userId = req.user?.id;
-    if (!userId) {
-      res.status(401).json({ error: "Unauthorized" });
-      return;
+    const userId = req.user?.id; // Get userId from authenticated request
+    const supabase = req.supabase; // Get supabase from authenticated request
+
+    if (!userId || !supabase) {
+      // Should be caught by auth middleware, but check defensively
+      return next(new AuthenticationError("Authentication required."));
     }
+
+    // --- Rate Limiting ---
     const now = Date.now();
     let record = yuzuRateLimit.get(userId);
     if (record) {
       if (now >= record.resetTime) {
+        // Reset window if expired
         record = { count: 0, resetTime: now + YUZU_WINDOW_MS };
         yuzuRateLimit.set(userId, record);
       }
     } else {
+      // First request for this user in the window
       record = { count: 0, resetTime: now + YUZU_WINDOW_MS };
       yuzuRateLimit.set(userId, record);
     }
+
     if (record.count >= YUZU_LIMIT) {
-      res
-        .status(429)
-        .json({
-          error: "Yuzu chat limit reached.",
+      // Use the custom error for rate limiting
+      return next(
+        new TooManyRequestsError("Yuzu chat limit reached.", {
           remaining: 0,
           resetTime: record.resetTime,
-        });
-      return;
+        })
+      );
     }
+    // Increment count after check passes
     record.count += 1;
-    yuzuRateLimit.set(userId, record);
+    yuzuRateLimit.set(userId, record); // Update the map
 
+    // --- Message Validation ---
     const userMessage =
       typeof req.body.message === "string" ? req.body.message.trim() : "";
     if (!userMessage) {
-      res
-        .status(400)
-        .json({ error: "Missing or invalid 'message' in request body." });
-      return;
+      return next(
+        new BadRequestError("Missing or invalid 'message' in request body.")
+      );
     }
 
-    const supabase = req.supabase;
+    // --- Context Fetching ---
     let userContext = "";
-    if (userId && supabase) {
+    try {
+      // Wrap context fetching in its own try/catch in case it fails
       userContext = await getUserContextSummary(userId, supabase);
+    } catch (contextError) {
+      console.error(
+        `[Yuzu PostMessage] Error fetching user context for user ${userId}:`,
+        contextError
+      );
+      // Decide if this is fatal. For now, proceed without context.
+      userContext = "Error fetching user context.";
     }
 
-    // Get last 10 messages from history (if provided)
+    // --- History Processing ---
     let historyLog = "";
     const history = Array.isArray(req.body.history)
       ? req.body.history.slice(-10)
@@ -73,7 +99,7 @@ export async function postMessage(req: Request, res: Response): Promise<void> {
         .join("\n");
     }
 
-    // Construct a prompt for Yuzu's personality, including conversation history and user context
+    // --- Prompt Construction ---
     const prompt = `
 You are Yuzu, a helpful, concise, and generally positive virtual companion in the Mango app. You are continuing a conversation with the user.
 
@@ -111,16 +137,36 @@ ${historyLog || "No history yet."}
 User message: "${userMessage}"
     `.trim();
 
-    const { yuzuResponse, suggestions } = await generateChatResponse(prompt);
+    // --- Call Gemini Service ---
+    let yuzuResponse: string;
+    let suggestions: string[];
+    try {
+      // Wrap the external API call
+      const result = await generateChatResponse(prompt);
+      yuzuResponse = result.yuzuResponse;
+      suggestions = result.suggestions;
+    } catch (geminiError) {
+      console.error(
+        "[Yuzu PostMessage] Error calling Gemini service:",
+        geminiError
+      );
+      return next(
+        new InternalServerError(
+          "Failed to generate Yuzu response from AI service."
+        )
+      );
+    }
 
+    // --- Success Response ---
     res.status(200).json({
       yuzuResponse,
       suggestions,
-      remaining: Math.max(0, YUZU_LIMIT - record.count),
+      remaining: Math.max(0, YUZU_LIMIT - record.count), // Calculate remaining based on updated count
       resetTime: record.resetTime,
     });
   } catch (error) {
-    console.error("Error in Yuzu postMessage:", error);
-    res.status(500).json({ error: "Failed to generate Yuzu response." });
+    // Catch unexpected errors
+    console.error("Unexpected error in postMessage handler:", error);
+    next(error); // Pass to global error handler
   }
 }

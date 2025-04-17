@@ -1,16 +1,23 @@
-import { Request, Response } from "express";
+import { Request, Response, NextFunction } from "express"; // Import NextFunction
 // No need for AuthenticatedRequest import due to module augmentation in express.d.ts
 import { supabase } from "../../supabaseClient";
+import { InternalServerError } from "../../utils/errors"; // Import custom errors
 
-export const getHealthSettings = async (req: Request, res: Response) => {
+export const getHealthSettings = async (
+  req: Request,
+  res: Response,
+  next: NextFunction // Add next parameter
+) => {
   // Removed explicit Promise<void> return type
   // Return type is implicitly void due to return statements after res.json()
   const user = req.user; // req.user is augmented by express.d.ts
 
   if (!user || !user.id) {
     // Also check user.id for safety
-    res.status(401).json({ message: "User not authenticated" });
-    return; // Explicit return after sending response
+    // Use next with custom error for server/middleware issues
+    return next(
+      new InternalServerError("Authentication context not found on request.")
+    );
   }
 
   try {
@@ -21,12 +28,11 @@ export const getHealthSettings = async (req: Request, res: Response) => {
       .maybeSingle(); // Use maybeSingle to handle case where no settings exist yet
 
     if (error) {
-      console.error("Error fetching health settings:", error);
-      res.status(500).json({
-        message: "Failed to fetch health settings",
-        error: error.message,
-      });
-      return; // Explicit return after sending response
+      console.error(
+        `Supabase error fetching health settings for user ${user.id}:`,
+        error
+      );
+      return next(new InternalServerError("Failed to fetch health settings"));
     }
 
     // If no settings found for the user, return defaults (null for weight goal initially)
@@ -41,14 +47,9 @@ export const getHealthSettings = async (req: Request, res: Response) => {
         };
 
     res.status(200).json(settings);
-    return; // Ensure void return type for handler
+    // No explicit return needed here
   } catch (err) {
     console.error("Unexpected error fetching health settings:", err);
-    const message =
-      err instanceof Error ? err.message : "An unexpected error occurred";
-    res
-      .status(500)
-      .json({ message: "Failed to fetch health settings", error: message });
-    return; // Ensure void return type for handler
+    next(err); // Pass error to global handler
   }
 };
