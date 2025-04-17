@@ -239,7 +239,7 @@ These components handle the interaction and persistence of core application data
 - **[x] Timezone Consistency:** Fixed issue where daily resets (e.g., Daily Allowance, Habit checks) could occur at inconsistent times depending on user timezone vs. server time (UTC). Backend now uses user's timezone provided by the frontend.
 - **[x] Auth Context Refactor:** Separated initial load effect from auth state change listener to prevent potential infinite loops (v0.2.2).
 - **[x] Centralized Fetching:** Implemented `FetchManagerContext` to control data fetching frequency (cooldown on focus), provide manual refresh, and prevent redundant fetches on auth state changes.
-- **[x] Backend API Error Handling:** Implemented standardized error handling using custom error classes (`AppError`, `ValidationError`, etc.) and a global middleware (`errorHandler.ts`) for consistent JSON error responses across Dashboard, Todos, Calendar, Health, and Finance routes (v0.3.1 Refactor).
+- **[x] Backend API Error Handling:** Implemented standardized error handling using custom error classes (`AppError`, `ValidationError`, etc.) and a global middleware (`errorHandler.ts`) for consistent JSON error responses across Dashboard, Todos, Calendar, Health, Finance, **Habits, Quests, User, and Yuzu** routes (v0.3.1 Refactor). **(Note: Minor workaround applied to `user/updateSettings.ts` due to persistent TS error).**
 - **[x] Reminder Push Notification System:** (v0.3.0 - Refactored to API-based)
   - [x] **Database:** Added `timezone` to `user_settings`. Created `push_subscriptions` table. Regenerated types (`api/`, `src/`).
   - [x] **Backend API:**

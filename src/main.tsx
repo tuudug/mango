@@ -23,20 +23,15 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <ThemeProvider>
       <ToastProvider>
         <PanelManagerProvider>
-          {" "}
-          {/* Wrap AuthProvider */}
           <AuthProvider>
-            {/* Moved FetchManagerProvider inside other data providers */}
             <CalendarProvider>
               <HealthProvider>
-                {/* Corrected Nesting Order */}
                 <QuestsProvider>
                   <HabitsProvider>
                     <TodosProvider>
                       <FinanceProvider>
                         <PomodoroProvider>
                           <AmbienceProvider>
-                            {/* Wrap FetchManagerProvider with NotificationProvider */}
                             <NotificationProvider>
                               <FetchManagerProvider>
                                 <App />
@@ -50,10 +45,8 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
                 </QuestsProvider>
               </HealthProvider>
             </CalendarProvider>
-            {/* Removed FetchManagerProvider closing tag from here */}
           </AuthProvider>
-        </PanelManagerProvider>{" "}
-        {/* Close PanelManagerProvider */}
+        </PanelManagerProvider>
       </ToastProvider>
     </ThemeProvider>
   </React.StrictMode>
