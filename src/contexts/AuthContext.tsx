@@ -159,7 +159,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const currentInitialSession = fetchedSession.data.session;
         setSession(currentInitialSession);
         setUser(currentInitialSession?.user ?? null);
-        setUserSettings(fetchedSettings); // Set initial settings state
+        setUserSettings(fetchedSettings ?? null); // Set initial settings state
 
         // Fetch progress after session is confirmed
         await fetchUserProgress(currentInitialSession);
@@ -231,7 +231,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Update session/user state
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
-        setUserSettings(newSettings); // Update settings state
+        setUserSettings(newSettings ?? null); // Update settings state
 
         // Stop loading
         setIsLoading(false);
