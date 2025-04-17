@@ -13,6 +13,7 @@ import {
 import { useState, useEffect, useCallback } from "react"; // Added hooks
 import { useToast } from "@/contexts/ToastContext"; // Added useToast
 import { authenticatedFetch } from "@/lib/apiClient"; // Added authenticatedFetch
+import { format } from "date-fns"; // Added format
 
 // Helper function to convert VAPID public key
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
@@ -48,6 +49,9 @@ export function UserProfilePanel({ onClose }: UserProfilePanelProps) {
 
   // Use user email or a fallback
   const username = user?.email || "User";
+  const memberSince = user?.created_at
+    ? format(new Date(user.created_at), "MMMM d, yyyy")
+    : null;
   // Placeholder data for level/points
   const level = 1;
   const points = 150;
@@ -274,6 +278,11 @@ export function UserProfilePanel({ onClose }: UserProfilePanelProps) {
             <span className="text-4xl">🥭</span>
           </div>
           <h3 className="text-xl font-semibold text-gray-100">{username}</h3>
+          {memberSince && (
+            <span className="text-sm text-gray-400">
+              Member since {memberSince}
+            </span>
+          )}
           <div className="flex gap-4 text-sm text-gray-400">
             <span>Level: {level}</span>
             <span>{points} pts</span>

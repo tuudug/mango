@@ -25,10 +25,9 @@ export const ExpenseEntryModal: React.FC<ExpenseEntryModalProps> = ({
   isOpen,
   onOpenChange,
 }) => {
-  const { addExpense, settings } = useFinance();
+  const { addExpense, settings, fetchTodaysEntries } = useFinance();
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
-  // Add state for date, default to today's date string
   const [entryDate, setEntryDate] = useState<string>(
     format(new Date(), "yyyy-MM-dd")
   );
@@ -49,7 +48,6 @@ export const ExpenseEntryModal: React.FC<ExpenseEntryModalProps> = ({
         setDescription("");
         setError(null);
         setIsSaving(false);
-        // Don't reset date here, keep last used or today's default
       }, 300);
     }
   }, [isOpen]);
@@ -73,19 +71,28 @@ export const ExpenseEntryModal: React.FC<ExpenseEntryModalProps> = ({
     const formattedDate = format(parsedDate, "yyyy-MM-dd"); // Ensure correct format
 
     setIsSaving(true);
-    // Pass the formatted date string to addExpense
-    const success = await addExpense(
-      numericAmount,
-      description || null,
-      formattedDate
-    );
-    setIsSaving(false);
+    try {
+      // Pass the formatted date string to addExpense
+      const success = await addExpense(
+        numericAmount,
+        description || null,
+        formattedDate
+      );
 
-    if (success) {
-      onOpenChange(false); // Close modal on success
-    } else {
-      // Error message is likely shown via toast from context, but keep local error state too
-      setError("Failed to save expense. Please try again.");
+      if (success) {
+        // Force an immediate refresh of today's expenses
+        if (formattedDate === format(new Date(), "yyyy-MM-dd")) {
+          await fetchTodaysEntries();
+        }
+        onOpenChange(false); // Close modal only after the data has been refreshed
+      } else {
+        setError("Failed to save expense. Please try again.");
+      }
+    } catch (err) {
+      setError("An error occurred while saving the expense.");
+      console.error("Error in expense entry:", err);
+    } finally {
+      setIsSaving(false);
     }
   };
 
