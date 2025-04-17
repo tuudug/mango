@@ -56,10 +56,6 @@ export function HabitHeatmapWidget({ id, w: _w, h: _h }: WidgetProps) {
       setProcessedEntries({}); // Clear if no selection or no entries
       return;
     }
-
-    console.log(
-      `[HabitHeatmapWidget ${id}] Processing ${habitEntries.length} entries from context for habit ${selectedHabitId}`
-    );
     setError(null); // Clear previous errors before processing
 
     try {

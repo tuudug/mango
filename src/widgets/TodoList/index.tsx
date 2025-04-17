@@ -114,14 +114,6 @@ export const TodoListWidget: React.FC<TodoListWidgetProps> = ({ id: _id }) => {
     [breakdownTodo]
   );
 
-  // const handleMoveUp = useCallback((id: string) => {
-  //   console.log("Move Up requested for:", id, "(Placeholder in Widget)");
-  // }, []);
-
-  // const handleMoveDown = useCallback((id: string) => {
-  //   console.log("Move Down requested for:", id, "(Placeholder in Widget)");
-  // }, []);
-
   const handleAddTopLevelTodo = () => {
     if (newTodoText.trim() === "") return;
     addTodoContext(newTodoText.trim(), null);

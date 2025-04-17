@@ -49,12 +49,6 @@ export function HabitStreakWidget({ id, w: _w, h: _h }: WidgetProps) {
 
   // Effect to trigger data fetch if needed when selected habit changes
   useEffect(() => {
-    // Only trigger fetch if a habit is selected and habits are loaded
-    if (selectedHabitId && !isLoadingHabits) {
-      console.log(
-        `[HabitStreakWidget ${id}] Selected habit changed to ${selectedHabitId}, triggering fetchIfNeeded.`
-      );
-    }
     // Clear streaks if no habit is selected or habits are loading
     if (!selectedHabitId || isLoadingHabits) {
       setStreaks({ current: 0, longest: 0 });
@@ -68,10 +62,6 @@ export function HabitStreakWidget({ id, w: _w, h: _h }: WidgetProps) {
       setStreaks({ current: 0, longest: 0 }); // Clear if no selection or no entries
       return;
     }
-
-    console.log(
-      `[HabitStreakWidget ${id}] Processing ${contextHabitEntries.length} entries from context for habit ${selectedHabitId}`
-    );
     setError(null); // Clear previous errors before processing
 
     try {

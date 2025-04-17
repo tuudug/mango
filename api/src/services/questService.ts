@@ -56,7 +56,9 @@ export async function generateQuestsForUser(
   type: "daily" | "weekly",
   supabase: SupabaseClient<Database>
 ): Promise<GenerationResult> {
-  console.log(`Starting ${type} quest generation for user ${userId}...`);
+  console.log(
+    `[QuestService] Starting ${type} quest generation for user ${userId}...`
+  );
 
   try {
     // 1. Fetch User Data Context
@@ -69,11 +71,7 @@ export async function generateQuestsForUser(
     const prompt = constructLlmPrompt(userData, type);
     const promptContext = { userDataSummary: "...", type }; // Store summarized context
 
-    // 3. Call LLM using the new JSON generation function
-    console.log("Calling Gemini for JSON quest generation...");
-    // Use the specific LlmQuestResponse type for better type checking
     const llmResponseRaw = await generateJsonContent<LlmQuestResponse>(prompt);
-    console.log("LLM JSON Response:", llmResponseRaw);
 
     // Basic check if the response structure is as expected (even with JSON mode, double-check)
     if (!llmResponseRaw || !Array.isArray(llmResponseRaw.quests)) {
@@ -150,7 +148,7 @@ async function fetchUserDataContext(
   userId: string,
   supabase: SupabaseClient<Database>
 ): Promise<UserDataContext | null> {
-  console.log(`Fetching user data context for ${userId}...`);
+  console.log(`[QuestService] Fetching user data context for ${userId}...`);
   try {
     // Fetch user progress (level)
     const { data: progress, error: progressError } = await supabase
@@ -160,7 +158,10 @@ async function fetchUserDataContext(
       .single();
 
     if (progressError && progressError.code !== "PGRST116") {
-      console.error("Error fetching user progress for context:", progressError);
+      console.error(
+        "[QuestService] Error fetching user progress for context:",
+        progressError
+      );
       return null;
     }
     const level = progress?.level ?? 1;
@@ -172,7 +173,10 @@ async function fetchUserDataContext(
       .eq("user_id", userId);
 
     if (habitsError) {
-      console.error("Error fetching habits for context:", habitsError);
+      console.error(
+        "[QuestService] Error fetching habits for context:",
+        habitsError
+      );
       // Decide if this is critical - maybe return null or proceed without habits
     }
 
