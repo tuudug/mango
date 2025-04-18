@@ -30,8 +30,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useToast } from "@/contexts/ToastContext";
-import { pathsData } from "./dashboard/constants";
-import { SavedPathState } from "./dashboard/types";
+// import { pathsData } from "./dashboard/constants"; // Use pathsConfig from lib now
+import { SavedPathState } from "./dashboard/types"; // Keep type for now, needs refactor later
 import {
   isMobileView as checkIsMobileView,
   loadPathStateFromLocalStorage,
@@ -78,7 +78,13 @@ export function LeftSidebar({
   const [pathState, setPathState] = useState<SavedPathState>(
     loadPathStateFromLocalStorage
   );
-  const { activePathName, unlockedItems, currentPathProgressXP } = pathState;
+  // Adapt state names for clarity, though underlying structure needs refactor
+  // TODO: Refactor pathState to use IDs, Sparks, and Set<string> for unlocked rewards
+  const {
+    activePathName,
+    unlockedItems,
+    currentPathProgressXP: currentPathProgressSparks,
+  } = pathState;
 
   // Effect to check window width on mount and resize using the utility function
   useEffect(() => {
@@ -95,23 +101,21 @@ export function LeftSidebar({
     savePathStateToLocalStorage(pathState);
   }, [pathState]);
 
-  // Calculate next unlock XP
-  const nextUnlockXP = useMemo(() => {
-    if (!activePathName) return 0;
-    const activePath = pathsData.find((p) => p.name === activePathName);
-    if (!activePath) return 0;
-    const nextItem = activePath.items.find(
-      (item) => !unlockedItems[item.label]
-    );
-    return nextItem ? nextItem.xpCost : 0;
-  }, [activePathName, unlockedItems]);
+  // TODO: Remove this calculation once state is refactored
+  // const nextUnlockXP = useMemo(() => {
+  //   if (!activePathName) return 0;
+  //   // This needs to use pathsConfig and check sparkCost based on unlockedRewardIds Set
+  //   // Placeholder logic:
+  //   return 0;
+  // }, [activePathName, unlockedItems]); // Dependencies need update
 
-  // Set Active Path
-  const setActivePath = (pathName: string) => {
+  // Set Active Path ID (using name as ID for now)
+  // TODO: Update to use actual path IDs
+  const setActivePathId = (pathId: string) => {
     setPathState((prev) => ({
       ...prev,
-      activePathName: pathName,
-      currentPathProgressXP: 0,
+      activePathName: pathId, // Treat name as ID temporarily
+      currentPathProgressXP: 0, // Reset progress (Sparks) on switch
     }));
   };
 
@@ -396,14 +400,21 @@ export function LeftSidebar({
       <div className={getPanelClasses("userProfile", "md:max-w-md")}>
         <UserProfilePanel onClose={closePanel} /> {/* Use context function */}
       </div>
-      <div className={getPanelClasses("paths", "md:max-w-md")}>
+      {/* Render PathsPage within its panel container */}
+      <div className={getPanelClasses("paths", "md:max-w-2xl")}>
+        {" "}
+        {/* Use a wider max-width */}
         <PathsPage
-          onClose={closePanel} // Use context function
-          activePathName={activePathName}
-          setActivePath={setActivePath}
-          unlockedItems={unlockedItems}
-          currentPathProgressXP={currentPathProgressXP}
-          nextUnlockXP={nextUnlockXP}
+          onClose={closePanel}
+          activePathId={activePathName} // Pass name as ID for now
+          setActivePathId={setActivePathId} // Pass the renamed function
+          // TODO: Replace placeholders with real state/context values
+          unlockedRewardIds={new Set<string>()} // Placeholder
+          currentPathProgressSparks={currentPathProgressSparks} // Pass renamed state
+          totalSparks={0} // Placeholder - fetch from context later
+          onAllocateSparks={() =>
+            console.warn("Allocate Sparks action not implemented yet.")
+          } // Placeholder
         />
       </div>
       {/* Data Source Panels */}

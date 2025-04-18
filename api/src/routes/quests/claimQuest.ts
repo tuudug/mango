@@ -1,6 +1,6 @@
 import { NextFunction, Response } from "express";
 import { AuthenticatedRequest } from "../../middleware/auth";
-import { awardXpToUser } from "../../services/userProgressService";
+// Removed awardXpToUser import
 import {
   InternalServerError,
   AuthenticationError,
@@ -31,10 +31,11 @@ export async function claimQuest(
       return next(new BadRequestError("Quest ID is required."));
     }
 
-    // 1. Fetch the quest to verify ownership, status, and get XP reward
+    // 1. Fetch the quest to verify ownership, status, and get Spark reward
+    // TODO: Ensure 'spark_reward' column exists in 'quests' table
     const { data: targetQuest, error: fetchError } = await supabase
       .from("quests")
-      .select("id, user_id, status, xp_reward")
+      .select("id, user_id, status, spark_reward") // Fetch spark_reward instead of xp_reward
       .eq("id", questId)
       .single();
 
@@ -81,40 +82,60 @@ export async function claimQuest(
       return next(new InternalServerError("Failed to claim quest."));
     }
 
-    // If updateError is null, .single() guarantees data is not null
-    // The check below is redundant if PGRST116 is handled above.
-    // if (!updatedQuest) { ... }
-
-    // 3. Award XP (run after successful quest update, before sending response)
-    const xpAwarded = targetQuest.xp_reward;
-    if (xpAwarded > 0) {
+    // 3. Award Sparks (run after successful quest update)
+    // TODO: Ensure 'spark_balance' column exists in 'user_settings' table
+    const sparksAwarded = targetQuest.spark_reward ?? 0; // Use nullish coalescing for safety
+    if (sparksAwarded > 0) {
       try {
-        const xpResult = await awardXpToUser(userId, xpAwarded, supabase);
-        if (!xpResult.success) {
-          // Log the error but don't fail the entire request
+        // Fetch current spark balance
+        const { data: settings, error: settingsError } = await supabase
+          .from("user_settings")
+          .select("spark_balance")
+          .eq("user_id", userId)
+          .single();
+
+        if (settingsError) {
           console.error(
-            `[XP Award Error] Failed to award ${xpAwarded} XP to user ${userId} for quest ${questId}: ${xpResult.error}`
+            `[Spark Award Error] Failed to fetch settings for user ${userId} for quest ${questId}:`,
+            settingsError
           );
-          // Optionally add info to response or handle differently
+          // Log and continue, don't fail the claim
         } else {
-          console.log(
-            `Awarded ${xpAwarded} XP to user ${userId} for quest ${questId}. New level: ${xpResult.newLevel}`
-          );
+          const currentBalance = settings?.spark_balance ?? 0;
+          const newBalance = currentBalance + sparksAwarded;
+
+          // Update spark balance
+          const { error: updateBalanceError } = await supabase
+            .from("user_settings")
+            .update({ spark_balance: newBalance })
+            .eq("user_id", userId);
+
+          if (updateBalanceError) {
+            console.error(
+              `[Spark Award Error] Failed to update spark balance for user ${userId} for quest ${questId}:`,
+              updateBalanceError
+            );
+            // Log and continue
+          } else {
+            console.log(
+              `Awarded ${sparksAwarded} Sparks to user ${userId} for quest ${questId}. New balance: ${newBalance}`
+            );
+          }
         }
-      } catch (xpError) {
+      } catch (sparkError) {
         console.error(
-          `[XP Award Exception] Unexpected error awarding XP for quest ${questId} to user ${userId}:`,
-          xpError
+          `[Spark Award Exception] Unexpected error awarding Sparks for quest ${questId} to user ${userId}:`,
+          sparkError
         );
-        // Decide if this should block the response. For now, log and continue.
+        // Log and continue
       }
     } else {
       console.log(
-        `Quest ${questId} claimed by user ${userId}, but had 0 XP reward.`
+        `Quest ${questId} claimed by user ${userId}, but had 0 Spark reward.`
       );
     }
 
-    // Return the successfully completed quest data
+    // Return the successfully completed quest data (which now includes criteria)
     res.status(200).json(updatedQuest);
   } catch (error) {
     // Catch unexpected errors
