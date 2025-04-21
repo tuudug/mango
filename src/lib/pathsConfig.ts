@@ -103,7 +103,7 @@ export const pathsConfig: PathDefinition[] = [
       {
         id: "optimizer-6",
         level: 6,
-        sparkCost: null,
+        sparkCost: 999999999,
         name: "???",
         description: "Future enhancement.",
         icon: HelpCircle,
@@ -112,7 +112,7 @@ export const pathsConfig: PathDefinition[] = [
       {
         id: "optimizer-7",
         level: 7,
-        sparkCost: null,
+        sparkCost: 999999999,
         name: "???",
         description: "Future enhancement.",
         icon: HelpCircle,
@@ -121,7 +121,7 @@ export const pathsConfig: PathDefinition[] = [
       {
         id: "optimizer-8",
         level: 8,
-        sparkCost: null,
+        sparkCost: 999999999,
         name: "???",
         description: "Future enhancement.",
         icon: HelpCircle,
@@ -130,7 +130,7 @@ export const pathsConfig: PathDefinition[] = [
       {
         id: "optimizer-9",
         level: 9,
-        sparkCost: null,
+        sparkCost: 999999999,
         name: "???",
         description: "Future enhancement.",
         icon: HelpCircle,
@@ -139,7 +139,7 @@ export const pathsConfig: PathDefinition[] = [
       {
         id: "optimizer-10",
         level: 10,
-        sparkCost: null,
+        sparkCost: 999999999,
         name: "???",
         description: "Future enhancement.",
         icon: HelpCircle,
@@ -203,7 +203,7 @@ export const pathsConfig: PathDefinition[] = [
       {
         id: "sage-6",
         level: 6,
-        sparkCost: null,
+        sparkCost: 999999999,
         name: "???",
         description: "Future enhancement.",
         icon: HelpCircle,
@@ -212,7 +212,7 @@ export const pathsConfig: PathDefinition[] = [
       {
         id: "sage-7",
         level: 7,
-        sparkCost: null,
+        sparkCost: 999999999,
         name: "???",
         description: "Future enhancement.",
         icon: HelpCircle,
@@ -221,7 +221,7 @@ export const pathsConfig: PathDefinition[] = [
       {
         id: "sage-8",
         level: 8,
-        sparkCost: null,
+        sparkCost: 999999999,
         name: "???",
         description: "Future enhancement.",
         icon: HelpCircle,
@@ -230,7 +230,7 @@ export const pathsConfig: PathDefinition[] = [
       {
         id: "sage-9",
         level: 9,
-        sparkCost: null,
+        sparkCost: 999999999,
         name: "???",
         description: "Future enhancement.",
         icon: HelpCircle,
@@ -239,7 +239,7 @@ export const pathsConfig: PathDefinition[] = [
       {
         id: "sage-10",
         level: 10,
-        sparkCost: null,
+        sparkCost: 999999999,
         name: "???",
         description: "Future enhancement.",
         icon: HelpCircle,
@@ -304,7 +304,7 @@ export const pathsConfig: PathDefinition[] = [
       {
         id: "forecaster-6",
         level: 6,
-        sparkCost: null,
+        sparkCost: 999999999,
         name: "???",
         description: "Future enhancement.",
         icon: HelpCircle,
@@ -313,7 +313,7 @@ export const pathsConfig: PathDefinition[] = [
       {
         id: "forecaster-7",
         level: 7,
-        sparkCost: null,
+        sparkCost: 999999999,
         name: "???",
         description: "Future enhancement.",
         icon: HelpCircle,
@@ -322,7 +322,7 @@ export const pathsConfig: PathDefinition[] = [
       {
         id: "forecaster-8",
         level: 8,
-        sparkCost: null,
+        sparkCost: 999999999,
         name: "???",
         description: "Future enhancement.",
         icon: HelpCircle,
@@ -331,7 +331,7 @@ export const pathsConfig: PathDefinition[] = [
       {
         id: "forecaster-9",
         level: 9,
-        sparkCost: null,
+        sparkCost: 999999999,
         name: "???",
         description: "Future enhancement.",
         icon: HelpCircle,
@@ -340,7 +340,7 @@ export const pathsConfig: PathDefinition[] = [
       {
         id: "forecaster-10",
         level: 10,
-        sparkCost: null,
+        sparkCost: 999999999,
         name: "???",
         description: "Future enhancement.",
         icon: HelpCircle,
@@ -404,7 +404,7 @@ export const pathsConfig: PathDefinition[] = [
       {
         id: "artisan-6",
         level: 6,
-        sparkCost: null,
+        sparkCost: 999999999,
         name: "???",
         description: "Future enhancement.",
         icon: HelpCircle,
@@ -413,7 +413,7 @@ export const pathsConfig: PathDefinition[] = [
       {
         id: "artisan-7",
         level: 7,
-        sparkCost: null,
+        sparkCost: 999999999,
         name: "???",
         description: "Future enhancement.",
         icon: HelpCircle,
@@ -422,7 +422,7 @@ export const pathsConfig: PathDefinition[] = [
       {
         id: "artisan-8",
         level: 8,
-        sparkCost: null,
+        sparkCost: 999999999,
         name: "???",
         description: "Future enhancement.",
         icon: HelpCircle,
@@ -431,7 +431,7 @@ export const pathsConfig: PathDefinition[] = [
       {
         id: "artisan-9",
         level: 9,
-        sparkCost: null,
+        sparkCost: 999999999,
         name: "???",
         description: "Future enhancement.",
         icon: HelpCircle,
@@ -440,7 +440,7 @@ export const pathsConfig: PathDefinition[] = [
       {
         id: "artisan-10",
         level: 10,
-        sparkCost: null,
+        sparkCost: 999999999,
         name: "???",
         description: "Future enhancement.",
         icon: HelpCircle,

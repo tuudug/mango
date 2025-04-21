@@ -2,7 +2,6 @@ import { Button } from "@/components/ui/button";
 import { cn, compareVersions } from "@/lib/utils";
 import {
   Bot, // Import Target icon for Quests button
-  DownloadCloud,
   Milestone,
   Pencil,
   Target,
@@ -39,9 +38,9 @@ import {
 } from "./dashboard/utils";
 // Import the new data source config
 import { useAuth } from "@/contexts/AuthContext"; // Import useAuth
-import { useFetchManager } from "@/contexts/FetchManagerContext"; // Import FetchManager hook
+// Removed FetchManager hook import
 import { dataSourceConfig } from "@/lib/dataSourceConfig"; // Removed DataSourceId import as PanelId covers it
-import { formatDistanceToNow } from "date-fns"; // Import formatDistanceToNow
+// Removed formatDistanceToNow import
 import { QuestsPanel } from "./datasources/QuestsPanel";
 
 interface LeftSidebarProps {
@@ -63,8 +62,7 @@ export function LeftSidebar({
 }: LeftSidebarProps) {
   const { showToast } = useToast();
   const { level, xp } = useAuth(); // Get level and xp from AuthContext
-  const { lastFetchTimestamp, triggerGlobalFetch, isFetching } =
-    useFetchManager(); // Get fetch manager state and function
+  // Removed fetch manager state and function
   const { openPanelId, isPanelOpen, openPanel, closePanel } = usePanelManager(); // Use PanelManager context
 
   // State for changelog modal
@@ -298,8 +296,6 @@ export function LeftSidebar({
             <Milestone size={20} />
             <span className="sr-only">Paths</span>
           </Button>
-
-          {/* Manual Fetch Button - REMOVED FROM HERE */}
         </nav>
         {/* Data Sources Section */}
         <nav className="mt-6 flex flex-col items-center gap-3 border-t border-gray-700 pt-4">
@@ -326,36 +322,6 @@ export function LeftSidebar({
               )
           )}
         </nav>
-
-        {/* Manual Fetch Button - MOVED HERE */}
-        <div className="mt-4 pt-4 border-t border-gray-700 flex justify-center">
-          <TooltipProvider delayDuration={100}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={`h-10 w-10 rounded-lg text-gray-400 ${
-                    isFetching ? "animate-spin" : ""
-                  }`} // Add spin animation when fetching
-                  onClick={() => triggerGlobalFetch(true)} // Force fetch
-                  title="Manual Fetch"
-                  disabled={isFetching} // Disable while fetching
-                >
-                  <DownloadCloud size={20} /> {/* Changed icon */}
-                  <span className="sr-only">Manual Fetch</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right">
-                {lastFetchTimestamp
-                  ? `Last fetched: ${formatDistanceToNow(lastFetchTimestamp, {
-                      addSuffix: true,
-                    })}` // Use relative time
-                  : "Never fetched"}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
 
         {/* User Profile Section */}
         <div className="mt-auto flex w-full flex-col items-center gap-1 border-t border-gray-700 pt-3 pb-2">
@@ -411,7 +377,6 @@ export function LeftSidebar({
           // TODO: Replace placeholders with real state/context values
           unlockedRewardIds={new Set<string>()} // Placeholder
           currentPathProgressSparks={currentPathProgressSparks} // Pass renamed state
-          totalSparks={0} // Placeholder - fetch from context later
           onAllocateSparks={() =>
             console.warn("Allocate Sparks action not implemented yet.")
           } // Placeholder

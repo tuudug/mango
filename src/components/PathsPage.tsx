@@ -46,10 +46,12 @@ interface PathsPageProps {
   setActivePathId: (pathId: string) => void;
   unlockedRewardIds: Set<string>; // Use Set for efficient lookup
   currentPathProgressSparks: number;
-  totalSparks: number; // User's total spark balance
+  // Removed totalSparks prop
   // Add function prop for allocating sparks (implementation later)
   onAllocateSparks: (amount: number) => void;
 }
+
+import { useSparks } from "@/contexts/SparksContext"; // Import useSparks hook
 
 export function PathsPage({
   onClose,
@@ -57,18 +59,26 @@ export function PathsPage({
   setActivePathId,
   unlockedRewardIds,
   currentPathProgressSparks,
-  totalSparks,
+  // Removed totalSparks prop
   onAllocateSparks,
 }: PathsPageProps) {
+  const { totalSparks } = useSparks(); // Get totalSparks from context
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [pendingSwitchPathId, setPendingSwitchPathId] = useState<string | null>(
     null
   );
   const [allocateAmount, setAllocateAmount] = useState(""); // State for allocation input
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false); // State for detail modal
+  const [selectedPathId, setSelectedPathId] = useState<string | null>(null); // State for selected path in modal
 
   const activePath = useMemo(
     () => (activePathId ? getPathById(activePathId) : null),
     [activePathId]
+  );
+
+  const selectedPath = useMemo(
+    () => (selectedPathId ? getPathById(selectedPathId) : null),
+    [selectedPathId]
   );
 
   const handleSelectPathClick = (pathId: string) => {
@@ -76,6 +86,7 @@ export function PathsPage({
     if (pathId === activePathId) return;
     setPendingSwitchPathId(pathId);
     setIsConfirmDialogOpen(true);
+    setIsDetailModalOpen(false); // Close detail modal if open
   };
 
   const confirmPathSwitch = () => {
@@ -149,6 +160,16 @@ export function PathsPage({
     setIsAllocateModalOpen(true); // Example state change
   };
 
+  const handleOpenDetailModal = (pathId: string) => {
+    setSelectedPathId(pathId);
+    setIsDetailModalOpen(true);
+  };
+
+  const handleCloseDetailModal = () => {
+    setIsDetailModalOpen(false);
+    setSelectedPathId(null);
+  };
+
   return (
     // Standard Panel Structure
     <div className="flex h-full w-full flex-col bg-gray-800 text-gray-100">
@@ -159,12 +180,7 @@ export function PathsPage({
           <h2 className="text-lg font-semibold">Progression Paths</h2>
         </div>
         <div className="flex items-center gap-2">
-          {/* Spark Balance Display */}
-          <div className="flex items-center gap-1 rounded bg-yellow-900/50 px-2 py-0.5 text-xs font-medium text-yellow-300">
-            <SparkIcon className="h-3 w-3" fill="currentColor" />
-            {/* Display total sparks */}
-            <span>{totalSparks.toLocaleString()}</span>
-          </div>
+          {/* Removed Spark Balance Display */}
           {/* Info Dialog Trigger */}
           <Dialog>
             <DialogTrigger asChild>
@@ -369,6 +385,54 @@ export function PathsPage({
                 </TooltipProvider>
               </div>
             </div>
+
+            {/* --- Next Unlock Section --- */}
+            {nextReward && (
+              <div className="mt-4 pt-4 border-t border-gray-700">
+                <h5 className="mb-2 text-xs font-medium text-gray-400">
+                  Next Unlock:
+                </h5>
+                <div className="flex items-center gap-3">
+                  {/* Next Reward Icon */}
+                  <nextReward.icon className="h-5 w-5 flex-shrink-0 text-gray-400" />
+                  <div className="flex-grow">
+                    {/* Next Reward Name and Cost */}
+                    <p className="text-sm font-semibold text-gray-300">
+                      {nextReward.name}
+                      {nextReward.sparkCost && (
+                        <span className="ml-2 text-xs font-normal text-yellow-400">
+                          ({nextReward.sparkCost.toLocaleString()} Sparks)
+                        </span>
+                      )}
+                    </p>
+                    {/* Next Reward Description */}
+                    {!nextReward.isPlaceholder && nextReward.description && (
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {nextReward.description}
+                      </p>
+                    )}
+                  </div>
+                  {/* Remaining Sparks */}
+                  {nextReward.sparkCost && (
+                    <div className="flex flex-col items-end text-right">
+                      <span className="text-xs text-gray-400">Remaining:</span>
+                      <span className="text-sm font-semibold text-yellow-400 flex items-center gap-1">
+                        {" "}
+                        {/* Added flex and gap */}
+                        <SparkIcon
+                          className="h-3 w-3"
+                          fill="currentColor"
+                        />{" "}
+                        {/* Added Spark Icon */}
+                        {(
+                          nextReward.sparkCost - currentPathProgressSparks
+                        ).toLocaleString()}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           // Placeholder if no active path
@@ -386,8 +450,10 @@ export function PathsPage({
           <h4 className="mb-3 text-sm font-medium text-gray-400">
             Available Paths:
           </h4>
-          {/* Make container horizontally scrollable with custom scrollbar */}
-          <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar">
+          {/* Display paths in a 2-column grid */}
+          <div className="grid grid-cols-2 gap-4">
+            {" "}
+            {/* Changed to grid layout */}
             {/* Map over ALL paths */}
             {pathsConfig.map((path) => {
               const isCurrentlyActive = path.id === activePathId;
@@ -396,11 +462,12 @@ export function PathsPage({
                   key={path.id}
                   // Adjust width and add styling for active/inactive
                   className={cn(
-                    "flex h-full w-64 flex-shrink-0 flex-col rounded-lg border p-4", // Fixed width, flex-shrink-0 for scrolling
+                    "flex h-full flex-shrink-0 flex-col rounded-lg border p-4 cursor-pointer", // Removed fixed width (w-56) and scrolling classes
                     isCurrentlyActive
                       ? "border-indigo-700 bg-gray-800 opacity-60" // Style for active path in this list
                       : "border-gray-700 bg-gray-800 hover:bg-gray-700/60"
                   )}
+                  onClick={() => handleOpenDetailModal(path.id)} // Use the new handler
                 >
                   {/* Path Header */}
                   <div className="mb-3 flex items-center justify-between gap-2">
@@ -417,46 +484,13 @@ export function PathsPage({
                       </span>
                     )}
                   </div>
-                  <p className="mb-4 flex-grow text-xs text-gray-400">
+                  <p className="mb-0 text-xs text-gray-400">
+                    {" "}
+                    {/* Removed flex-grow and adjusted margin */}
                     {path.description}
                   </p>
-
-                  {/* Vertical Reward Preview */}
-                  <ol className="mb-4 space-y-2">
-                    {path.rewards.map((reward) => (
-                      <li key={reward.id} className="flex items-center gap-2">
-                        <span
-                          className={cn(
-                            "flex h-5 w-5 items-center justify-center rounded-full",
-                            reward.isPlaceholder ? "bg-gray-600" : "bg-gray-700"
-                          )}
-                        >
-                          <reward.icon className="h-3 w-3 text-gray-400" />
-                        </span>
-                        <span
-                          className={cn(
-                            "text-xs",
-                            reward.isPlaceholder
-                              ? "italic text-gray-500"
-                              : "text-gray-300"
-                          )}
-                        >
-                          {reward.name}
-                        </span>
-                      </li>
-                    ))}
-                  </ol>
-
-                  {/* Select Button - Corrected nesting and logic */}
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="mt-auto w-full"
-                    onClick={() => handleSelectPathClick(path.id)}
-                    disabled={isCurrentlyActive}
-                  >
-                    {isCurrentlyActive ? "Currently Active" : "Set Active Path"}
-                  </Button>
+                  {/* Removed Vertical Reward Preview */}
+                  {/* Removed Select Button */}
                 </div>
               );
             })}
@@ -487,6 +521,99 @@ export function PathsPage({
               Confirm Switch
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Path Detail Modal */}
+      <Dialog open={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>
+        <DialogContent className="sm:max-w-lg">
+          {" "}
+          {/* Adjust max-width as needed */}
+          {selectedPath && ( // Render only if a path is selected
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  {/* Path Icon and Title */}
+                  <selectedPath.icon
+                    className="h-6 w-6 flex-shrink-0"
+                    style={{ color: selectedPath.color }}
+                  />
+                  {selectedPath.name}
+                </DialogTitle>
+                {/* Path Description */}
+                <DialogDescription className="pt-2 text-sm text-gray-400">
+                  {selectedPath.description}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4 text-sm text-gray-300 overflow-y-auto max-h-[60vh]">
+                {" "}
+                {/* Added max-height and overflow */}
+                <h5 className="text-xs font-medium text-gray-400">Rewards:</h5>
+                {/* Vertical Reward List (similar to old card structure) */}
+                <ol className="space-y-2">
+                  {selectedPath.rewards.map((reward) => (
+                    <li key={reward.id} className="flex items-center gap-2">
+                      <span
+                        className={cn(
+                          "flex h-5 w-5 items-center justify-center rounded-full",
+                          reward.isPlaceholder ? "bg-gray-600" : "bg-gray-700"
+                        )}
+                      >
+                        {/* Check if reward is unlocked */}
+                        {unlockedRewardIds.has(reward.id) ? (
+                          <Check className="h-3 w-3 text-white" />
+                        ) : (
+                          <reward.icon className="h-3 w-3 text-gray-400" />
+                        )}
+                      </span>
+                      <div className="flex flex-col">
+                        {" "}
+                        {/* Use a flex column to stack name and description */}
+                        <span
+                          className={cn(
+                            "text-xs",
+                            reward.isPlaceholder
+                              ? "italic text-gray-500"
+                              : "text-gray-300"
+                          )}
+                        >
+                          {reward.name}
+                          {!reward.isPlaceholder && reward.sparkCost && (
+                            <span className="ml-1 text-[10px] text-yellow-400">
+                              ({reward.sparkCost.toLocaleString()} Sparks)
+                            </span>
+                          )}
+                        </span>
+                        {/* Display description as a subtitle */}
+                        {!reward.isPlaceholder && reward.description && (
+                          <span className="text-[10px] text-gray-500 mt-0.5">
+                            {reward.description}
+                          </span>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+              <DialogFooter className="sm:justify-end">
+                {/* Set Active Path Button */}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full" // Make button full width in modal
+                  onClick={() =>
+                    selectedPathId && handleSelectPathClick(selectedPathId)
+                  } // Use selectedPathId
+                  disabled={selectedPathId === activePathId} // Disable if currently active
+                >
+                  {selectedPathId === activePathId
+                    ? "Currently Active"
+                    : "Set Active Path"}
+                </Button>
+                {/* Removed Close button */}
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
 

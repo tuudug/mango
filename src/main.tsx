@@ -17,6 +17,7 @@ import { HabitsProvider } from "./contexts/HabitsContext.tsx"; // Import HabitsP
 import { QuestsProvider } from "./contexts/QuestsContext.tsx"; // Import QuestsProvider
 import { NotificationProvider } from "./contexts/NotificationContext.tsx"; // Import NotificationProvider
 import { FetchManagerProvider } from "./contexts/FetchManagerContext.tsx"; // Import FetchManagerProvider
+import { SparksProvider } from "./contexts/SparksContext.tsx"; // Import SparksProvider
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
@@ -24,27 +25,32 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       <ToastProvider>
         <PanelManagerProvider>
           <AuthProvider>
-            <CalendarProvider>
-              <HealthProvider>
-                <QuestsProvider>
-                  <HabitsProvider>
-                    <TodosProvider>
-                      <FinanceProvider>
-                        <PomodoroProvider>
-                          <AmbienceProvider>
-                            <NotificationProvider>
-                              <FetchManagerProvider>
-                                <App />
-                              </FetchManagerProvider>
-                            </NotificationProvider>
-                          </AmbienceProvider>
-                        </PomodoroProvider>
-                      </FinanceProvider>
-                    </TodosProvider>
-                  </HabitsProvider>
-                </QuestsProvider>
-              </HealthProvider>
-            </CalendarProvider>
+            <SparksProvider>
+              {" "}
+              {/* Wrap with SparksProvider */}
+              <CalendarProvider>
+                <HealthProvider>
+                  <QuestsProvider>
+                    <HabitsProvider>
+                      <TodosProvider>
+                        <FinanceProvider>
+                          <PomodoroProvider>
+                            <AmbienceProvider>
+                              <NotificationProvider>
+                                <FetchManagerProvider>
+                                  <App />
+                                </FetchManagerProvider>
+                              </NotificationProvider>
+                            </AmbienceProvider>
+                          </PomodoroProvider>
+                        </FinanceProvider>
+                      </TodosProvider>
+                    </HabitsProvider>
+                  </QuestsProvider>
+                </HealthProvider>
+              </CalendarProvider>
+            </SparksProvider>{" "}
+            {/* Close SparksProvider */}
           </AuthProvider>
         </PanelManagerProvider>
       </ToastProvider>
