@@ -8,9 +8,8 @@ export async function getUserProgress(
   res: Response,
   next: NextFunction
 ): Promise<void> {
-  const userId = req.user?.id;
   try {
-    const userId = req.user?.id;
+    const userId = req.userId;
     const supabase = req.supabase;
 
     if (!userId || !supabase) {

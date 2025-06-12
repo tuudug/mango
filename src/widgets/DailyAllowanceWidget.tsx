@@ -18,56 +18,65 @@ interface DailyAllowanceWidgetProps {
   // w, h are provided by react-grid-layout but might not be needed directly
 }
 
-// --- Custom Hook for Animated Counter (Slot Machine Style) ---
-// (Simple version: increments/decrements towards target)
-// TODO: Enhance for actual slot machine visual effect if needed
 function useAnimatedCounter(targetValue: number | null, duration = 500) {
-  // Explicitly type useState as a potential fix for the TS error
   const [displayValue, setDisplayValue] = useState<number>(targetValue ?? 0);
-  const valueRef = useRef(targetValue ?? 0);
+  const prevTargetPropRef = useRef<number | null>(targetValue);
   const animationFrameRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
-    const finalTarget = targetValue ?? 0;
-    const startValue = valueRef.current;
-    const diff = finalTarget - startValue;
+    const newTarget = targetValue ?? 0;
+    const oldTargetProp = prevTargetPropRef.current ?? 0;
 
-    if (diff === 0) return; // No change needed
+    // Always update prevTargetPropRef to the current targetValue to ensure we track the latest value.
+    prevTargetPropRef.current = targetValue;
 
-    let startTime: number | null = null;
+    // Start animation if the target value has changed or if displayValue is not at the target.
+    if (newTarget !== oldTargetProp || displayValue !== newTarget) {
+      const startValue = displayValue;
+      const endValue = newTarget;
+      const diff = endValue - startValue;
 
-    const step = (timestamp: number) => {
-      if (!startTime) startTime = timestamp;
-      const elapsed = timestamp - startTime;
-      const progress = Math.min(elapsed / duration, 1); // Ensure progress doesn't exceed 1
-
-      // Simple linear interpolation (can be replaced with easing functions)
-      const currentVal = startValue + diff * progress;
-      setDisplayValue(currentVal);
-      valueRef.current = currentVal; // Update ref for next animation start
-
-      if (progress < 1) {
-        animationFrameRef.current = requestAnimationFrame(step);
-      } else {
-        // Ensure final value is exact
-        setDisplayValue(finalTarget);
-        valueRef.current = finalTarget;
+      // If no difference, set the value directly without animation.
+      if (diff === 0) {
+        if (displayValue !== endValue) {
+          setDisplayValue(endValue);
+        }
+        if (animationFrameRef.current) {
+          cancelAnimationFrame(animationFrameRef.current);
+          animationFrameRef.current = undefined;
+        }
+        return;
       }
-    };
 
-    // Cancel previous animation frame if any
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-    }
-    animationFrameRef.current = requestAnimationFrame(step);
+      let startTime: number | null = null;
+      const step = (timestamp: number) => {
+        if (!startTime) startTime = timestamp;
+        const elapsed = timestamp - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const currentAnimatedValue = startValue + diff * progress;
 
-    // Cleanup function
-    return () => {
+        setDisplayValue(currentAnimatedValue);
+
+        if (progress < 1) {
+          animationFrameRef.current = requestAnimationFrame(step);
+        } else {
+          setDisplayValue(endValue); // Ensure final value is exact
+        }
+      };
+
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
+      animationFrameRef.current = requestAnimationFrame(step);
+    }
+
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = undefined;
+      }
     };
-  }, [targetValue, duration]); // Rerun animation when targetValue changes
+  }, [targetValue, duration]); // Removed displayValue from dependencies to avoid unnecessary re-renders.
 
   return displayValue;
 }

@@ -26,8 +26,6 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <PanelManagerProvider>
           <AuthProvider>
             <SparksProvider>
-              {" "}
-              {/* Wrap with SparksProvider */}
               <CalendarProvider>
                 <HealthProvider>
                   <QuestsProvider>
@@ -49,8 +47,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
                   </QuestsProvider>
                 </HealthProvider>
               </CalendarProvider>
-            </SparksProvider>{" "}
-            {/* Close SparksProvider */}
+            </SparksProvider>
           </AuthProvider>
         </PanelManagerProvider>
       </ToastProvider>
