@@ -7,7 +7,7 @@ import {
   Target,
   User,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ChangelogModal } from "./ChangelogModal";
 import { usePanelManager, PanelId } from "@/contexts/PanelManagerContext"; // Import PanelManager hook and type
 // Import the panel components
@@ -80,7 +80,7 @@ export function LeftSidebar({
   // TODO: Refactor pathState to use IDs, Sparks, and Set<string> for unlocked rewards
   const {
     activePathName,
-    unlockedItems,
+    // unlockedItems,
     currentPathProgressXP: currentPathProgressSparks,
   } = pathState;
 

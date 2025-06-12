@@ -1,7 +1,7 @@
-import React, { useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Input } from "@/components/ui/input"; // Added Input
+//// import { Input } from "@/components/ui/input"; // Added Input
 import {
   Dialog,
   DialogContent,
@@ -22,11 +22,11 @@ import {
 import {
   pathsConfig,
   getPathById,
-  PathDefinition,
+  // PathDefinition,
   PathReward,
 } from "@/lib/pathsConfig"; // Import new config
 import {
-  Lock,
+  // Lock,
   Check,
   Milestone,
   Star,
@@ -51,7 +51,7 @@ interface PathsPageProps {
   onAllocateSparks: (amount: number) => void;
 }
 
-import { useSparks } from "@/contexts/SparksContext"; // Import useSparks hook
+// import { useSparks } from "@/contexts/SparksContext"; // Import useSparks hook
 
 export function PathsPage({
   onClose,
@@ -59,15 +59,15 @@ export function PathsPage({
   setActivePathId,
   unlockedRewardIds,
   currentPathProgressSparks,
-  // Removed totalSparks prop
-  onAllocateSparks,
-}: PathsPageProps) {
-  const { totalSparks } = useSparks(); // Get totalSparks from context
+}: // Removed totalSparks prop
+// onAllocateSparks,
+PathsPageProps) {
+  // const { totalSparks } = useSparks(); // Get totalSparks from context
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [pendingSwitchPathId, setPendingSwitchPathId] = useState<string | null>(
     null
   );
-  const [allocateAmount, setAllocateAmount] = useState(""); // State for allocation input
+  // const [allocateAmount, setAllocateAmount] = useState(""); // State for allocation input
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false); // State for detail modal
   const [selectedPathId, setSelectedPathId] = useState<string | null>(null); // State for selected path in modal
 
@@ -93,7 +93,7 @@ export function PathsPage({
     if (pendingSwitchPathId) {
       setActivePathId(pendingSwitchPathId);
       // Reset local allocation amount on switch
-      setAllocateAmount("");
+      // setAllocateAmount("");
     }
     setIsConfirmDialogOpen(false);
     setPendingSwitchPathId(null);
@@ -104,20 +104,20 @@ export function PathsPage({
     setPendingSwitchPathId(null);
   };
 
-  const handleAllocateInputChange = (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const value = e.target.value.replace(/[^0-9]/g, ""); // Allow only numbers
-    setAllocateAmount(value);
-  };
+  // const handleAllocateInputChange = (
+  //   e: React.ChangeEvent<HTMLInputElement>
+  // ) => {
+  //   const value = e.target.value.replace(/[^0-9]/g, ""); // Allow only numbers
+  //   setAllocateAmount(value);
+  // };
 
-  const handleAllocateSubmit = () => {
-    const amount = parseInt(allocateAmount, 10);
-    if (!isNaN(amount) && amount > 0) {
-      onAllocateSparks(amount); // Call the prop function
-      setAllocateAmount(""); // Clear input after submission
-    }
-  };
+  // const handleAllocateSubmit = () => {
+  //   const amount = parseInt(allocateAmount, 10);
+  //   if (!isNaN(amount) && amount > 0) {
+  //     onAllocateSparks(amount); // Call the prop function
+  //     setAllocateAmount(""); // Clear input after submission
+  //   }
+  // };
 
   // --- Calculate progress for the active path ---
   const { nextReward, progressPercent } = useMemo(() => {
@@ -151,13 +151,13 @@ export function PathsPage({
   };
 
   // Placeholder for Allocate Sparks Modal state
-  const [isAllocateModalOpen, setIsAllocateModalOpen] = useState(false);
+  // const [isAllocateModalOpen, setIsAllocateModalOpen] = useState(false);
 
   const handleAllocateClick = () => {
     // TODO: Implement modal opening and logic
     console.log("Allocate Sparks button clicked - implement modal");
     // For now, just log, maybe open a simple alert or modal later
-    setIsAllocateModalOpen(true); // Example state change
+    // setIsAllocateModalOpen(true); // Example state change
   };
 
   const handleOpenDetailModal = (pathId: string) => {
@@ -165,10 +165,10 @@ export function PathsPage({
     setIsDetailModalOpen(true);
   };
 
-  const handleCloseDetailModal = () => {
-    setIsDetailModalOpen(false);
-    setSelectedPathId(null);
-  };
+  // const handleCloseDetailModal = () => {
+  //   setIsDetailModalOpen(false);
+  //   setSelectedPathId(null);
+  // };
 
   return (
     // Standard Panel Structure
@@ -335,7 +335,7 @@ export function PathsPage({
               {/* Horizontal Icons with Tooltips */}
               <div className="mt-2 flex justify-between gap-1">
                 <TooltipProvider delayDuration={100}>
-                  {activePath.rewards.map((reward, index) => {
+                  {activePath.rewards.map((reward: PathReward) => {
                     const isUnlocked = unlockedRewardIds.has(reward.id);
                     const isNext = reward.id === nextReward?.id;
                     const tooltipContent = `${reward.name}${
@@ -551,7 +551,7 @@ export function PathsPage({
                 <h5 className="text-xs font-medium text-gray-400">Rewards:</h5>
                 {/* Vertical Reward List (similar to old card structure) */}
                 <ol className="space-y-2">
-                  {selectedPath.rewards.map((reward) => (
+                  {selectedPath.rewards.map((reward: PathReward) => (
                     <li key={reward.id} className="flex items-center gap-2">
                       <span
                         className={cn(

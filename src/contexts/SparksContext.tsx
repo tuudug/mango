@@ -5,7 +5,7 @@ import React, {
   ReactNode,
   useMemo,
 } from "react";
-import { Sparkles as SparkIcon } from "lucide-react"; // Import SparkIcon
+// import { Sparkles as SparkIcon } from "lucide-react"; // Import SparkIcon
 
 interface SparksContextType {
   totalSparks: number;
@@ -22,7 +22,7 @@ interface SparksProviderProps {
 
 export const SparksProvider: React.FC<SparksProviderProps> = ({ children }) => {
   // For now, totalSparks is static. In the future, this would come from user state/API.
-  const [totalSparks, setTotalSparks] = useState<number>(1000); // Static placeholder value
+  const [totalSparks /* setTotalSparks */] = useState<number>(1000); // Static placeholder value
 
   // Memoize the context value
   const value = useMemo(
