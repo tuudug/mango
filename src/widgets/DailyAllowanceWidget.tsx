@@ -120,7 +120,10 @@ export const DailyAllowanceWidget: React.FC<DailyAllowanceWidgetProps> = () => {
   return (
     <TooltipProvider delayDuration={300}>
       {/* Ensure outer div allows centering */}
-      <div className="p-3 h-full w-full flex flex-col justify-center items-center text-sm text-gray-300">
+      <div
+        key={remainingToday}
+        className="p-3 h-full w-full flex flex-col justify-center items-center text-sm text-gray-300"
+      >
         {goal === null && !isLoadingSettings ? (
           <div className="flex-1 flex flex-col justify-center items-center text-center">
             <p className="text-gray-400 mb-2">No daily goal set.</p>
