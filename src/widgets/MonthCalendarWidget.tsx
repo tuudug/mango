@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { useCalendar } from "@/contexts/CalendarContext"; // Import context hook
+import { useCalendarStore } from "@/stores/calendarStore"; // Import Zustand store
 import { format } from "date-fns"; // Import date utility
 import { LoadingBar } from "@/components/ui/loading-bar"; // Import LoadingBar
 
@@ -12,7 +12,7 @@ export const MonthCalendarWidget: React.FC<MonthCalendarWidgetProps> = ({
   id: _id, // Prefix unused id
 }) => {
   // Renamed component
-  const { events, isLoading, error } = useCalendar(); // Get loading and error states
+  const { events, isLoading, error } = useCalendarStore(); // Use Zustand store
   // Get current date
   const [currentDate, setCurrentDate] = useState(new Date());
 

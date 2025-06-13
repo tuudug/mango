@@ -1,6 +1,6 @@
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Habit, useHabits } from "@/contexts/HabitsContext";
+import { Habit, useHabitsStore } from "@/stores/habitsStore"; // Import from Zustand store
 import { GridItem } from "@/lib/dashboardConfig"; // Import GridItem for config type
 import { Loader2 } from "lucide-react";
 
@@ -13,7 +13,7 @@ export function HabitSelectionConfig({
   config,
   onChange,
 }: HabitSelectionConfigProps) {
-  const { habits, isLoadingHabits } = useHabits();
+  const { habits, isLoadingHabits } = useHabitsStore(); // Use Zustand store
 
   // Ensure selectedHabitId is always a string
   const selectedHabitId = config?.habitId || "";

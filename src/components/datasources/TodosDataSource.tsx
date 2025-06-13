@@ -4,7 +4,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area"; // Import ScrollArea
-import { useTodos } from "@/contexts/TodosContext";
+import { useTodosStore, TodoItem, NestedTodoItem } from "@/stores/todosStore"; // Import store and types
 import { ListChecks, Trash2, X } from "lucide-react";
 import React, { useState } from "react";
 
@@ -16,16 +16,15 @@ interface TodosDataSourceProps {
 export function TodosDataSource({ onClose }: TodosDataSourceProps) {
   // Use refactored context
   const {
-    todos,
+    todos, // This will be the flat list from the store
+    // nestedTodos, // Use nestedTodos if your component expects the tree structure directly
     isLoading,
     error,
     addTodo,
     deleteTodo,
     toggleTodo,
-    // Removed lastFetchTime import
-  } = useTodos();
+  } = useTodosStore();
   const [newTodoText, setNewTodoText] = useState("");
-  // Removed nextSyncCountdown state
 
   // Removed the entire countdown timer useEffect hook
 

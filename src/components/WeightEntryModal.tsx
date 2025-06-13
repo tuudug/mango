@@ -10,8 +10,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useHealth } from "@/contexts/HealthContext";
-import { useToast } from "@/contexts/ToastContext";
+import { useHealthStore } from "@/stores/healthStore"; // Import Zustand store
+import { useToastStore } from "@/stores/toastStore";
 import { format } from "date-fns"; // To format default date
 
 interface WeightEntryModalProps {
@@ -20,8 +20,8 @@ interface WeightEntryModalProps {
 }
 
 export function WeightEntryModal({ isOpen, onClose }: WeightEntryModalProps) {
-  const { addManualHealthEntry, isLoading } = useHealth();
-  const { showToast } = useToast();
+  const { addManualHealthEntry, isLoading } = useHealthStore(); // Use Zustand store
+  const { showToast } = useToastStore();
   const [weight, setWeight] = useState("");
   const [entryDate, setEntryDate] = useState(format(new Date(), "yyyy-MM-dd")); // Default to today
 

@@ -1,5 +1,5 @@
-import { useDashboardConfig } from "@/contexts/DashboardConfigContext"; // Import the hook
-import { useHabits } from "@/contexts/HabitsContext";
+import { useDashboardConfigStore } from "@/stores/dashboardConfigStore"; // Import the store
+import { useHabitsStore } from "@/stores/habitsStore"; // Import from Zustand store
 import { calculateStreaks } from "@/lib/habitUtils"; // Import the utility function
 import { Loader2, Medal, TrendingUp } from "lucide-react";
 import { useEffect, useMemo, useState } from "react"; // Add useContext if not implicitly used by hook
@@ -21,8 +21,8 @@ export function HabitStreakWidget({ id, w: _w, h: _h }: WidgetProps) {
     habitEntries: contextHabitEntries, // Rename context entries
     isLoadingHabits,
     isLoadingEntries, // Get entry loading state
-  } = useHabits();
-  const { widgetConfigs } = useDashboardConfig(); // Consume the widgetConfigs map
+  } = useHabitsStore(); // Use Zustand store
+  const { widgetConfigs } = useDashboardConfigStore(); // Use the store
   // Remove local habitEntries state
   // Remove local isLoadingData state
   const [streaks, setStreaks] = useState<{ current: number; longest: number }>({

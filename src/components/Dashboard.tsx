@@ -1,4 +1,4 @@
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuthStore } from "@/stores/authStore";
 // Update imports to point to correct config files
 import { WidgetType, defaultWidgetLayouts } from "@/lib/widgetConfig";
 import { GridItem } from "@/lib/dashboardConfig"; // Keep GridItem import
@@ -31,7 +31,7 @@ import {
   isMobileView,
   findFirstAvailablePosition, // Import the utility function
 } from "./dashboard/utils";
-import { useToast } from "@/contexts/ToastContext"; // Import useToast
+import { useToastStore } from "@/stores/toastStore"; // Import useToastStore
 // Removed provider import
 
 // Define props for Dashboard, including PWA update props
@@ -41,8 +41,8 @@ interface DashboardProps {
 }
 
 export function Dashboard({ updateSW, needRefresh }: DashboardProps) {
-  const { isLoading: isAuthLoading } = useAuth();
-  const { showToast } = useToast(); // Use the toast hook
+  const { isLoading: isAuthLoading } = useAuthStore();
+  const { showToast } = useToastStore(); // Use the toast hook
 
   // Destructure new state and functions from the hook
   const {

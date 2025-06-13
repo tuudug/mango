@@ -2,8 +2,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Habit, useHabits } from "@/contexts/HabitsContext";
-import { useToast } from "@/contexts/ToastContext"; // Import useToast for confirmation
+import { Habit, useHabitsStore } from "@/stores/habitsStore"; // Import from Zustand store
+import { useToastStore } from "@/stores/toastStore"; // Import useToastStore for confirmation
 import { Edit, ListChecks, Loader2, PlusCircle, Trash2, X } from "lucide-react"; // Added Loader2
 import { useState } from "react"; // Import useState
 import { HabitFormModal } from "./HabitFormModal"; // Import the modal
@@ -23,8 +23,8 @@ interface HabitsDataSourceProps {
 
 export function HabitsDataSource({ onClose }: HabitsDataSourceProps) {
   const { habits, isLoadingHabits, error, addHabit, updateHabit, deleteHabit } =
-    useHabits();
-  const { showToast } = useToast();
+    useHabitsStore(); // Use Zustand store
+  const { showToast } = useToastStore();
 
   // State for modal visibility and editing target
   const [isModalOpen, setIsModalOpen] = useState(false);

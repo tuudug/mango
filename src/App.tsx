@@ -4,8 +4,8 @@ import { Dashboard } from "./components/Dashboard";
 import AuthSuccessPage from "./components/auth/AuthSuccessPage";
 import { useEffect } from "react"; // Import useEffect
 import AuthFailurePage from "./components/auth/AuthFailurePage";
-import { useAuth } from "./contexts/AuthContext";
-import { useNotification } from "./contexts/NotificationContext"; // Import useNotification
+import { useAuthStore } from "./stores/authStore"; // Import useAuthStore
+import { useNotificationStore } from "./stores/notificationStore"; // Import useNotificationStore
 import { AuthContainer } from "./components/auth/AuthContainer";
 import { UpdatePasswordForm } from "./components/auth/UpdatePasswordForm"; // Import UpdatePasswordForm
 import { Toaster } from "sonner";
@@ -13,12 +13,12 @@ import { useRegisterSW } from "virtual:pwa-register/react";
 // Use default imports for these components
 import ErrorBoundary from "./components/ErrorBoundary";
 import ErrorFallback from "./components/ErrorFallback";
-import { DashboardConfigProvider } from "./contexts/DashboardConfigContext";
+// DashboardConfigProvider import removed
 
 function App() {
   // --- Hooks (MUST be called unconditionally at the top) ---
-  const { session, isLoading } = useAuth();
-  const { permissionStatus, requestPermission } = useNotification(); // Get notification context
+  const { session, isLoading } = useAuthStore();
+  const { permissionStatus, requestPermission } = useNotificationStore(); // Get notification context
   const {
     offlineReady: [offlineReady, setOfflineReady],
     needRefresh: [needRefresh, setNeedRefresh],
@@ -81,9 +81,8 @@ function App() {
           path="/"
           element={
             session ? (
-              <DashboardConfigProvider>
-                <Dashboard {...pwaProps} />
-              </DashboardConfigProvider>
+              // DashboardConfigProvider wrapping removed
+              <Dashboard {...pwaProps} />
             ) : (
               <Navigate to="/auth" replace />
             )

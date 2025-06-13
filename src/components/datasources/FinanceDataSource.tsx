@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useFinance } from "@/contexts/FinanceContext"; // Updated import path
+import { useFinanceStore } from "@/stores/financeStore"; // Import Zustand store
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,7 +39,7 @@ export const FinanceDataSource: React.FC<FinanceDataSourceProps> = ({
     updateSettings,
     isLoadingSettings,
     isLoadingEntries, // Get entries loading state
-  } = useFinance();
+  } = useFinanceStore(); // Use Zustand store
   const [formState, setFormState] = useState<SettingsFormState>({
     currency: "",
     daily_allowance_goal: "",

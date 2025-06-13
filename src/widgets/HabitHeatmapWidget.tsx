@@ -4,8 +4,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"; // Use shadcn tooltip
-import { useDashboardConfig } from "@/contexts/DashboardConfigContext";
-import { useHabits } from "@/contexts/HabitsContext";
+import { useDashboardConfigStore } from "@/stores/dashboardConfigStore"; // Import store
+import { useHabitsStore } from "@/stores/habitsStore"; // Import from Zustand store
 import { cn } from "@/lib/utils";
 import dayjs from "dayjs";
 import { Loader2 } from "lucide-react";
@@ -32,8 +32,8 @@ export function HabitHeatmapWidget({ id, w: _w, h: _h }: WidgetProps) {
     // Removed fetchInitialDataIfNeeded import
     isLoadingHabits,
     isLoadingEntries, // Get entry loading state
-  } = useHabits();
-  const { widgetConfigs } = useDashboardConfig();
+  } = useHabitsStore(); // Use Zustand store
+  const { widgetConfigs } = useDashboardConfigStore(); // Use store
   const [processedEntries, setProcessedEntries] = useState<
     Record<string, ProcessedEntry>
   >({});

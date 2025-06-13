@@ -3,8 +3,8 @@ import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Bot, X, SendHorizontal, User, Info } from "lucide-react"; // Remove Bell import
 import { authenticatedFetch } from "@/lib/apiClient";
-import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/contexts/ToastContext";
+import { useAuthStore } from "@/stores/authStore"; // Import useAuthStore
+import { useToastStore } from "@/stores/toastStore";
 // Remove useNotification import
 import {
   Tooltip,
@@ -47,8 +47,8 @@ export function YuzuPanel({ onClose }: YuzuPanelProps) {
   );
   const [resetTimestamp, setResetTimestamp] = useState<number | null>(null);
   const [now, setNow] = useState(Date.now());
-  const { showToast } = useToast();
-  const { session } = useAuth();
+  const { showToast } = useToastStore();
+  const { session } = useAuthStore();
   // Remove unreadCount and isNotificationsOpen state
   const scrollRef = useRef<HTMLDivElement>(null);
 

@@ -3,54 +3,37 @@ import ReactDOM from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 import { ThemeProvider } from "./components/ThemeProvider.tsx";
-import { AuthProvider } from "./contexts/AuthContext.tsx";
-import { CalendarProvider } from "./contexts/CalendarContext.tsx";
-import { HealthProvider } from "./contexts/HealthContext.tsx";
-import { TodosProvider } from "./contexts/TodosContext.tsx";
-import { ToastProvider } from "./contexts/ToastContext.tsx";
-import { PanelManagerProvider } from "./contexts/PanelManagerContext.tsx"; // Import PanelManagerProvider
+// CalendarProvider import removed
+// HealthProvider import removed
+// TodosProvider import removed
+// PanelManagerProvider import removed
 // Correct the import path for FinanceProvider
-import { FinanceProvider } from "./contexts/FinanceContext.tsx"; // Updated import path
-import { PomodoroProvider } from "./contexts/PomodoroContext.tsx";
-import { AmbienceProvider } from "./contexts/AmbienceContext.tsx"; // Import AmbienceProvider
-import { HabitsProvider } from "./contexts/HabitsContext.tsx"; // Import HabitsProvider
-import { QuestsProvider } from "./contexts/QuestsContext.tsx"; // Import QuestsProvider
-import { NotificationProvider } from "./contexts/NotificationContext.tsx"; // Import NotificationProvider
-import { FetchManagerProvider } from "./contexts/FetchManagerContext.tsx"; // Import FetchManagerProvider
-import { SparksProvider } from "./contexts/SparksContext.tsx"; // Import SparksProvider
+// FinanceProvider import removed
+// PomodoroProvider import removed
+// AmbienceProvider import removed
+// HabitsProvider import removed
+// QuestsProvider import removed
+// NotificationProvider import removed
+// FetchManagerProvider import removed
+// SparksProvider import removed
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <ThemeProvider>
-      <ToastProvider>
-        <PanelManagerProvider>
-          <AuthProvider>
-            <SparksProvider>
-              <CalendarProvider>
-                <HealthProvider>
-                  <QuestsProvider>
-                    <HabitsProvider>
-                      <TodosProvider>
-                        <FinanceProvider>
-                          <PomodoroProvider>
-                            <AmbienceProvider>
-                              <NotificationProvider>
-                                <FetchManagerProvider>
-                                  <App />
-                                </FetchManagerProvider>
-                              </NotificationProvider>
-                            </AmbienceProvider>
-                          </PomodoroProvider>
-                        </FinanceProvider>
-                      </TodosProvider>
-                    </HabitsProvider>
-                  </QuestsProvider>
-                </HealthProvider>
-              </CalendarProvider>
-            </SparksProvider>
-          </AuthProvider>
-        </PanelManagerProvider>
-      </ToastProvider>
+      {/* PanelManagerProvider wrapping removed, SparksProvider is now a direct child of ThemeProvider */}
+      {/* AuthProvider has been removed, SparksProvider is now a direct child of PanelManagerProvider */}
+      {/* SparksProvider wrapping removed */}
+      {/* CalendarProvider wrapping removed */}
+      {/* HealthProvider wrapping removed */}
+      {/* QuestsProvider wrapping removed */}
+        {/* HabitsProvider wrapping removed */}
+        {/* TodosProvider wrapping removed */}
+        {/* FinanceProvider wrapping removed */}
+        {/* PomodoroProvider wrapping removed */}
+        {/* AmbienceProvider wrapping removed */}
+        {/* NotificationProvider wrapping removed */}
+        {/* FetchManagerProvider wrapping removed */}
+        <App />
     </ThemeProvider>
   </React.StrictMode>
 );

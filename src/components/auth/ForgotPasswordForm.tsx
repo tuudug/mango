@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useAuthStore } from "@/stores/authStore"; // Import useAuthStore
+import { Label } from "@/components/ui/label"; // Added missing Label import
 import {
   Card,
   CardContent,
@@ -19,7 +19,7 @@ interface ForgotPasswordFormProps {
 
 export function ForgotPasswordForm({ onToggleView }: ForgotPasswordFormProps) {
   const [email, setEmail] = useState("");
-  const { resetPasswordForEmail, isLoading } = useAuth();
+  const { resetPasswordForEmail, isLoading } = useAuthStore();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

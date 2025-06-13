@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useFinance } from "@/contexts/FinanceContext"; // Updated import path
+import { useFinanceStore } from "@/stores/financeStore"; // Import Zustand store
 import { Button } from "@/components/ui/button";
 import {
   Dialog,

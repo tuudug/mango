@@ -1,9 +1,9 @@
-import { usePomodoro } from "@/contexts/PomodoroContext";
+import { usePomodoroStore } from "@/stores/pomodoroStore"; // Import from Zustand store
 import { AnimatePresence, motion } from "framer-motion";
 import { Timer } from "lucide-react";
 
 export function PomodoroBanner() {
-  const { pomodoroState } = usePomodoro();
+  const { pomodoroState } = usePomodoroStore(); // Use Zustand store
 
   // Only show banner during the 'work' phase
   const isActive = pomodoroState === "work";

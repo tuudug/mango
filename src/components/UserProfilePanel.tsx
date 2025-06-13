@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/contexts/AuthContext";
-import { useNotification } from "@/contexts/NotificationContext";
+import { useAuthStore } from "@/stores/authStore"; // Import useAuthStore
+import { useNotificationStore } from "@/stores/notificationStore"; // Import useNotificationStore
 import {
   LogOut,
   Settings,
@@ -11,7 +11,7 @@ import {
   Loader2,
 } from "lucide-react"; // Added Loader2
 import { useState, useEffect, useCallback } from "react"; // Added hooks
-import { useToast } from "@/contexts/ToastContext"; // Added useToast
+import { useToastStore } from "@/stores/toastStore"; // Added useToastStore
 import { authenticatedFetch } from "@/lib/apiClient"; // Added authenticatedFetch
 import { format } from "date-fns"; // Added format
 
@@ -34,10 +34,10 @@ interface UserProfilePanelProps {
 }
 
 export function UserProfilePanel({ onClose }: UserProfilePanelProps) {
-  // Get userSettings from useAuth as well
-  const { user, session, signOut, userSettings } = useAuth();
-  const { permissionStatus, requestPermission } = useNotification();
-  const { showToast } = useToast(); // Corrected function name
+  // Get userSettings from useAuthStore as well
+  const { user, session, signOut, userSettings } = useAuthStore();
+  const { permissionStatus, requestPermission } = useNotificationStore();
+  const { showToast } = useToastStore(); // Corrected function name
 
   // State for push subscription status
   const [isSubscribed, setIsSubscribed] = useState(false);

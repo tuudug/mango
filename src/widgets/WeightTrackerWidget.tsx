@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { WeightEntryModal } from "@/components/WeightEntryModal"; // Import the modal
-import { useHealth } from "@/contexts/HealthContext";
+import { useHealthStore } from "@/stores/healthStore"; // Import from Zustand store
 import { format, parseISO, subDays } from "date-fns"; // Import date-fns helpers
 import { CirclePlus, TrendingDown, TrendingUp } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -23,7 +23,7 @@ interface WidgetProps {
 }
 
 export function WeightTrackerWidget({ id: _id, w: _w, h: _h }: WidgetProps) {
-  const { healthData, healthSettings, isLoading } = useHealth();
+  const { healthData, healthSettings, isLoading } = useHealthStore(); // Use Zustand store
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Find the latest weight entry

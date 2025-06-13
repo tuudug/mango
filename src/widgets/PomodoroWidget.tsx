@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { usePomodoro } from "@/contexts/PomodoroContext"; // Import the context hook
+import { usePomodoroStore, PomodoroState } from "@/stores/pomodoroStore"; // Import from Zustand store
 import { cn } from "@/lib/utils"; // Import cn for conditional classes
 import { Pause, Play, RotateCcw } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -19,10 +19,10 @@ const NOTIFICATION_SOUND_SRC = "/audio/pomodoro_notification.mp3"; // Path to no
 
 // Prefix unused props with underscore to satisfy TypeScript/ESLint
 export function PomodoroWidget({ id: _id, w: _w, h: _h }: WidgetProps) {
-  const { pomodoroState: _pomodoroState, setPomodoroState } = usePomodoro(); // Get state and setter
+  const { pomodoroState: globalPomodoroState, setPomodoroState: setGlobalPomodoroState } = usePomodoroStore(); // Get state and setter from store
   const [timeLeft, setTimeLeft] = useState(WORK_DURATION); // Tracks countdown OR countup time
   const [isActive, setIsActive] = useState(false);
-  const [isWorkPhase, setIsWorkPhase] = useState(true);
+  const [isWorkPhase, setIsWorkPhase] = useState(true); // True for 'work', false for 'break'
   const [isOverflow, setIsOverflow] = useState(false); // New state for overflow
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const notificationAudioRef = useRef<HTMLAudioElement | null>(null); // Ref for notification sound
@@ -86,7 +86,7 @@ export function PomodoroWidget({ id: _id, w: _w, h: _h }: WidgetProps) {
               // Only set global state to idle if the BREAK phase just ended.
               // If the WORK phase ended, keep the global state as 'work'.
               if (!isWorkPhase) {
-                setPomodoroState("idle"); // Hide banner after break overflow starts
+                setGlobalPomodoroState("idle"); // Hide banner after break overflow starts
               }
               return 0; // Start overflow count from 0
             }
@@ -106,7 +106,7 @@ export function PomodoroWidget({ id: _id, w: _w, h: _h }: WidgetProps) {
     isOverflow,
     isWorkPhase,
     clearTimerInterval,
-    setPomodoroState,
+    setGlobalPomodoroState, // Use global setter
     playNotification,
   ]); // Added playNotification dependency
 
@@ -123,13 +123,13 @@ export function PomodoroWidget({ id: _id, w: _w, h: _h }: WidgetProps) {
       const nextIsWorkPhase = !isWorkPhase; // Switch to the *next* phase
       setIsWorkPhase(nextIsWorkPhase);
       setTimeLeft(nextIsWorkPhase ? WORK_DURATION : BREAK_DURATION); // Set time for next phase
-      setPomodoroState("idle"); // Remain idle
+      setGlobalPomodoroState("idle"); // Remain idle
     } else if (isActive && !isOverflow) {
       // --- Pausing during Normal Countdown ---
       console.log("Pausing timer normally");
       // clearTimerInterval(); // Already cleared by setIsActive(false) via useEffect
       setIsActive(false);
-      setPomodoroState("idle");
+      setGlobalPomodoroState("idle");
     } else {
       // --- Starting / Resuming ---
       console.log("Starting/Resuming timer");
@@ -155,7 +155,7 @@ export function PomodoroWidget({ id: _id, w: _w, h: _h }: WidgetProps) {
       // (Overflow keeps 'work' state from previous phase or 'idle' if break overflow)
       if (!isOverflow) {
         // Check again, although should be false here
-        setPomodoroState(isWorkPhase ? "work" : "break");
+        setGlobalPomodoroState(isWorkPhase ? "work" : "break");
       }
     }
   };
@@ -168,7 +168,7 @@ export function PomodoroWidget({ id: _id, w: _w, h: _h }: WidgetProps) {
     setIsOverflow(false); // Reset overflow state
     setIsWorkPhase(true); // Reset to work phase
     setTimeLeft(WORK_DURATION);
-    setPomodoroState("idle"); // Reset global state
+    setGlobalPomodoroState("idle"); // Reset global state
   };
 
   // Determine button text and phase display

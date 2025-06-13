@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label"; // Import Label
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { HealthSettings, useHealth } from "@/contexts/HealthContext";
+import { HealthSettings, useHealthStore } from "@/stores/healthStore"; // Import from Zustand store
 import { format } from "date-fns"; // For relative time, ADD format
 import {
   AlertTriangle,
@@ -35,7 +35,7 @@ export function HealthDataSource({ onClose }: HealthDataSourceProps) {
     // Removed lastFetchTime import
     healthSettings, // Get settings
     updateHealthSettings, // Get update function
-  } = useHealth();
+  } = useHealthStore(); // Use Zustand store
   const [newSteps, setNewSteps] = useState("");
   // Remove newStepsDate state
   const [newWeight, setNewWeight] = useState(""); // State for new weight value

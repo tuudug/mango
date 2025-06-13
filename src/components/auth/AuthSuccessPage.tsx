@@ -1,10 +1,10 @@
 import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useCalendar } from "@/contexts/CalendarContext"; // To potentially trigger refetch
+import { useCalendarStore } from "@/stores/calendarStore"; // Import Zustand store
 
 const AuthSuccessPage: React.FC = () => {
   const navigate = useNavigate();
-  const { confirmGoogleConnection } = useCalendar(); // Get confirm function
+  const confirmGoogleConnection = useCalendarStore(state => state.confirmGoogleConnection); // Get confirm function from store
 
   useEffect(() => {
     // Confirm connection (sets state optimistically and fetches)

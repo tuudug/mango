@@ -7,7 +7,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Habit, useHabits } from "@/contexts/HabitsContext";
+import { Habit, useHabitsStore } from "@/stores/habitsStore"; // Import from Zustand store
 import { calculateStreaks } from "@/lib/habitUtils";
 import { cn } from "@/lib/utils";
 import dayjs from "dayjs";
@@ -44,7 +44,7 @@ export function HabitsListWidget({ id: _id, w: _w, h: _h }: WidgetProps) {
     recordHabitEntry,
     hasEntryForDate,
     uncheckOnceDailyHabit,
-  } = useHabits();
+  } = useHabitsStore(); // Use Zustand store
   const [loadingEntryId, setLoadingEntryId] = useState<string | null>(null);
 
   const today = dayjs().format("YYYY-MM-DD");

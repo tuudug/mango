@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react"; // Added useEffect, useRef
-import { useFinance } from "@/contexts/FinanceContext"; // Updated import path
+import { useFinanceStore } from "@/stores/financeStore"; // Import Zustand store
 import { Button } from "@/components/ui/button";
 import { PiggyBank, PlusCircle } from "lucide-react"; // Removed Loader2
 import { formatCurrency } from "@/lib/currencies";
@@ -86,8 +86,8 @@ export const DailyAllowanceWidget: React.FC<DailyAllowanceWidgetProps> = () => {
     settings,
     remainingToday,
     isLoadingSettings,
-    isLoadingEntries: __isLoadingEntries,
-  } = useFinance();
+    isLoadingEntries: __isLoadingEntries, // Keep the underscore if not used directly in this component's render logic
+  } = useFinanceStore(); // Use Zustand store
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Use default values if settings/remainingToday are null/undefined initially

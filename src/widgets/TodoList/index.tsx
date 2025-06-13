@@ -1,6 +1,6 @@
 import { Input } from "@/components/ui/input";
 import { LoadingBar } from "@/components/ui/loading-bar";
-import { NestedTodoItem, useTodos } from "@/contexts/TodosContext"; // Added TodoItem
+import { NestedTodoItem, useTodosStore } from "@/stores/todosStore"; // Changed to useTodosStore
 import {
   closestCenter,
   DndContext,
@@ -65,7 +65,7 @@ export const TodoListWidget: React.FC<TodoListWidgetProps> = ({ id: _id }) => {
     breakdownTodo,
     togglingTodoId,
     // moveTodo // Context function for move buttons
-  } = useTodos();
+  } = useTodosStore(); // Changed to useTodosStore
 
   const [newTodoText, setNewTodoText] = useState("");
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());

@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { useHealth } from "@/contexts/HealthContext";
+import { useHealthStore } from "@/stores/healthStore"; // Import from Zustand store
 import { eachDayOfInterval, endOfWeek, format, startOfWeek } from "date-fns";
 import {
   CalendarCheck2,
@@ -119,7 +119,7 @@ export const StepsTrackerWidget: React.FC<StepsTrackerWidgetProps> = ({
     goToNextStepsWeek,
     goToCurrentStepsWeek,
     healthSettings, // Get health settings
-  } = useHealth();
+  } = useHealthStore(); // Use Zustand store
 
   // Calculate goalSteps from context, with a default fallback
   const goalSteps = healthSettings?.daily_steps_goal ?? 10000;

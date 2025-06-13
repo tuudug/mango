@@ -1,9 +1,9 @@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { useCalendar } from "@/contexts/CalendarContext";
-import { useHealth } from "@/contexts/HealthContext";
-import { useTodos } from "@/contexts/TodosContext";
+import { useCalendarStore } from "@/stores/calendarStore"; // Import useCalendarStore
+import { useHealthStore } from "@/stores/healthStore"; // Import useHealthStore
+import { useTodosStore } from "@/stores/todosStore"; // Import useTodosStore
 import { format } from "date-fns"; // Removed isToday
 import { CalendarDays, CheckSquare, Footprints } from "lucide-react"; // Icons for sections
 import { useMemo } from "react";
@@ -13,9 +13,9 @@ const MAX_TODOS_TO_SHOW = 5;
 const STEP_GOAL = 10000;
 
 export function DailySummaryWidget() {
-  const { events: calendarEvents, isLoading: calendarLoading } = useCalendar();
-  const { todos, isLoading: todosLoading, toggleTodo } = useTodos();
-  const { healthData, isLoading: healthLoading } = useHealth();
+  const { events: calendarEvents, isLoading: calendarLoading } = useCalendarStore();
+  const { todos, isLoading: todosLoading, toggleTodo } = useTodosStore();
+  const { healthData, isLoading: healthLoading } = useHealthStore(); // Use Zustand store
 
   const todayDateString = useMemo(() => format(new Date(), "yyyy-MM-dd"), []);
 

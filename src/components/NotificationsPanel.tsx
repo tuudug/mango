@@ -10,9 +10,9 @@ import {
 } from "@/components/ui/tooltip"; // Import Tooltip components
 import { X, BellOff, CheckCheck } from "lucide-react";
 import {
-  useNotification,
-  AppNotification,
-} from "@/contexts/NotificationContext";
+  useNotificationStore, // Import store
+  AppNotification,      // Import type from store
+} from "@/stores/notificationStore";
 import { formatDistanceToNow } from "date-fns"; // For relative time
 
 interface NotificationsPanelProps {
@@ -21,7 +21,7 @@ interface NotificationsPanelProps {
 
 export function NotificationsPanel({ onClose }: NotificationsPanelProps) {
   const { notifications, unreadCount, isLoading, markAsRead, markAllAsRead } =
-    useNotification();
+    useNotificationStore(); // Use store
 
   const handleMarkAllRead = () => {
     if (unreadCount > 0) {

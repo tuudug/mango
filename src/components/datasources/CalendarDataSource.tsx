@@ -2,7 +2,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area"; // Import ScrollArea
-import { useCalendar } from "@/contexts/CalendarContext";
+import { useCalendarStore } from "@/stores/calendarStore"; // Import Zustand store
+import { CalendarItem } from "@/types/datasources"; // Assuming CalendarItem is used by the store and needed here
 import { AlertTriangle, CalendarDays, Link, Unlink, X } from "lucide-react";
 import React, { useState } from "react";
 
@@ -21,8 +22,7 @@ export function CalendarDataSource({ onClose }: CalendarDataSourceProps) {
     isGoogleConnected,
     connectGoogleCalendar,
     disconnectGoogleCalendar,
-    // Removed lastFetchTime import
-  } = useCalendar();
+  } = useCalendarStore(); // Use Zustand store
   const [newEventTitle, setNewEventTitle] = useState("");
   const [newEventDate, setNewEventDate] = useState("");
   // Removed nextSyncCountdown state

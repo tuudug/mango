@@ -1,4 +1,4 @@
-import { useDashboardConfig } from "@/contexts/DashboardConfigContext";
+import { useDashboardConfigStore } from "@/stores/dashboardConfigStore"; // Import store
 
 // Define the props your widget expects
 interface WidgetProps {
@@ -10,7 +10,7 @@ interface WidgetProps {
 
 export function TextDisplayWidget({ id, w: _w, h: _h }: WidgetProps) {
   // Removed config from props destructuring
-  const { widgetConfigs } = useDashboardConfig(); // Consume the widgetConfigs map
+  const { widgetConfigs } = useDashboardConfigStore(); // Use store
 
   // Get the specific config for this widget instance from the context
   const currentWidgetConfig = widgetConfigs[id];

@@ -1,4 +1,4 @@
-import { useFinance } from "@/contexts/FinanceContext"; // Updated import path
+import { useFinanceStore } from "@/stores/financeStore"; // Import Zustand store
 import { Button } from "@/components/ui/button";
 import { formatCurrency, getCurrencySymbol } from "@/lib/currencies"; // Import getCurrencySymbol
 import { eachDayOfInterval, endOfWeek, format, startOfWeek } from "date-fns";
@@ -87,7 +87,7 @@ export const ExpensesReportWidget: React.FC<ExpensesReportWidgetProps> = () => {
     goToPreviousWeek,
     goToNextWeek,
     goToCurrentWeek,
-  } = useFinance();
+  } = useFinanceStore(); // Use Zustand store
 
   const dailyGoal = settings?.daily_allowance_goal ?? null;
   const currency = settings?.currency ?? "USD";

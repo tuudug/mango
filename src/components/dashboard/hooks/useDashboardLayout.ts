@@ -1,9 +1,9 @@
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuthStore } from "@/stores/authStore"; // Import useAuthStore
 import { GridItem } from "@/lib/dashboardConfig";
 import { WidgetType, defaultWidgetLayouts } from "@/lib/widgetConfig";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useDashboardConfig } from "@/contexts/DashboardConfigContext"; // Import the hook
-import { useToast } from "@/contexts/ToastContext"; // Import useToast
+import { useDashboardConfigStore } from "@/stores/dashboardConfigStore"; // Import the store
+import { useToastStore } from "@/stores/toastStore"; // Import useToastStore
 // Removed duplicate GridItem import
 import { CACHE_STALE_DURATION, getDefaultLayout } from "../constants";
 import { CachedGridItemData, DashboardName } from "../types";
@@ -16,11 +16,11 @@ import {
 } from "../utils";
 
 export function useDashboardLayout() {
-  const { user, session } = useAuth();
+  const { user, session } = useAuthStore();
   const token = session?.access_token;
-  // Consume the new context functions AND the config map
+  // Consume the new store functions AND the config map
   const { initializeConfigs, setWidgetConfig, widgetConfigs } =
-    useDashboardConfig();
+    useDashboardConfigStore();
 
   // State for the currently displayed layout
   const [items, setItems] = useState<GridItem[]>([]);
@@ -42,7 +42,7 @@ export function useDashboardLayout() {
   const [isSaving, setIsSaving] = useState(false);
   const [isSwitchingTarget, setIsSwitchingTarget] = useState(false);
   const prevEditTargetRef = useRef<DashboardName>(editTarget);
-  const { showToast } = useToast(); // Use toast for feedback
+  const { showToast } = useToastStore(); // Use toast for feedback
 
   // --- Save Function (Internal) ---
   const saveLayoutToServerInternal = useCallback(

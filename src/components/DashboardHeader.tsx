@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Bell, DownloadCloud, Sparkles as SparkIcon } from "lucide-react"; // Import Bell, DownloadCloud, and Sparkle icons
-import { useNotification } from "@/contexts/NotificationContext"; // Import notification hook
-import { useSparks } from "@/contexts/SparksContext"; // Import useSparks hook
-import { useFetchManager } from "@/contexts/FetchManagerContext"; // Import FetchManager hook
+import { useNotificationStore } from "@/stores/notificationStore"; // Import notification store
+import { useSparksStore } from "@/stores/sparksStore"; // Import useSparksStore
+import { useFetchManagerStore } from "@/stores/fetchManagerStore"; // Import FetchManager store
 import { formatDistanceToNow } from "date-fns"; // Import formatDistanceToNow
 // Removed NotificationsPanel import
 import {
@@ -35,15 +35,15 @@ export function DashboardHeader({
 }: DashboardHeaderProps) {
   // Accept props
   const [isUpdating, setIsUpdating] = useState(false); // Keep state for update process
-  const { unreadCount } = useNotification(); // Get notification count
+  const { unreadCount } = useNotificationStore(); // Get notification count from store
   // Removed isNotificationsOpen state
 
-  const { totalSparks } = useSparks(); // Get totalSparks from context
+  const { totalSparks } = useSparksStore(); // Get totalSparks from store
   const {
     lastFetchTimestamp,
     triggerGlobalFetch,
     isFetching: isFetchingData,
-  } = useFetchManager(); // Get fetch manager state and function
+  } = useFetchManagerStore(); // Get fetch manager state and function from store
 
   const handleUpdate = async () => {
     if (!needRefresh || isUpdating) return; // Prevent multiple clicks

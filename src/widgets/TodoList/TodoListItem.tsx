@@ -1,4 +1,4 @@
-import { NestedTodoItem, useTodos } from "@/contexts/TodosContext";
+import { NestedTodoItem, useTodosStore } from "@/stores/todosStore"; // Import from Zustand store
 import { cn } from "@/lib/utils";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -69,7 +69,7 @@ export const TodoListItem: React.FC<TodoListItemProps> = ({
   isItemExpanded,
   isDraggingTopLevel, // Receive prop
 }) => {
-  const { toggleTodo, deleteTodo: deleteTodoContext, moveTodo } = useTodos();
+  const { toggleTodo, deleteTodo: deleteTodoContext, moveTodo } = useTodosStore();
 
   const { isEditing, startEditing, cancelEditing, saveEdit } =
     useTodoItemEditing(todo.id, onEditSave);

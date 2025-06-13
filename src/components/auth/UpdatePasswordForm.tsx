@@ -8,33 +8,39 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/contexts/ToastContext"; // Import useToast
+import { useAuthStore } from "@/stores/authStore";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 export function UpdatePasswordForm() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const { updatePassword, isLoading } = useAuth(); // Get session too
+  const { updatePassword, isLoading, session } = useAuthStore(); // Get session too, it's used by updatePassword
   const navigate = useNavigate();
-  const { showToast } = useToast();
+  // showToast is now called from within useAuthStore actions
   const [isReady, setIsReady] = useState(false); // State to wait for session check
 
   // Supabase triggers PASSWORD_RECOVERY event on redirect
-  // We need to wait for the session/event to be processed by AuthContext
+  // We need to wait for the session/event to be processed by AuthStore
   useEffect(() => {
-    // Give AuthContext a moment to process the event
-    const timer = setTimeout(() => {
-      // Check if session is available after the event (might still be null but event processed)
-      // Or rely on isLoading becoming false after the event is handled
-      if (!isLoading) {
+    // The isLoading state in useAuthStore is set to false after the
+    // PASSWORD_RECOVERY event is handled by the onAuthStateChange listener.
+    // So, we can rely on isLoading becoming false.
+    if (!isLoading) {
+      // Additionally, ensure the session is actually recovered (user is present)
+      // which indicates the token was valid and processed.
+      // If there's no user, it means the recovery link might have been invalid or expired.
+      if (session?.user) {
         setIsReady(true);
+      } else {
+        // If no user after loading, means recovery failed or no valid token
+        // navigate("/auth"); // Redirect to login if recovery state is not valid
+        // It might be better to show an error message here or let the form submission fail
+        // For now, let's allow the form to render, and updatePassword will fail if no session.
+        setIsReady(true); // Allow form to render, updatePassword handles session check.
       }
-    }, 500); // Adjust delay if needed
-
-    return () => clearTimeout(timer);
-  }, [isLoading]); // Depend on isLoading from AuthContext
+    }
+  }, [isLoading, session, navigate]); // Depend on isLoading and session from AuthStore
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

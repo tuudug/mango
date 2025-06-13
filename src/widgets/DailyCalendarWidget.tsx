@@ -1,4 +1,4 @@
-import { useCalendar } from "@/contexts/CalendarContext"; // Import useCalendar hook
+import { useCalendarStore } from "@/stores/calendarStore"; // Import Zustand store
 import { CalendarItem as ContextCalendarItem } from "@/types/datasources"; // Import type directly
 import { format, addDays, subDays, isToday } from "date-fns"; // Import date-fns functions (removed isSameDay)
 import { useMemo, useState } from "react";
@@ -16,7 +16,7 @@ interface DailyCalendarWidgetProps {
 export function DailyCalendarWidget({ id: _id }: DailyCalendarWidgetProps) {
   // Add ESLint disable comment
   // Prefix unused id with _
-  const { events, isLoading, error } = useCalendar(); // Get loading and error states
+  const { events, isLoading, error } = useCalendarStore(); // Use Zustand store
   const [displayedDate, setDisplayedDate] = useState(new Date()); // State for displayed date
 
   const today = new Date(); // Keep track of actual today
