@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+import { create } from "zustand";
 
 interface SparksState {
   totalSparks: number;
@@ -7,7 +7,7 @@ interface SparksState {
   // earnSparks: (amount: number) => void;
 }
 
-export const useSparksStore = create<SparksState>((set) => ({
+export const useSparksStore = create<SparksState>(() => ({
   totalSparks: 1000, // Placeholder value from the original context
   // No actions defined for now, matching the original context.
   // Example for future:

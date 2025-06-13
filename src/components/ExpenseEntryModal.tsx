@@ -25,7 +25,7 @@ export const ExpenseEntryModal: React.FC<ExpenseEntryModalProps> = ({
   isOpen,
   onOpenChange,
 }) => {
-  const { addExpense, settings, fetchTodaysEntries } = useFinance();
+  const { addExpense, settings, fetchTodaysEntries } = useFinanceStore();
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [entryDate, setEntryDate] = useState<string>(

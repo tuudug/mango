@@ -4,7 +4,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area"; // Import ScrollArea
-import { useTodosStore, TodoItem, NestedTodoItem } from "@/stores/todosStore"; // Import store and types
+import { useTodosStore } from "@/stores/todosStore"; // Import store
 import { ListChecks, Trash2, X } from "lucide-react";
 import React, { useState } from "react";
 

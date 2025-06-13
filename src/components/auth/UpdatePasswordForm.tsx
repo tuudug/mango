@@ -11,11 +11,13 @@ import { Label } from "@/components/ui/label";
 import { useAuthStore } from "@/stores/authStore";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useToastStore } from "@/stores/toastStore";
 
 export function UpdatePasswordForm() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const { updatePassword, isLoading, session } = useAuthStore(); // Get session too, it's used by updatePassword
+  const { showToast } = useToastStore();
   const navigate = useNavigate();
   // showToast is now called from within useAuthStore actions
   const [isReady, setIsReady] = useState(false); // State to wait for session check

@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { usePomodoroStore, PomodoroState } from "@/stores/pomodoroStore"; // Import from Zustand store
+import { usePomodoroStore } from "@/stores/pomodoroStore"; // Import from Zustand store
 import { cn } from "@/lib/utils"; // Import cn for conditional classes
 import { Pause, Play, RotateCcw } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -19,7 +19,7 @@ const NOTIFICATION_SOUND_SRC = "/audio/pomodoro_notification.mp3"; // Path to no
 
 // Prefix unused props with underscore to satisfy TypeScript/ESLint
 export function PomodoroWidget({ id: _id, w: _w, h: _h }: WidgetProps) {
-  const { pomodoroState: globalPomodoroState, setPomodoroState: setGlobalPomodoroState } = usePomodoroStore(); // Get state and setter from store
+  const { setPomodoroState: setGlobalPomodoroState } = usePomodoroStore(); // Get state and setter from store
   const [timeLeft, setTimeLeft] = useState(WORK_DURATION); // Tracks countdown OR countup time
   const [isActive, setIsActive] = useState(false);
   const [isWorkPhase, setIsWorkPhase] = useState(true); // True for 'work', false for 'break'

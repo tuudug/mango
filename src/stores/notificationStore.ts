@@ -1,7 +1,7 @@
-import { create } from 'zustand';
-import { useAuthStore } from '@/stores/authStore';
-import { useToastStore } from '@/stores/toastStore';
-import { authenticatedFetch } from '@/lib/apiClient';
+import { create } from "zustand";
+import { useAuthStore } from "@/stores/authStore";
+import { useToastStore } from "@/stores/toastStore";
+import { authenticatedFetch } from "@/lib/apiClient";
 
 export interface AppNotification {
   id: string;
@@ -27,23 +27,30 @@ interface NotificationState {
   fetchNotifications: (force?: boolean) => Promise<void>;
   markAsRead: (notificationId: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
-  _updateStoredPermission: (status: NotificationPermissionStatus) => Promise<void>;
+  _updateStoredPermission: (
+    status: NotificationPermissionStatus
+  ) => Promise<void>;
   _recalculateUnreadCount: () => void;
 }
 
 export const useNotificationStore = create<NotificationState>((set, get) => ({
-  permissionStatus: 'default',
+  permissionStatus: "default",
   notifications: [],
   unreadCount: 0,
   isLoading: false,
 
   _recalculateUnreadCount: () => {
-    set(state => ({ unreadCount: state.notifications.filter(n => !n.is_read).length }));
+    set((state) => ({
+      unreadCount: state.notifications.filter((n) => !n.is_read).length,
+    }));
   },
 
   initPermissionStatus: () => {
     if (typeof window !== "undefined" && "Notification" in window) {
-      set({ permissionStatus: Notification.permission as NotificationPermissionStatus });
+      set({
+        permissionStatus:
+          Notification.permission as NotificationPermissionStatus,
+      });
     }
   },
 
@@ -51,18 +58,21 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     const session = useAuthStore.getState().session;
     if (!session) return;
     try {
-      await authenticatedFetch(
-        "/api/user/settings",
-        "PUT",
-        session,
-        { notification_permission: status }
+      await authenticatedFetch("/api/user/settings", "PUT", session, {
+        notification_permission: status,
+      });
+      console.log(
+        `[NotificationStore] Stored notification permission status: ${status}`
       );
-      console.log(`[NotificationStore] Stored notification permission status: ${status}`);
     } catch (error) {
-      console.error("[NotificationStore] Failed to update stored permission:", error);
+      console.error(
+        "[NotificationStore] Failed to update stored permission:",
+        error
+      );
       useToastStore.getState().showToast({
         title: "Error",
-        description: "Failed to save notification preference. Please try again.",
+        description:
+          "Failed to save notification preference. Please try again.",
         variant: "error",
       });
     }
@@ -120,9 +130,15 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       );
       set({ notifications: data || [], isLoading: false });
       get()._recalculateUnreadCount();
-      console.log("[NotificationStore] Fetched notifications:", data?.length ?? 0);
+      console.log(
+        "[NotificationStore] Fetched notifications:",
+        data?.length ?? 0
+      );
     } catch (error) {
-      console.error("[NotificationStore] Failed to fetch notifications:", error);
+      console.error(
+        "[NotificationStore] Failed to fetch notifications:",
+        error
+      );
       useToastStore.getState().showToast({
         title: "Error",
         description: "Could not load notifications.",
@@ -138,7 +154,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     if (!session) return;
 
     const originalNotifications = get().notifications;
-    set(state => ({
+    set((state) => ({
       notifications: state.notifications.map((n) =>
         n.id === notificationId ? { ...n, is_read: true } : n
       ),
@@ -168,20 +184,15 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     if (!session) return;
 
     const originalNotifications = get().notifications;
-    if (originalNotifications.filter(n => !n.is_read).length === 0) return;
+    if (originalNotifications.filter((n) => !n.is_read).length === 0) return;
 
-
-    set(state => ({
+    set((state) => ({
       notifications: state.notifications.map((n) => ({ ...n, is_read: true })),
     }));
     get()._recalculateUnreadCount();
 
     try {
-      await authenticatedFetch(
-        "/api/notifications/read-all",
-        "PUT",
-        session
-      );
+      await authenticatedFetch("/api/notifications/read-all", "PUT", session);
     } catch (error) {
       console.error("[NotificationStore] Failed to mark all as read:", error);
       useToastStore.getState().showToast({
@@ -199,30 +210,47 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
 useNotificationStore.getState().initPermissionStatus();
 
 // Subscribe to auth changes to fetch notifications
-let currentAuthSessionNotifToken = useAuthStore.getState().session?.access_token;
+let currentAuthSessionNotifToken =
+  useAuthStore.getState().session?.access_token;
 
-useAuthStore.subscribe(
-  (newSession) => {
-    const { fetchNotifications } = useNotificationStore.getState();
-    const newAuthSessionNotifToken = newSession?.access_token;
+useAuthStore.subscribe((state) => {
+  const newSession = state.session;
+  const { fetchNotifications } = useNotificationStore.getState();
+  const newAuthSessionNotifToken = newSession?.access_token;
 
-    if (newAuthSessionNotifToken && !currentAuthSessionNotifToken) { // User signed in
-      console.log("[NotificationStore] Auth session detected (sign in), fetching initial notifications...");
-      fetchNotifications();
-    } else if (!newAuthSessionNotifToken && currentAuthSessionNotifToken) { // User signed out
-      console.log("[NotificationStore] Auth session removed (sign out), clearing notifications...");
-      useNotificationStore.setState({ notifications: [], unreadCount: 0, isLoading: false });
-    } else if (newAuthSessionNotifToken && newAuthSessionNotifToken !== currentAuthSessionNotifToken) { // Session refreshed
-        console.log("[NotificationStore] Auth session refreshed, fetching notifications...");
-        fetchNotifications();
-    }
-    currentAuthSessionNotifToken = newAuthSessionNotifToken;
-  },
-  (state) => state.session // Subscribe only to session changes
-);
+  if (newAuthSessionNotifToken && !currentAuthSessionNotifToken) {
+    // User signed in
+    console.log(
+      "[NotificationStore] Auth session detected (sign in), fetching initial notifications..."
+    );
+    fetchNotifications();
+  } else if (!newAuthSessionNotifToken && currentAuthSessionNotifToken) {
+    // User signed out
+    console.log(
+      "[NotificationStore] Auth session removed (sign out), clearing notifications..."
+    );
+    useNotificationStore.setState({
+      notifications: [],
+      unreadCount: 0,
+      isLoading: false,
+    });
+  } else if (
+    newAuthSessionNotifToken &&
+    newAuthSessionNotifToken !== currentAuthSessionNotifToken
+  ) {
+    // Session refreshed
+    console.log(
+      "[NotificationStore] Auth session refreshed, fetching notifications..."
+    );
+    fetchNotifications();
+  }
+  currentAuthSessionNotifToken = newAuthSessionNotifToken;
+});
 
 // Initial fetch if session already exists on load
 if (currentAuthSessionNotifToken) {
-  console.log("[NotificationStore] Initial auth session present on load, fetching notifications...");
+  console.log(
+    "[NotificationStore] Initial auth session present on load, fetching notifications..."
+  );
   useNotificationStore.getState().fetchNotifications();
 }

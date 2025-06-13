@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -10,7 +10,7 @@ import {
   DialogClose,
 } from "@/components/ui/dialog"; // Assuming Dialog components exist
 import { Play, Pause, Info, Volume2, VolumeX } from "lucide-react"; // Add volume icons
-import { useAmbienceStore, PlaybackState } from "@/stores/ambienceStore"; // Import from Zustand store
+import { useAmbienceStore } from "@/stores/ambienceStore"; // Import from Zustand store
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion"; // Import motion and AnimatePresence
 
@@ -26,13 +26,22 @@ const ATTRIBUTION_TEXT = "Audio source: https://ambiph.one/";
 
 // Prefix unused props with underscore
 export function AmbienceWidget({ id: _id, w: _w, h: _h }: WidgetProps) {
-  const { playbackState, togglePlayback, volume, setVolume, isAudioReady, initAudio } = useAmbienceStore();
+  const {
+    playbackState,
+    togglePlayback,
+    volume,
+    setVolume,
+    isAudioReady,
+    initAudio,
+  } = useAmbienceStore();
   const [isAttributionModalOpen, setIsAttributionModalOpen] = useState(false);
 
   // Attempt to initialize audio if not ready (e.g. if auto-init failed due to browser policy)
   useEffect(() => {
     if (!isAudioReady) {
-      initAudio().catch(e => console.warn("Error explicitly initializing audio from widget:", e));
+      initAudio().catch((e) =>
+        console.warn("Error explicitly initializing audio from widget:", e)
+      );
     }
   }, [isAudioReady, initAudio]);
 

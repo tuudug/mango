@@ -1,4 +1,4 @@
-import { HabitEntry } from "@/contexts/HabitsContext";
+import { HabitEntry } from "@/stores/habitsStore";
 import dayjs from "dayjs";
 
 // Helper function to calculate streaks based on COMPLETED entries

@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { useHealthStore } from "@/stores/healthStore"; // Import from Zustand store
+import { useHealthStore, HealthEntry } from "@/stores/healthStore"; // Import from Zustand store
 import { eachDayOfInterval, endOfWeek, format, startOfWeek } from "date-fns";
 import {
   CalendarCheck2,
@@ -135,8 +135,8 @@ export const StepsTrackerWidget: React.FC<StepsTrackerWidgetProps> = ({
 
     const daysMap = new Map<string, number>();
     healthData
-      .filter((d) => d.type === "steps")
-      .forEach((entry) => {
+      .filter((d: HealthEntry) => d.type === "steps")
+      .forEach((entry: HealthEntry) => {
         daysMap.set(
           entry.entry_date,
           (daysMap.get(entry.entry_date) || 0) + entry.value
@@ -164,8 +164,10 @@ export const StepsTrackerWidget: React.FC<StepsTrackerWidgetProps> = ({
   const todayString = format(today, "yyyy-MM-dd");
   const currentSteps = useMemo(() => {
     return healthData
-      .filter((d) => d.entry_date === todayString && d.type === "steps")
-      .reduce((sum, entry) => sum + entry.value, 0);
+      .filter(
+        (d: HealthEntry) => d.entry_date === todayString && d.type === "steps"
+      )
+      .reduce((sum: number, entry: HealthEntry) => sum + entry.value, 0);
   }, [healthData, todayString]);
 
   // --- Conditional Rendering Logic ---

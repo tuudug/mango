@@ -1,8 +1,8 @@
-import { create } from 'zustand';
-import { useAuthStore } from '@/stores/authStore';
-import { useToastStore } from '@/stores/toastStore';
-import { authenticatedFetch, ApiError } from '@/lib/apiClient';
-import dayjs from 'dayjs';
+import { create } from "zustand";
+import { useAuthStore } from "@/stores/authStore";
+import { useToastStore } from "@/stores/toastStore";
+import { authenticatedFetch, ApiError } from "@/lib/apiClient";
+import dayjs from "dayjs";
 
 // --- Types ---
 export interface Habit {
@@ -35,11 +35,25 @@ interface HabitsState {
 
   _handleError: (operation: string, error: unknown) => void;
   fetchHabits: () => Promise<void>;
-  addHabit: (newHabitData: Omit<Habit, "id" | "user_id" | "created_at" | "updated_at">) => Promise<Habit | null>;
-  updateHabit: (habitId: string, updateData: Partial<Omit<Habit, "id" | "user_id" | "created_at" | "updated_at">>) => Promise<Habit | null>;
+  addHabit: (
+    newHabitData: Omit<Habit, "id" | "user_id" | "created_at" | "updated_at">
+  ) => Promise<Habit | null>;
+  updateHabit: (
+    habitId: string,
+    updateData: Partial<
+      Omit<Habit, "id" | "user_id" | "created_at" | "updated_at">
+    >
+  ) => Promise<Habit | null>;
   deleteHabit: (habitId: string) => Promise<boolean>;
-  fetchHabitEntries: (startDate: string, endDate: string, habitId?: string) => Promise<HabitEntry[]>;
-  recordHabitEntry: (habitId: string, entryDate: string) => Promise<HabitEntry | null>;
+  fetchHabitEntries: (
+    startDate: string,
+    endDate: string,
+    habitId?: string
+  ) => Promise<HabitEntry[]>;
+  recordHabitEntry: (
+    habitId: string,
+    entryDate: string
+  ) => Promise<HabitEntry | null>;
   deleteHabitEntry: (entryId: string) => Promise<boolean>;
   uncheckOnceDailyHabit: (habitId: string, date: string) => Promise<boolean>;
   getEntriesForDate: (date: string) => HabitEntry[];
@@ -56,9 +70,11 @@ export const useHabitsStore = create<HabitsState>((set, get) => ({
   _handleError: (operation: string, error: unknown) => {
     console.error(`[HabitsStore] Error (${operation}):`, error);
     const errorMsg =
-      error instanceof ApiError ? error.message :
-      error instanceof Error ? error.message :
-      `Unknown error during ${operation}`;
+      error instanceof ApiError
+        ? error.message
+        : error instanceof Error
+        ? error.message
+        : `Unknown error during ${operation}`;
     set({ error: errorMsg });
     useToastStore.getState().showToast({
       title: `Habit Error (${operation})`,
@@ -72,7 +88,11 @@ export const useHabitsStore = create<HabitsState>((set, get) => ({
     if (!session) return;
     set({ isLoadingHabits: true, error: null });
     try {
-      const data = await authenticatedFetch<Habit[]>("/api/habits", "GET", session);
+      const data = await authenticatedFetch<Habit[]>(
+        "/api/habits",
+        "GET",
+        session
+      );
       set({ habits: data || [], isLoadingHabits: false });
     } catch (e) {
       get()._handleError("fetchHabits", e);
@@ -85,9 +105,17 @@ export const useHabitsStore = create<HabitsState>((set, get) => ({
     if (!session) return null;
     // set({ isLoadingHabits: true }); // Or a specific adding state
     try {
-      const newHabit = await authenticatedFetch<Habit>("/api/habits", "POST", session, newHabitData);
-      set(state => ({ habits: [...state.habits, newHabit] }));
-      useToastStore.getState().showToast({ title: "Habit Added", description: `"${newHabit.name}" created.` });
+      const newHabit = await authenticatedFetch<Habit>(
+        "/api/habits",
+        "POST",
+        session,
+        newHabitData
+      );
+      set((state) => ({ habits: [...state.habits, newHabit] }));
+      useToastStore.getState().showToast({
+        title: "Habit Added",
+        description: `"${newHabit.name}" created.`,
+      });
       return newHabit;
     } catch (e) {
       get()._handleError("addHabit", e);
@@ -102,11 +130,19 @@ export const useHabitsStore = create<HabitsState>((set, get) => ({
     if (!session) return null;
     // set({ isLoadingHabits: true }); // Or a specific updating state
     try {
-      const updatedHabit = await authenticatedFetch<Habit>(`/api/habits/${habitId}`, "PUT", session, updateData);
-      set(state => ({
+      const updatedHabit = await authenticatedFetch<Habit>(
+        `/api/habits/${habitId}`,
+        "PUT",
+        session,
+        updateData
+      );
+      set((state) => ({
         habits: state.habits.map((h) => (h.id === habitId ? updatedHabit : h)),
       }));
-      useToastStore.getState().showToast({ title: "Habit Updated", description: `"${updatedHabit.name}" saved.` });
+      useToastStore.getState().showToast({
+        title: "Habit Updated",
+        description: `"${updatedHabit.name}" saved.`,
+      });
       return updatedHabit;
     } catch (e) {
       get()._handleError("updateHabit", e);
@@ -121,12 +157,19 @@ export const useHabitsStore = create<HabitsState>((set, get) => ({
     if (!session) return false;
     const habitToDelete = get().habits.find((h) => h.id === habitId);
     try {
-      await authenticatedFetch<void>(`/api/habits/${habitId}`, "DELETE", session);
-      set(state => ({
+      await authenticatedFetch<void>(
+        `/api/habits/${habitId}`,
+        "DELETE",
+        session
+      );
+      set((state) => ({
         habits: state.habits.filter((h) => h.id !== habitId),
         habitEntries: state.habitEntries.filter((e) => e.habit_id !== habitId), // Also remove associated entries
       }));
-      useToastStore.getState().showToast({ title: "Habit Deleted", description: `"${habitToDelete?.name || habitId}" removed.` });
+      useToastStore.getState().showToast({
+        title: "Habit Deleted",
+        description: `"${habitToDelete?.name || habitId}" removed.`,
+      });
       return true;
     } catch (e) {
       get()._handleError("deleteHabit", e);
@@ -141,7 +184,11 @@ export const useHabitsStore = create<HabitsState>((set, get) => ({
     const params = new URLSearchParams({ startDate, endDate });
     if (habitId) params.append("habitId", habitId);
     try {
-      const entries = await authenticatedFetch<HabitEntry[]>(`/api/habits/entries?${params.toString()}`, "GET", session);
+      const entries = await authenticatedFetch<HabitEntry[]>(
+        `/api/habits/entries?${params.toString()}`,
+        "GET",
+        session
+      );
       // If it's a general fetch (no specific habitId), update the main habitEntries state.
       // If it's for a specific habit, the caller might handle the result directly.
       // For now, always update the main state if it's a general fetch.
@@ -151,12 +198,16 @@ export const useHabitsStore = create<HabitsState>((set, get) => ({
         // If fetching for a specific habit, merge with existing entries or handle as needed.
         // This example replaces entries for simplicity if habitId is provided,
         // but a merge strategy might be better in a real app.
-        set(state => ({
-            habitEntries: [
-                ...state.habitEntries.filter(e => e.habit_id !== habitId), // remove old entries for this habit
-                ...(entries || []) // add new ones
-            ].sort((a,b) => new Date(a.entry_date).getTime() - new Date(b.entry_date).getTime()), // keep sorted
-            isLoadingEntries: false
+        set((state) => ({
+          habitEntries: [
+            ...state.habitEntries.filter((e) => e.habit_id !== habitId), // remove old entries for this habit
+            ...(entries || []), // add new ones
+          ].sort(
+            (a, b) =>
+              new Date(a.entry_date).getTime() -
+              new Date(b.entry_date).getTime()
+          ), // keep sorted
+          isLoadingEntries: false,
         }));
       }
       return entries || [];
@@ -172,19 +223,38 @@ export const useHabitsStore = create<HabitsState>((set, get) => ({
     if (!session) return null;
     try {
       const newEntry = await authenticatedFetch<HabitEntry>(
-        "/api/habits/entries", "POST", session, { habit_id: habitId, entry_date: entryDate }
+        "/api/habits/entries",
+        "POST",
+        session,
+        { habit_id: habitId, entry_date: entryDate }
       );
-      set(state => {
-        const existingIndex = state.habitEntries.findIndex(e => e.habit_id === habitId && e.entry_date === entryDate);
+      set((state) => {
+        const existingIndex = state.habitEntries.findIndex(
+          (e) => e.habit_id === habitId && e.entry_date === entryDate
+        );
         if (existingIndex > -1) {
           const updatedEntries = [...state.habitEntries];
-          updatedEntries[existingIndex] = { ...updatedEntries[existingIndex], completed: true, id: newEntry.id, created_at: newEntry.created_at }; // ensure new ID is used
+          updatedEntries[existingIndex] = {
+            ...updatedEntries[existingIndex],
+            completed: true,
+            id: newEntry.id,
+            created_at: newEntry.created_at,
+          }; // ensure new ID is used
           return { habitEntries: updatedEntries };
         }
-        return { habitEntries: [...state.habitEntries, newEntry].sort((a,b) => new Date(a.entry_date).getTime() - new Date(b.entry_date).getTime()) };
+        return {
+          habitEntries: [...state.habitEntries, newEntry].sort(
+            (a, b) =>
+              new Date(a.entry_date).getTime() -
+              new Date(b.entry_date).getTime()
+          ),
+        };
       });
       const habit = get().habits.find((h) => h.id === habitId);
-      useToastStore.getState().showToast({ title: "Habit Logged", description: `Recorded "${habit?.name || habitId}" for ${entryDate}.` });
+      useToastStore.getState().showToast({
+        title: "Habit Logged",
+        description: `Recorded "${habit?.name || habitId}" for ${entryDate}.`,
+      });
       // TODO: Quests system disabled. Original call: setTimeout(() => fetchQuestsData({ forceRefresh: true }), 1500);
       return newEntry;
     } catch (e) {
@@ -197,15 +267,23 @@ export const useHabitsStore = create<HabitsState>((set, get) => ({
     const session = useAuthStore.getState().session;
     if (!session) return false;
     const entryToDelete = get().habitEntries.find((e) => e.id === entryId);
-    const habit = entryToDelete ? get().habits.find((h) => h.id === entryToDelete.habit_id) : null;
+    const habit = entryToDelete
+      ? get().habits.find((h) => h.id === entryToDelete.habit_id)
+      : null;
     try {
-      await authenticatedFetch<void>(`/api/habits/entries/${entryId}`, "DELETE", session);
-      set(state => ({
+      await authenticatedFetch<void>(
+        `/api/habits/entries/${entryId}`,
+        "DELETE",
+        session
+      );
+      set((state) => ({
         habitEntries: state.habitEntries.filter((e) => e.id !== entryId),
       }));
       useToastStore.getState().showToast({
         title: "Habit Entry Deleted",
-        description: `Removed log for "${habit?.name || entryToDelete?.habit_id}" on ${entryToDelete?.entry_date}.`,
+        description: `Removed log for "${
+          habit?.name || entryToDelete?.habit_id
+        }" on ${entryToDelete?.entry_date}.`,
       });
       return true;
     } catch (e) {
@@ -220,10 +298,14 @@ export const useHabitsStore = create<HabitsState>((set, get) => ({
     const habit = get().habits.find((h) => h.id === habitId);
     try {
       await authenticatedFetch<void>(
-        `/api/habits/entries/by-date?habitId=${habitId}&entryDate=${date}`, "DELETE", session
+        `/api/habits/entries/by-date?habitId=${habitId}&entryDate=${date}`,
+        "DELETE",
+        session
       );
-      set(state => ({
-        habitEntries: state.habitEntries.filter(entry => !(entry.habit_id === habitId && entry.entry_date === date)),
+      set((state) => ({
+        habitEntries: state.habitEntries.filter(
+          (entry) => !(entry.habit_id === habitId && entry.entry_date === date)
+        ),
       }));
       useToastStore.getState().showToast({
         title: "Habit Unchecked",
@@ -242,47 +324,63 @@ export const useHabitsStore = create<HabitsState>((set, get) => ({
   },
 
   hasEntryForDate: (habitId, date) => {
-    return get().habitEntries.some(entry => entry.habit_id === habitId && entry.entry_date === date && entry.completed);
+    return get().habitEntries.some(
+      (entry) =>
+        entry.habit_id === habitId &&
+        entry.entry_date === date &&
+        entry.completed
+    );
   },
 }));
 
 // --- Auth Subscription ---
-let currentAuthSessionHabitsToken = useAuthStore.getState().session?.access_token;
+let currentAuthSessionHabitsToken =
+  useAuthStore.getState().session?.access_token;
 let initialHabitsFetchCompletedForSession = false;
 
-useAuthStore.subscribe(
-  (newSession) => {
-    const { fetchHabits, fetchHabitEntries } = useHabitsStore.getState();
-    const newAuthSessionHabitsToken = newSession?.access_token;
+useAuthStore.subscribe((state) => {
+  const newSession = state.session;
+  const { fetchHabits, fetchHabitEntries } = useHabitsStore.getState();
+  const newAuthSessionHabitsToken = newSession?.access_token;
 
-    if (newAuthSessionHabitsToken && !initialHabitsFetchCompletedForSession) {
-      console.log("[HabitsStore] Auth session detected, fetching initial habits data...");
-      const today = dayjs().format("YYYY-MM-DD");
-      const weekAgo = dayjs().subtract(7, "day").format("YYYY-MM-DD");
-      fetchHabits();
-      fetchHabitEntries(weekAgo, today);
-      initialHabitsFetchCompletedForSession = true;
-    } else if (!newAuthSessionHabitsToken) {
-      console.log("[HabitsStore] Auth session removed, clearing habits data...");
-      useHabitsStore.setState({
-        habits: [], habitEntries: [], error: null,
-        isLoadingHabits: false, isLoadingEntries: false
-      });
-      initialHabitsFetchCompletedForSession = false;
-    } else if (newAuthSessionHabitsToken && newAuthSessionHabitsToken !== currentAuthSessionHabitsToken) {
-        console.log("[HabitsStore] Auth session refreshed, refetching habits data...");
-        const today = dayjs().format("YYYY-MM-DD");
-        const weekAgo = dayjs().subtract(7, "day").format("YYYY-MM-DD");
-        fetchHabits();
-        fetchHabitEntries(weekAgo, today);
-    }
-    currentAuthSessionHabitsToken = newAuthSessionHabitsToken;
-  },
-  (state) => state.session
-);
+  if (newAuthSessionHabitsToken && !initialHabitsFetchCompletedForSession) {
+    console.log(
+      "[HabitsStore] Auth session detected, fetching initial habits data..."
+    );
+    const today = dayjs().format("YYYY-MM-DD");
+    const weekAgo = dayjs().subtract(7, "day").format("YYYY-MM-DD");
+    fetchHabits();
+    fetchHabitEntries(weekAgo, today);
+    initialHabitsFetchCompletedForSession = true;
+  } else if (!newAuthSessionHabitsToken) {
+    console.log("[HabitsStore] Auth session removed, clearing habits data...");
+    useHabitsStore.setState({
+      habits: [],
+      habitEntries: [],
+      error: null,
+      isLoadingHabits: false,
+      isLoadingEntries: false,
+    });
+    initialHabitsFetchCompletedForSession = false;
+  } else if (
+    newAuthSessionHabitsToken &&
+    newAuthSessionHabitsToken !== currentAuthSessionHabitsToken
+  ) {
+    console.log(
+      "[HabitsStore] Auth session refreshed, refetching habits data..."
+    );
+    const today = dayjs().format("YYYY-MM-DD");
+    const weekAgo = dayjs().subtract(7, "day").format("YYYY-MM-DD");
+    fetchHabits();
+    fetchHabitEntries(weekAgo, today);
+  }
+  currentAuthSessionHabitsToken = newAuthSessionHabitsToken;
+});
 
 if (currentAuthSessionHabitsToken && !initialHabitsFetchCompletedForSession) {
-  console.log("[HabitsStore] Initial auth session present on load, fetching habits data...");
+  console.log(
+    "[HabitsStore] Initial auth session present on load, fetching habits data..."
+  );
   const today = dayjs().format("YYYY-MM-DD");
   const weekAgo = dayjs().subtract(7, "day").format("YYYY-MM-DD");
   useHabitsStore.getState().fetchHabits();

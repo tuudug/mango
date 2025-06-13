@@ -1,8 +1,8 @@
-import { create } from 'zustand';
-import { useAuthStore } from '@/stores/authStore';
-import { useToastStore } from '@/stores/toastStore';
-import { authenticatedFetch } from '@/lib/apiClient';
-import { CalendarItem } from '@/types/datasources';
+import { create } from "zustand";
+import { useAuthStore } from "@/stores/authStore";
+import { useToastStore } from "@/stores/toastStore";
+import { authenticatedFetch } from "@/lib/apiClient";
+import { CalendarItem } from "@/types/datasources";
 
 export interface CalendarState {
   events: CalendarItem[];
@@ -39,11 +39,20 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
         isGoogleConnected: data.isGoogleConnected,
         isLoading: false,
       });
-      console.log("[CalendarStore] Google Connected Status (from backend):", data.isGoogleConnected);
+      console.log(
+        "[CalendarStore] Google Connected Status (from backend):",
+        data.isGoogleConnected
+      );
     } catch (e: any) {
       console.error("[CalendarStore] Failed to fetch calendar events:", e);
-      const errorMsg = e instanceof Error ? e.message : "Failed to fetch calendar data";
-      set({ isLoading: false, error: errorMsg, events: [], isGoogleConnected: false });
+      const errorMsg =
+        e instanceof Error ? e.message : "Failed to fetch calendar data";
+      set({
+        isLoading: false,
+        error: errorMsg,
+        events: [],
+        isGoogleConnected: false,
+      });
       useToastStore.getState().showToast({
         title: "Calendar Error",
         description: errorMsg,
@@ -65,9 +74,16 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
     }
     set({ isLoading: true, error: null }); // Consider specific loading state for add
     try {
-      await authenticatedFetch<void>("/api/calendar/manual", "POST", session, eventData);
+      await authenticatedFetch<void>(
+        "/api/calendar/manual",
+        "POST",
+        session,
+        eventData
+      );
       await get().fetchEvents(); // Re-fetch events
-      useToastStore.getState().showToast({ title: "Event Added", variant: "success" });
+      useToastStore
+        .getState()
+        .showToast({ title: "Event Added", variant: "success" });
     } catch (e: any) {
       console.error("[CalendarStore] Failed to add manual event:", e);
       const errorMsg = e instanceof Error ? e.message : "Failed to add event";
@@ -95,12 +111,19 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
     }
     set({ isLoading: true, error: null }); // Consider specific loading state for delete
     try {
-      await authenticatedFetch<void>(`/api/calendar/manual/${eventId}`, "DELETE", session);
+      await authenticatedFetch<void>(
+        `/api/calendar/manual/${eventId}`,
+        "DELETE",
+        session
+      );
       await get().fetchEvents(); // Re-fetch events
-      useToastStore.getState().showToast({ title: "Event Deleted", variant: "success" });
+      useToastStore
+        .getState()
+        .showToast({ title: "Event Deleted", variant: "success" });
     } catch (e: any) {
       console.error("[CalendarStore] Failed to delete manual event:", e);
-      const errorMsg = e instanceof Error ? e.message : "Failed to delete event";
+      const errorMsg =
+        e instanceof Error ? e.message : "Failed to delete event";
       set({ error: errorMsg }); // isLoading will be reset by fetchEvents
       useToastStore.getState().showToast({
         title: "Delete Event Error",
@@ -109,7 +132,7 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
       });
       await get().fetchEvents(); // Also refetch on error to ensure consistency
     } finally {
-        // isLoading will be reset by fetchEvents or error case
+      // isLoading will be reset by fetchEvents or error case
     }
   },
 
@@ -130,12 +153,20 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
     }
     set({ isLoading: true, error: null });
     try {
-      await authenticatedFetch<void>("/api/auth/google/disconnect", "POST", session);
+      await authenticatedFetch<void>(
+        "/api/auth/google/disconnect",
+        "POST",
+        session
+      );
       await get().fetchEvents(); // This will update connection status and events
-      useToastStore.getState().showToast({ title: "Google Calendar Disconnected", variant: "success" });
+      useToastStore.getState().showToast({
+        title: "Google Calendar Disconnected",
+        variant: "success",
+      });
     } catch (e: any) {
       console.error("[CalendarStore] Failed to disconnect Google Calendar:", e);
-      const errorMsg = e instanceof Error ? e.message : "Failed to disconnect Google Calendar";
+      const errorMsg =
+        e instanceof Error ? e.message : "Failed to disconnect Google Calendar";
       set({ error: errorMsg }); // isLoading will be reset by fetchEvents
       useToastStore.getState().showToast({
         title: "Disconnect Error",
@@ -147,37 +178,57 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
   },
 
   confirmGoogleConnection: () => {
-    console.log("[CalendarStore] Confirming Google Connection - setting state and fetching.");
+    console.log(
+      "[CalendarStore] Confirming Google Connection - setting state and fetching."
+    );
     set({ isGoogleConnected: true, isLoading: true }); // Optimistically set and indicate loading for fetch
     get().fetchEvents();
   },
 }));
 
 // --- Auth Subscription ---
-let currentAuthSessionCalendarToken = useAuthStore.getState().session?.access_token;
+let currentAuthSessionCalendarToken =
+  useAuthStore.getState().session?.access_token;
 
-useAuthStore.subscribe(
-  (newSession) => {
-    const { fetchEvents } = useCalendarStore.getState();
-    const newAuthSessionCalendarToken = newSession?.access_token;
+useAuthStore.subscribe((state) => {
+  const newSession = state.session;
+  const { fetchEvents } = useCalendarStore.getState();
+  const newAuthSessionCalendarToken = (newSession as any)?.access_token;
 
-    if (newAuthSessionCalendarToken && !currentAuthSessionCalendarToken) { // User signed in
-      console.log("[CalendarStore] Auth session detected (sign in), fetching initial calendar events...");
-      fetchEvents();
-    } else if (!newAuthSessionCalendarToken && currentAuthSessionCalendarToken) { // User signed out
-      console.log("[CalendarStore] Auth session removed (sign out), clearing calendar events...");
-      useCalendarStore.setState({ events: [], isLoading: false, error: null, isGoogleConnected: false });
-    } else if (newAuthSessionCalendarToken && newAuthSessionCalendarToken !== currentAuthSessionCalendarToken) { // Session refreshed
-        console.log("[CalendarStore] Auth session refreshed, fetching calendar events...");
-        fetchEvents();
-    }
-    currentAuthSessionCalendarToken = newAuthSessionCalendarToken;
-  },
-  (state) => state.session
-);
+  if (newAuthSessionCalendarToken && !currentAuthSessionCalendarToken) {
+    // User signed in
+    console.log(
+      "[CalendarStore] Auth session detected (sign in), fetching initial calendar events..."
+    );
+    fetchEvents();
+  } else if (!newAuthSessionCalendarToken && currentAuthSessionCalendarToken) {
+    // User signed out
+    console.log(
+      "[CalendarStore] Auth session removed (sign out), clearing calendar events..."
+    );
+    useCalendarStore.setState({
+      events: [],
+      isLoading: false,
+      error: null,
+      isGoogleConnected: false,
+    });
+  } else if (
+    newAuthSessionCalendarToken &&
+    newAuthSessionCalendarToken !== currentAuthSessionCalendarToken
+  ) {
+    // Session refreshed
+    console.log(
+      "[CalendarStore] Auth session refreshed, fetching calendar events..."
+    );
+    fetchEvents();
+  }
+  currentAuthSessionCalendarToken = newAuthSessionCalendarToken;
+});
 
 // Initial fetch if session already exists on load
 if (currentAuthSessionCalendarToken) {
-  console.log("[CalendarStore] Initial auth session present on load, fetching calendar events...");
+  console.log(
+    "[CalendarStore] Initial auth session present on load, fetching calendar events..."
+  );
   useCalendarStore.getState().fetchEvents();
 }

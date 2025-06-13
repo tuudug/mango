@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"; // Import Select components
 import { Checkbox } from "@/components/ui/checkbox"; // Import Checkbox
-import { Habit } from "@/contexts/HabitsContext"; // Import Habit type
+import { Habit } from "@/stores/habitsStore"; // Import Habit type
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
